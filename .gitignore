@@ -1,0 +1,11 @@
+a2c_unemp_tensorboard/*
+*.h5
+dynamic_prog_V.h5
+old/*
+saved/*
+.ipynb_checkpoints/*
+results/*
+__pycache__/*
+lifecycle_rl/__pycache__/*
+lifecycle_rl.egg-info/*
+*.pyc
