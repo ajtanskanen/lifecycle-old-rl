@@ -9,16 +9,27 @@ import h5py
 import tensorflow as tf
 import matplotlib.pyplot as plt
 from tqdm import tqdm_notebook as tqdm
-from stable_baselines.common.vec_env import SubprocVecEnv,DummyVecEnv
-from stable_baselines import A2C, ACER, DQN, ACKTR #, TRPO
-from stable_baselines.common import set_global_seeds
-#from stable_baselines.bench import Monitor
-from stable_baselines.results_plotter import load_results, ts2xy
-from stable_baselines import results_plotter
-from .openai_monitor import Monitor
-from .vec_monitor import VecMonitor
 import os
 
+if True:
+    from stable_baselines.common.vec_env import SubprocVecEnv,DummyVecEnv
+    from stable_baselines import A2C, ACER, DQN, ACKTR #, TRPO
+    from stable_baselines.common import set_global_seeds
+    from stable_baselines.bench import Monitor
+    from stable_baselines.results_plotter import load_results, ts2xy
+    from stable_baselines import results_plotter
+else:
+    from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
+    from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
+    from baselines.common import set_global_seeds
+    from baselines.bench import Monitor
+    from baselines.results_plotter import load_results, ts2xy
+    from baselines import results_plotter
+    from baselines.bench.monitor import Monitor
+    from baselines.common.vec_env.vec_monitor import VecMonitor
+    from baselines.a2c.a2c import A2C
+
+    #ACER, DQN, ACKTR #, TRPO
 
 class Lifecycle():
 
@@ -632,14 +643,14 @@ class Lifecycle():
                     self.best_mean_reward = mean_reward
                     # Example for saving best model
                     print("Saving new best model")
-                    _locals['self'].save(self.log_dir + 'best_model.pkl')
+                    _locals['self'].save(self.log_dir + self.bestname)
         self.n_steps += 1
         return True        
         
     def train(self,train=False,debug=False,steps=20000,cont=False,rlmodel='dqn',\
                 save='unemp',pop=None,batch=1,max_grad_norm=0.5,learning_rate=0.25,\
                 start_from=None,modify_load=True,dir='saved',max_n_cpu=100,plot=True,\
-                use_vecmonitor=True):
+                use_vecmonitor=False,bestname='best.pkl'):
 
         self.best_mean_reward, self.n_steps = -np.inf, 0
         
@@ -650,6 +661,7 @@ class Lifecycle():
             start_from=save
             
         self.rlmodel=rlmodel
+        self.bestname=bestname
         
         self.episodestats_init()
         
@@ -970,7 +982,9 @@ class Lifecycle():
             tyollvaikutus=np.round(scale*np.sum(demog[5:42]*(emp[5:42,1]+emp[5:42,10])))
             haj=np.mean(np.std((emp[5:42,1]+0.5*emp[5:42,10])))
             
-        return htv,tyollvaikutus,haj
+        tyollaste=tyollvaikutus/sum(demog)
+            
+        return htv,tyollvaikutus,haj,tyollaste
 
     def compare_with(self,cc2):
         diff_emp=self.empstate/self.n_pop-cc2.empstate/cc2.n_pop
@@ -1069,13 +1083,14 @@ class Lifecycle():
         self.load_sim(results+'_100')
         base_empstate=self.empstate/self.n_pop
         emps[0,:,:]=base_empstate
-        htv_base,tyoll_base,haj_base=self.comp_tyollisyys_stats(base_empstate,scale_time=False)
+        htv_base,tyoll_base,haj_base,tyollisyysaste=self.comp_tyollisyys_stats(base_empstate,scale_time=False)
         reward=self.get_reward()
         agg_htv[0]=htv_base
         agg_tyoll[0]=tyoll_base
         agg_rew[0]=reward
         best_rew=reward
         best_emp=0
+        t_aste[0]=tyollisyysaste
 
         if plot:
             fig,ax=plt.subplots()
@@ -1105,13 +1120,14 @@ class Lifecycle():
                 ax.plot(x,100*tyol_aste)
 
             e_rate[i,:]=tyol_aste
-            htv,tyollvaikutus,haj=self.comp_tyollisyys_stats(empstate,scale_time=False)
+            htv,tyollvaikutus,haj,tyollisyysaste=self.comp_tyollisyys_stats(empstate,scale_time=False)
             
             agg_htv[i]=htv
             agg_tyoll[i]=tyollvaikutus
             agg_rew[i]=reward
             diff_htv[i]=htv-htv_base
             diff_tyoll[i]=tyollvaikutus-tyoll_base
+            t_aste[i]=tyollisyysaste
             
         if plot:
             x=np.linspace(self.min_age,self.max_age,self.n_time)
