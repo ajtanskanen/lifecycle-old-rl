@@ -140,6 +140,8 @@ class Lifecycle():
         # Create log dir
         self.log_dir = "tmp/" # +str(env_id)
         os.makedirs(self.log_dir, exist_ok=True)
+        self.saved_dir = "saved/" # +str(env_id)
+        os.makedirs(self.saved_dir, exist_ok=True)
             
             
         self.env = gym.make(self.environment,kwargs=self.gym_kwargs)
@@ -490,7 +492,7 @@ class Lifecycle():
             n_cpu = 4
         elif rlmodel=='acktr':
             policy_kwargs = dict(act_fun=tf.nn.relu, net_arch=[512, 512]) # 256, 256?
-            n_cpu = 2
+            n_cpu = 12
         elif rlmodel=='lstm':
             policy_kwargs = dict()
             n_cpu = 4
@@ -515,87 +517,87 @@ class Lifecycle():
         return policy_kwargs,n_cpu,savename,loadname
         
     def setup_rlmodel(self,rlmodel,loadname,env,batch,policy_kwargs,learning_rate,\
-                      max_grad_norm,cont,tensorboard=False):
+                      max_grad_norm,cont,tensorboard=False,verbose=1):
         #print('loadname=',loadname)
         if cont:
             if rlmodel=='a2c':
                 from stable_baselines.common.policies import MlpPolicy # for A2C, ACER
                 if tensorboard:
-                    model = A2C.load(loadname, env=env, verbose=1,gamma=self.gamma,n_steps=batch*self.n_time,\
+                    model = A2C.load(loadname, env=env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,\
                                      tensorboard_log="./a2c_unemp_tensorboard/", policy_kwargs=policy_kwargs)
                 else:
-                    model = A2C.load(loadname, env=env, verbose=1,gamma=self.gamma,n_steps=batch*self.n_time,\
+                    model = A2C.load(loadname, env=env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,\
                                      policy_kwargs=policy_kwargs)                
             elif rlmodel=='acer':
                 from stable_baselines.common.policies import MlpPolicy # for A2C, ACER
-                model = ACER.load(loadname, env=env, verbose=1,gamma=self.gamma,n_steps=batch*self.n_time,\
+                model = ACER.load(loadname, env=env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,\
                                   tensorboard_log="./a2c_unemp_tensorboard/", policy_kwargs=policy_kwargs)
             elif rlmodel=='acktr' or rlmodel=='lnacktr':
                 from stable_baselines.common.policies import MlpPolicy # for A2C, ACER
                 if tensorboard:
-                    model = ACKTR.load(loadname, env=env, verbose=1,gamma=self.gamma,n_steps=batch*self.n_time,\
+                    model = ACKTR.load(loadname, env=env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,\
                                        learning_rate=learning_rate, \
                                        policy_kwargs=policy_kwargs,max_grad_norm=max_grad_norm)
                 else:
-                    model = ACKTR.load(loadname, env=env, verbose=1,gamma=self.gamma,n_steps=batch*self.n_time,\
+                    model = ACKTR.load(loadname, env=env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,\
                                        learning_rate=learning_rate, \
                                        policy_kwargs=policy_kwargs,max_grad_norm=max_grad_norm)
             elif rlmodel=='lstm':
                 from stable_baselines.common.policies import MlpPolicy,MlpLstmPolicy # for A2C, ACER
-                model = ACKTR.load(loadname, env=env, verbose=1,gamma=self.gamma,n_steps=batch*self.n_time,\
+                model = ACKTR.load(loadname, env=env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,\
                                    tensorboard_log="./a2c_unemp_tensorboard/", learning_rate=learning_rate, \
                                    policy_kwargs=policy_kwargs,max_grad_norm=max_grad_norm)
             elif rlmodel=='trpo':
                 from stable_baselines.common.policies import MlpPolicy # for A2C, ACER
-                model = TRPO.load(loadname, env=env, verbose=1,gamma=self.gamma,n_steps=batch*self.n_time,\
+                model = TRPO.load(loadname, env=env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,\
                                    tensorboard_log="./a2c_unemp_tensorboard/", policy_kwargs=policy_kwargs)
             else:        
                 from stable_baselines.deepq.policies import MlpPolicy # for DQN
-                model = DQN.load(loadname, env=env, verbose=1,gamma=self.gamma,batch_size=batch,\
+                model = DQN.load(loadname, env=env, verbose=verbose,gamma=self.gamma,batch_size=batch,\
                                  learning_starts=self.n_time,\
                                  tensorboard_log="./a2c_unemp_tensorboard/",prioritized_replay=True, \
                                  policy_kwargs=policy_kwargs)
         else:
             if rlmodel=='a2c':
                 from stable_baselines.common.policies import MlpPolicy # for A2C, ACER
-                model = A2C(MlpPolicy, env, verbose=1,gamma=self.gamma,n_steps=batch*self.n_time, \
+                model = A2C(MlpPolicy, env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time, \
                             tensorboard_log="./a2c_unemp_tensorboard/", policy_kwargs=policy_kwargs)
             elif rlmodel=='acer':
                 from stable_baselines.common.policies import MlpPolicy # for A2C, ACER
-                model = ACER(MlpPolicy, env, verbose=1,gamma=self.gamma,n_steps=batch*self.n_time, \
+                model = ACER(MlpPolicy, env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time, \
                              tensorboard_log="./a2c_unemp_tensorboard/", policy_kwargs=policy_kwargs)
             elif rlmodel=='acktr':
                 from stable_baselines.common.policies import MlpPolicy # for A2C, ACER
                 if tensorboard:
-                    model = ACKTR(MlpPolicy, env, verbose=1,gamma=self.gamma,n_steps=batch*self.n_time,\
+                    model = ACKTR(MlpPolicy, env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,\
                                 tensorboard_log="./a2c_unemp_tensorboard/", learning_rate=learning_rate, \
                                 policy_kwargs=policy_kwargs,max_grad_norm=max_grad_norm)
                 else:
-                    model = ACKTR(MlpPolicy, env, verbose=0,gamma=self.gamma,n_steps=batch*self.n_time,\
+                    model = ACKTR(MlpPolicy, env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,\
                                 learning_rate=learning_rate, \
                                 policy_kwargs=policy_kwargs,max_grad_norm=max_grad_norm)
             elif rlmodel=='lnacktr':
                 from stable_baselines.common.policies import LnMlpPolicy # for A2C, ACER
                 if tensorboard:
-                    model = ACKTR(LnMlpPolicy, env, verbose=1,gamma=self.gamma,n_steps=batch*self.n_time,\
+                    model = ACKTR(LnMlpPolicy, env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,\
                                 tensorboard_log="./a2c_unemp_tensorboard/", learning_rate=learning_rate, \
                                 policy_kwargs=policy_kwargs,max_grad_norm=max_grad_norm)
                 else:
-                    model = ACKTR(LnMlpPolicy, env, verbose=1,gamma=self.gamma,n_steps=batch*self.n_time,\
+                    model = ACKTR(LnMlpPolicy, env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,\
                                 learning_rate=learning_rate, \
                                 policy_kwargs=policy_kwargs,max_grad_norm=max_grad_norm)
             elif rlmodel=='lstm':
                 from stable_baselines.common.policies import MlpPolicy,MlpLstmPolicy # for A2C, ACER
-                model = ACKTR(MlpLstmPolicy, env, verbose=1,gamma=self.gamma,n_steps=batch*self.n_time,\
+                model = ACKTR(MlpLstmPolicy, env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,\
                             tensorboard_log="./a2c_unemp_tensorboard/", learning_rate=learning_rate, \
                             policy_kwargs=policy_kwargs,max_grad_norm=max_grad_norm)
             elif rlmodel=='trpo':
                 from stable_baselines.common.policies import MlpPolicy # for A2C, ACER
-                model = TRPO(MlpPolicy, env, verbose=1,gamma=self.gamma,n_steps=batch*self.n_time, \
+                model = TRPO(MlpPolicy, env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time, \
                              tensorboard_log="./a2c_unemp_tensorboard/", policy_kwargs=policy_kwargs)
             else:
                 from stable_baselines.deepq.policies import MlpPolicy # for DQN
-                model = DQN(MlpPolicy, env, verbose=1,gamma=self.gamma,batch_size=batch, \
+                model = DQN(MlpPolicy, env, verbose=verbose,gamma=self.gamma,batch_size=batch, \
                             learning_starts=self.n_time,\
                             tensorboard_log="./a2c_unemp_tensorboard/",prioritized_replay=True, \
                             policy_kwargs=policy_kwargs) 
@@ -664,7 +666,8 @@ class Lifecycle():
     def train(self,train=False,debug=False,steps=20000,cont=False,rlmodel='dqn',\
                 save='unemp',pop=None,batch=1,max_grad_norm=0.5,learning_rate=0.25,\
                 start_from=None,modify_load=True,dir='saved',max_n_cpu=100,plot=True,\
-                use_vecmonitor=False,bestname='best.pkl',use_callback=False,log_interval=100):
+                use_vecmonitor=False,bestname='best.pkl',use_callback=False,log_interval=100,\
+                verbose=1):
 
         self.best_mean_reward, self.n_steps = -np.inf, 0
         
@@ -709,7 +712,8 @@ class Lifecycle():
         #    normalize_kwargs={}
         #    env = VecNormalize(env, **normalize_kwargs)
         
-        model=self.setup_rlmodel(self.rlmodel,loadname,env,batch,policy_kwargs,learning_rate,max_grad_norm,cont)
+        model=self.setup_rlmodel(self.rlmodel,loadname,env,batch,policy_kwargs,learning_rate,\
+                                    max_grad_norm,cont,verbose=verbose)
         print('training...')
         
         if use_callback: # tässä ongelma, vecmonitor toimii => kuitenkin monta callbackia
@@ -1103,11 +1107,11 @@ class Lifecycle():
         if cont:
             self.train(steps=steps1,cont=cont,rlmodel='acktr',save=save+'_100',batch=batch1,debug=debug,\
                        modify_load=True,dir=dir,start_from=load,use_callback=False,use_vecmonitor=False,\
-                       log_interval=1000)
+                       log_interval=1000,verbose=1)
         else:
             self.train(steps=steps1,cont=False,rlmodel='acktr',save=save+'_100',batch=batch1,debug=debug,\
                        modify_load=True,dir=dir,use_callback=False,use_vecmonitor=False,\
-                       log_interval=1000)
+                       log_interval=1000,verbose=1)
         
         print('phase 2')
         self.train(steps=steps2,cont=True,rlmodel=rlmodel,save=save+'_101',\
