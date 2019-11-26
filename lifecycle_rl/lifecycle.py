@@ -664,7 +664,7 @@ class Lifecycle():
     def train(self,train=False,debug=False,steps=20000,cont=False,rlmodel='dqn',\
                 save='unemp',pop=None,batch=1,max_grad_norm=0.5,learning_rate=0.25,\
                 start_from=None,modify_load=True,dir='saved',max_n_cpu=100,plot=True,\
-                use_vecmonitor=True,bestname='best.pkl',use_callback=True):
+                use_vecmonitor=False,bestname='best.pkl',use_callback=False,log_interval=100):
 
         self.best_mean_reward, self.n_steps = -np.inf, 0
         
@@ -713,9 +713,9 @@ class Lifecycle():
         print('training...')
         
         if use_callback: # tässä ongelma, vecmonitor toimii => kuitenkin monta callbackia
-            model.learn(total_timesteps=steps, callback=self.callback,log_interval=100)
+            model.learn(total_timesteps=steps, callback=self.callback,log_interval=log_interval)
         else:
-            model.learn(total_timesteps=steps, log_interval=100)
+            model.learn(total_timesteps=steps, log_interval=log_interval)
             
         model.save(savename)
         print('done')
@@ -1097,20 +1097,22 @@ class Lifecycle():
                           modify_load=True,dir=save_dir,deterministic=deterministic)
                           
     def run_protocol(self,steps1=2_000_000,steps2=1_000_000,rlmodel='acktr',\
-               save='simut',debug=False,dir='saved',batch1=1,batch2=100,cont=False,start_from=''):
+               save='simut',debug=False,dir='saved',batch1=1,batch2=1000,cont=False,start_from=''):
               
         print('phase 1')
         if cont:
             self.train(steps=steps1,cont=cont,rlmodel='acktr',save=save+'_100',batch=batch1,debug=debug,\
-                       modify_load=True,dir=dir,start_from=load,use_callback=False)
+                       modify_load=True,dir=dir,start_from=load,use_callback=False,use_vecmonitor=False,\
+                       log_interval=1000)
         else:
             self.train(steps=steps1,cont=False,rlmodel='acktr',save=save+'_100',batch=batch1,debug=debug,\
-                       modify_load=True,dir=dir,use_callback=True)
+                       modify_load=True,dir=dir,use_callback=False,use_vecmonitor=False,\
+                       log_interval=1000)
         
         print('phase 2')
         self.train(steps=steps2,cont=True,rlmodel=rlmodel,save=save+'_101',\
-                   debug=True,start_from=save+'_100',modify_load=True,dir=dir,batch=batch2,\
-                   use_callback=True)
+                   debug=debug,start_from=save+'_100',modify_load=True,dir=dir,batch=batch2,\
+                   use_callback=True,use_vecmonitor=True,log_interval=1)
             
     def predict_protocol(self,pop=1_00,rlmodel='acktr',results='simut_res',
                  load='malli',debug=False,save_dir='saved',deterministic=False):
@@ -1139,6 +1141,7 @@ class Lifecycle():
         agg_rew=np.zeros(n)
         diff_htv=np.zeros(n)
         diff_tyoll=np.zeros(n)
+        t_aste=np.zeros(self.n_time)
         mean_hvt=np.zeros(self.n_time)
         std_htv=np.zeros(self.n_time)
         mean_emp=np.zeros((self.n_time,self.n_employment))

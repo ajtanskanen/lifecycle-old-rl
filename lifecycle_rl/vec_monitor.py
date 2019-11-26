@@ -26,7 +26,6 @@ THE SOFTWARE.
 
 
 from stable_baselines.common.vec_env import VecEnvWrapper
-#from stable_baselines.bench.monitor import ResultsWriter
 import numpy as np
 import time
 from collections import deque
