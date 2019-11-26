@@ -1167,7 +1167,7 @@ class Lifecycle():
             x=np.linspace(self.min_age,self.max_age,self.n_time)
             #ax.plot(x,100*tyoll_base)
         
-        for i in range(1,n):        
+        for i in range(1,n):         
             self.load_sim(results+'_'+str(100+i))
             empstate=self.empstate/self.n_pop
             emps[i,:,:]=empstate
