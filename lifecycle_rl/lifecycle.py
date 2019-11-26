@@ -12,22 +12,28 @@ from tqdm import tqdm_notebook as tqdm
 import os
 
 if True:
+    # use stable baselines
     from stable_baselines.common.vec_env import SubprocVecEnv,DummyVecEnv
     from stable_baselines import A2C, ACER, DQN, ACKTR #, TRPO
     from stable_baselines.common import set_global_seeds
     from stable_baselines.bench import Monitor
     from stable_baselines.results_plotter import load_results, ts2xy
     from stable_baselines import results_plotter
+    from .vec_monitor import VecMonitor
 else:
+    # use openai baselines
     from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
     from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
     from baselines.common import set_global_seeds
     from baselines.bench import Monitor
-    from baselines.results_plotter import load_results, ts2xy
+    from baselines.common.plot_util import load_results
     from baselines import results_plotter
+    from baselines.results_plotter  import ts2xy
     from baselines.bench.monitor import Monitor
     from baselines.common.vec_env.vec_monitor import VecMonitor
-    from baselines.a2c.a2c import A2C
+    from baselines.a2c.a2c import Model as A2C
+    from baselines.acktr.acktr import Model as ACKTR
+    #from baselines.dqn.dqn import Model as DQN
 
     #ACER, DQN, ACKTR #, TRPO
 
@@ -484,7 +490,7 @@ class Lifecycle():
             n_cpu = 4
         elif rlmodel=='acktr':
             policy_kwargs = dict(act_fun=tf.nn.relu, net_arch=[512, 512]) # 256, 256?
-            n_cpu = 12
+            n_cpu = 2
         elif rlmodel=='lstm':
             policy_kwargs = dict()
             n_cpu = 4
@@ -508,7 +514,8 @@ class Lifecycle():
         
         return policy_kwargs,n_cpu,savename,loadname
         
-    def setup_rlmodel(self,rlmodel,loadname,env,batch,policy_kwargs,learning_rate,max_grad_norm,cont,tensorboard=False):
+    def setup_rlmodel(self,rlmodel,loadname,env,batch,policy_kwargs,learning_rate,\
+                      max_grad_norm,cont,tensorboard=False):
         #print('loadname=',loadname)
         if cont:
             if rlmodel=='a2c':
@@ -544,7 +551,7 @@ class Lifecycle():
                                    tensorboard_log="./a2c_unemp_tensorboard/", policy_kwargs=policy_kwargs)
             else:        
                 from stable_baselines.deepq.policies import MlpPolicy # for DQN
-                model = DQN.load(loadname, env=env, verbose=1,gamma=self.gamma,batch_size=32,\
+                model = DQN.load(loadname, env=env, verbose=1,gamma=self.gamma,batch_size=batch,\
                                  learning_starts=self.n_time,\
                                  tensorboard_log="./a2c_unemp_tensorboard/",prioritized_replay=True, \
                                  policy_kwargs=policy_kwargs)
@@ -588,7 +595,7 @@ class Lifecycle():
                              tensorboard_log="./a2c_unemp_tensorboard/", policy_kwargs=policy_kwargs)
             else:
                 from stable_baselines.deepq.policies import MlpPolicy # for DQN
-                model = DQN(MlpPolicy, env, verbose=1,gamma=self.gamma,batch_size=32, \
+                model = DQN(MlpPolicy, env, verbose=1,gamma=self.gamma,batch_size=batch, \
                             learning_starts=self.n_time,\
                             tensorboard_log="./a2c_unemp_tensorboard/",prioritized_replay=True, \
                             policy_kwargs=policy_kwargs) 
@@ -609,8 +616,10 @@ class Lifecycle():
                 env.seed(seed + rank)
                 env.env_seed(seed + rank + 100)
 
-            if use_monitor:
-                env = Monitor(env, self.log_dir, allow_early_resets=True)
+            #print('monitor=',use_monitor)
+    
+            #if use_monitor:
+            #    env = Monitor(env, self.log_dir, allow_early_resets=True)
 
             return env
 
@@ -627,8 +636,10 @@ class Lifecycle():
         """
         #global n_steps, best_mean_reward
         # Print stats every 1000 calls
-        min_steps=1000
-        mod_steps=50
+        
+        min_steps=0
+        mod_steps=1
+        #print(_locals, _globals)
         if (self.n_steps + 1) % mod_steps == 0 and self.n_steps > min_steps:
             # Evaluate policy training performance
             x, y = ts2xy(load_results(self.log_dir), 'timesteps')
@@ -636,21 +647,24 @@ class Lifecycle():
             if len(x) > 0:
                 mean_reward = np.mean(y[-min_steps:])
                 print(x[-1], 'timesteps')
-                print("Best mean reward: {:.2f} - Last mean reward per episode: {:.2f}".format(self.best_mean_reward, mean_reward))
 
                 # New best model, you could save the agent here
                 if mean_reward > self.best_mean_reward:
+                    print("New best mean reward: {:.2f} - Last best reward per episode: {:.2f}".format(mean_reward,self.best_mean_reward))
                     self.best_mean_reward = mean_reward
-                    # Example for saving best model
-                    print("Saving new best model")
+                    # Example for saving best model                    print("Saving new best model")
                     _locals['self'].save(self.log_dir + self.bestname)
+                else:
+                    print("Best mean reward: {:.2f} - Last mean reward per episode: {:.2f}".format(self.best_mean_reward, mean_reward))
+                    
         self.n_steps += 1
+            
         return True        
         
     def train(self,train=False,debug=False,steps=20000,cont=False,rlmodel='dqn',\
                 save='unemp',pop=None,batch=1,max_grad_norm=0.5,learning_rate=0.25,\
                 start_from=None,modify_load=True,dir='saved',max_n_cpu=100,plot=True,\
-                use_vecmonitor=False,bestname='best.pkl'):
+                use_vecmonitor=True,bestname='best.pkl',use_callback=True):
 
         self.best_mean_reward, self.n_steps = -np.inf, 0
         
@@ -674,15 +688,18 @@ class Lifecycle():
         self.savename=save
         n_cpu=min(max_n_cpu,n_cpu)
         
+        print('use_vecmonitor',use_vecmonitor)
+        print('use_callback',use_callback)
+        
         nonvec=False
         if nonvec:
             env=self.env
         else:
             if use_vecmonitor:
                 env = SubprocVecEnv([lambda: self.make_env(self.environment, i, self.gym_kwargs, use_monitor=False) for i in range(n_cpu)])
-                env = VecMonitor(env,filename='vecmonitor.json')
+                env = VecMonitor(env,filename=self.log_dir+'monitor.csv')
             else:
-                env = SubprocVecEnv([lambda: self.make_env(self.environment, i, self.gym_kwargs) for i in range(n_cpu)])
+                env = SubprocVecEnv([lambda: self.make_env(self.environment, i, self.gym_kwargs, use_monitor=use_callback) for i in range(n_cpu)])
             
             if False:
                 env = DummyVecEnv([lambda: gym.make(self.environment,kwargs=self.gym_kwargs) for i in range(n_cpu)])
@@ -691,18 +708,23 @@ class Lifecycle():
         #if normalize:
         #    normalize_kwargs={}
         #    env = VecNormalize(env, **normalize_kwargs)
-            
+        
         model=self.setup_rlmodel(self.rlmodel,loadname,env,batch,policy_kwargs,learning_rate,max_grad_norm,cont)
         print('training...')
-        model.learn(total_timesteps=steps, callback=self.callback,log_interval=100)
+        
+        if use_callback: # tässä ongelma, vecmonitor toimii => kuitenkin monta callbackia
+            model.learn(total_timesteps=steps, callback=self.callback,log_interval=100)
+        else:
+            model.learn(total_timesteps=steps, log_interval=100)
+            
         model.save(savename)
         print('done')
         
-        if plot:
-            results_plotter.plot_results([self.log_dir], steps, results_plotter.X_TIMESTEPS, "Plotter")
-            plt.show()
+        #if plot:
+        #    results_plotter.plot_results([self.log_dir], steps, results_plotter.X_TIMESTEPS, "Plotter")
+        #    plt.show()
         
-        del model 
+        del model,env
         
     def save_simstats(self,filename,diff_htv,diff_tyoll,agg_htv,agg_tyoll,agg_rew,mean_emp,\
                       std_emp,median_emp,emps,best_rew,best_emp):
@@ -1018,20 +1040,36 @@ class Lifecycle():
     def run_results(self,n=2,steps1=100,steps2=100,pop=1_000,rlmodel='acktr',\
                save='perusmalli',debug=False,simut='simut',results='simut_res',\
                results_dir='results',save_dir='saved',deterministic=True,\
-               train=True,predict=True,batch=1,cont=False,load=''):
+               train=True,predict=True,batch1=1,batch2=100,cont=False,load='',use_protocol=True):
                
         self.n_pop=pop
 
-        if train:   
+        if train: 
+            print('train...')
             if cont:
-                self.ntrain(n=n,steps1=steps1,steps2=steps2,rlmodel=rlmodel,save=save,debug=debug,\
-                            dir=save_dir,batch=batch,cont=cont,start_from=load)
+                if use_protocol:
+                    self.run_protocol(rlmodel=rlmodel,steps1=steps1,steps2=steps2,\
+                                  save=save,debug=debug,dir=save_dir,\
+                                  batch1=batch1,batch2=batch,cont=cont,start_from=load)
+                else:
+                    self.ntrain(n=n,steps1=steps1,steps2=steps2,rlmodel=rlmodel,save=save,debug=debug,\
+                                dir=save_dir,batch=batch1,cont=cont,start_from=load)
             else:            
-                self.ntrain(n=n,steps1=steps1,steps2=steps2,rlmodel=rlmodel,save=save,debug=debug,\
-                            dir=save_dir,batch=batch)
+                if use_protocol:
+                    self.run_protocol(rlmodel=rlmodel,steps1=steps1,steps2=steps2,\
+                                  save=save,debug=debug,dir=save_dir,\
+                                  batch1=batch1,batch2=batch2,cont=cont,start_from=load)
+                else:
+                    self.ntrain(n=n,steps1=steps1,steps2=steps2,rlmodel=rlmodel,save=save,debug=debug,\
+                                dir=save_dir,batch=batch1)
         if predict:
-            self.npredict(n=n,pop=pop,rlmodel=rlmodel,results=results_dir+'/'+results,\
-                          load=save,debug=debug,save_dir=save_dir,deterministic=deterministic)
+            print('predict...')
+            if use_protocol:
+                self.predict_protocol(pop=pop,rlmodel=rlmodel,results=results_dir+'/'+results,\
+                              load=save,debug=False,save_dir=save_dir,deterministic=deterministic)
+            else:
+                self.npredict(pop=pop,rlmodel=rlmodel,results=results_dir+'/'+results,\
+                              load=save,debug=debug,save_dir=save_dir,deterministic=deterministic)
         self.run_simstats(results_dir+'/'+results,save=results_dir+'/'+results+'_stats')
         self.plot_simstats(results_dir+'/'+results+'_stats')
         
@@ -1040,26 +1078,53 @@ class Lifecycle():
                
         if cont:
             self.train(steps=steps1,cont=cont,rlmodel='acktr',save=save+'_100',batch=batch,debug=debug,\
-                       add_dir=True,dir=save_dir,load=load)
+                       modify_load=True,dir=dir,load=load,use_callback=False)
         else:
             self.train(steps=steps1,cont=False,rlmodel='acktr',save=save+'_100',batch=batch,debug=debug,\
-                       add_dir=True,dir=save_dir)
+                       modify_load=True,dir=dir,use_callback=False)
         
         for i in range(1,n):
             self.train(steps=steps2,cont=True,rlmodel=rlmodel,save=save+'_'+str(100+i),\
-                       debug=debug,start_from=save+'_'+str(100+i-1),add_dir=True,dir=dir,batch=batch)
+                       debug=debug,start_from=save+'_'+str(100+i-1),modify_load=True,dir=dir,batch=batch)
             
     def npredict(self,n=10,pop=1_00,rlmodel='acktr',results='simut_res',
                  load='malli',debug=False,save_dir='saved',deterministic=False):
-        simut=np.zeros((n,self.n_time,self.n_employment))
-        
         self.save_to_hdf(results+'_simut','n',n,dtype='int64')
     
         for i in range(0,n):
             self.simulate(pop=pop,rlmodel=rlmodel,plot=False,debug=debug,\
                           load=load+'_'+str(100+i),save=results+'_'+str(100+i),\
-                          add_dir=True,dir=save_dir,deterministic=deterministic)
+                          modify_load=True,dir=save_dir,deterministic=deterministic)
                           
+    def run_protocol(self,steps1=2_000_000,steps2=1_000_000,rlmodel='acktr',\
+               save='simut',debug=False,dir='saved',batch1=1,batch2=100,cont=False,start_from=''):
+              
+        print('phase 1')
+        if cont:
+            self.train(steps=steps1,cont=cont,rlmodel='acktr',save=save+'_100',batch=batch1,debug=debug,\
+                       modify_load=True,dir=dir,start_from=load,use_callback=False)
+        else:
+            self.train(steps=steps1,cont=False,rlmodel='acktr',save=save+'_100',batch=batch1,debug=debug,\
+                       modify_load=True,dir=dir,use_callback=True)
+        
+        print('phase 2')
+        self.train(steps=steps2,cont=True,rlmodel=rlmodel,save=save+'_101',\
+                   debug=True,start_from=save+'_100',modify_load=True,dir=dir,batch=batch2,\
+                   use_callback=True)
+            
+    def predict_protocol(self,pop=1_00,rlmodel='acktr',results='simut_res',
+                 load='malli',debug=False,save_dir='saved',deterministic=False):
+        self.save_to_hdf(results+'_simut','n',3,dtype='int64')
+    
+        for i in range(0,2):
+            self.simulate(pop=pop,rlmodel=rlmodel,plot=False,debug=debug,\
+                          load=load+'_'+str(100+i),save=results+'_'+str(100+i),\
+                          modify_load=True,dir=save_dir,deterministic=deterministic)
+
+        self.simulate(pop=pop,rlmodel=rlmodel,plot=False,debug=debug,\
+                      load='tmp/best.pkl',save=results+'_102',\
+                      modify_load=False,dir=save_dir,deterministic=deterministic)
+                      
     def get_reward(self):
         total_reward=np.sum(self.rewstate,axis=1)
         rr=np.sum(total_reward)/self.n_pop

@@ -30,10 +30,16 @@ from stable_baselines.common.vec_env import VecEnvWrapper
 import numpy as np
 import time
 from collections import deque
+import os.path as osp
+import json
+import csv
 
 class VecMonitor(VecEnvWrapper):
+    EXT = "monitor.csv"
+    
     def __init__(self, venv, filename=None, keep_buf=0, info_keywords=()):
         VecEnvWrapper.__init__(self, venv)
+        print('init vecmonitor: ',filename)
         self.eprets = None
         self.eplens = None
         self.epcount = 0
@@ -80,3 +86,26 @@ class VecMonitor(VecEnvWrapper):
                     self.results_writer.write_row(epinfo)
                 newinfos[i] = info
         return obs, rews, dones, newinfos
+        
+class ResultsWriter(object):
+    def __init__(self, filename, header='', extra_keys=()):
+        print('init resultswriter')
+        self.extra_keys = extra_keys
+        assert filename is not None
+        if not filename.endswith(VecMonitor.EXT):
+            if osp.isdir(filename):
+                filename = osp.join(filename, VecMonitor.EXT)
+            else:
+                filename = filename #   + "." + VecMonitor.EXT
+        self.f = open(filename, "wt")
+        if isinstance(header, dict):
+            header = '# {} \n'.format(json.dumps(header))
+        self.f.write(header)
+        self.logger = csv.DictWriter(self.f, fieldnames=('r', 'l', 't')+tuple(extra_keys))
+        self.logger.writeheader()
+        self.f.flush()
+
+    def write_row(self, epinfo):
+        if self.logger:
+            self.logger.writerow(epinfo)
+            self.f.flush()        
