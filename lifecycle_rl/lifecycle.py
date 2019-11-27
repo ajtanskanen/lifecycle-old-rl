@@ -517,8 +517,11 @@ class Lifecycle():
         return policy_kwargs,n_cpu,savename,loadname
         
     def setup_rlmodel(self,rlmodel,loadname,env,batch,policy_kwargs,learning_rate,\
-                      max_grad_norm,cont,tensorboard=False,verbose=1):
+                      max_grad_norm,cont,tensorboard=False,verbose=1,n_cpu=1):
         #print('loadname=',loadname)
+        
+        batch=int(np.ceil(batch/n_cpu))
+        
         if cont:
             if rlmodel=='a2c':
                 from stable_baselines.common.policies import MlpPolicy # for A2C, ACER
@@ -713,7 +716,7 @@ class Lifecycle():
         #    env = VecNormalize(env, **normalize_kwargs)
         
         model=self.setup_rlmodel(self.rlmodel,loadname,env,batch,policy_kwargs,learning_rate,\
-                                    max_grad_norm,cont,verbose=verbose)
+                                    max_grad_norm,cont,verbose=verbose,n_cpu=n_cpu)
         print('training...')
         
         if use_callback: # tässä ongelma, vecmonitor toimii => kuitenkin monta callbackia
