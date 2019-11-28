@@ -16,7 +16,6 @@ from fin_benefits import Benefits
 import gym_unemployment
 import h5py
 import tensorflow as tf
-import matplotlib.pyplot as plt
 from tqdm import tqdm_notebook as tqdm
 import os
 from . episodestats import EpisodeStats, SimStats
@@ -137,7 +136,8 @@ class Lifecycle():
         os.makedirs(self.saved_dir, exist_ok=True)
             
         self.env = gym.make(self.environment,kwargs=self.gym_kwargs)
-        self.episodestats=SimStats(self.timestep,self.n_time,self.n_employment,self.n_pop,self.env)
+        self.episodestats=SimStats(self.timestep,self.n_time,self.n_employment,self.n_pop,\
+                                   self.env,self.minimal,self.min_age,self.max_age,self.min_retirementage)
                 
     def explain(self):
         '''
@@ -333,6 +333,7 @@ class Lifecycle():
                     print("New best mean reward: {:.2f} - Last best reward per episode: {:.2f}".format(mean_reward,self.best_mean_reward))
                     self.best_mean_reward = mean_reward
                     # Example for saving best model                    print("Saving new best model")
+                    print('saved as ',self.log_dir + self.bestname)
                     _locals['self'].save(self.log_dir + self.bestname)
                 else:
                     print("Best mean reward: {:.2f} - Last mean reward per episode: {:.2f}".format(self.best_mean_reward, mean_reward))
@@ -344,7 +345,7 @@ class Lifecycle():
     def train(self,train=False,debug=False,steps=20000,cont=False,rlmodel='dqn',\
                 save='unemp',pop=None,batch=1,max_grad_norm=0.5,learning_rate=0.25,\
                 start_from=None,modify_load=True,dir='saved',max_n_cpu=100,plot=True,\
-                use_vecmonitor=False,bestname='best.pkl',use_callback=False,log_interval=100,\
+                use_vecmonitor=False,bestname='best2',use_callback=False,log_interval=100,\
                 verbose=1):
 
         self.best_mean_reward, self.n_steps = -np.inf, 0
@@ -358,7 +359,8 @@ class Lifecycle():
         self.rlmodel=rlmodel
         self.bestname=bestname
         
-        self.episodestats.reset(self.timestep,self.n_time,self.n_employment,self.n_pop,self.env)
+        self.episodestats.reset(self.timestep,self.n_time,self.n_employment,self.n_pop,\
+                                self.env,self.minimal,self.min_age,self.max_age,self.min_retirementage)
         
         # multiprocess environment
         #print(save,type(dir))
@@ -402,10 +404,6 @@ class Lifecycle():
         model.save(savename)
         print('done')
         
-        #if plot:
-        #    results_plotter.plot_results([self.log_dir], steps, results_plotter.X_TIMESTEPS, "Plotter")
-        #    plt.show()
-        
         del model,env
         
     def save_to_hdf(self,filename,nimi,arr,dtype):
@@ -435,7 +433,10 @@ class Lifecycle():
         if rlmodel is not None:
             self.rlmodel=rlmodel
 
-        self.episodestats.reset(self.timestep,self.n_time,self.n_employment,self.n_pop,self.env)
+        self.episodestats.reset(self.timestep,self.n_time,self.n_employment,self.n_pop,\
+                                self.env,self.minimal,self.min_age,self.max_age,self.min_retirementage)
+        
+        print('simulating ',self.savename)
         
         # multiprocess environment
         policy_kwargs,n_cpu,savename,loadname=self.get_multiprocess_env(self.rlmodel,self.savename,\
@@ -473,10 +474,8 @@ class Lifecycle():
         states = env.reset()
         n=n_cpu-1
         p=np.zeros(self.n_pop)
-        self.pop_num=np.array([k for k in range(n_cpu)])
+        pop_num=np.array([k for k in range(n_cpu)])
         tqdm_e = tqdm(range(int(self.n_pop)), desc='Population', leave=True, unit=" p")
-        
-        print(n_cpu,n)
         
         while n<self.n_pop:
             act, predstate = model.predict(states,deterministic=deterministic)
@@ -490,18 +489,15 @@ class Lifecycle():
                 if dones[k]:
                     #print(infos[k]['terminal_observation'])
                     terminal_state=infos[k]['terminal_observation']
-                    #self.episodestats(k,0,rewards[k],states[k],newstate[k],debug=debug)                
-                    #self.episodestats(k,act[k],rewards[k],states[k],terminal_state,debug=debug)
-                    self.episodestats.add(k,0,rewards[k],states[k],newstate[k],debug=debug)                
-                    self.episodestats.add(k,act[k],rewards[k],states[k],terminal_state,debug=debug)
-                    tqdm_e.update(n)
+                    self.episodestats.add(pop_num[k],0,rewards[k],states[k],newstate[k],debug=debug)
+                    self.episodestats.add(pop_num[k],act[k],rewards[k],states[k],terminal_state,debug=debug)
+                    tqdm_e.update(1)
                     n+=1
                     tqdm_e.set_description("Pop " + str(n))
                     done=True
-                    self.pop_num[k]=n # =np.max(self.pop_num)+1
+                    pop_num[k]=n
                 else:
-                    #self.episodestats(k,act[k],rewards[k],states[k],newstate[k],debug=debug)                
-                    self.episodestats.add(k,act[k],rewards[k],states[k],newstate[k],debug=debug)                
+                    self.episodestats.add(pop_num[k],act[k],rewards[k],states[k],newstate[k],debug=debug)                
                     
             #if done:
             #    states = env.reset()
@@ -510,14 +506,20 @@ class Lifecycle():
         
         self.episodestats.save_sim(save)
         
-        print('done')        
+        #print('done')        
             
         if plot:
             self.render()
         
         if False:
             return self.emp
-                    
+           
+    def render(self,load=None):
+        if load is not None:
+            self.episodestats.render(load=load)
+        else:
+            self.episodestats.render()
+           
     def run_dummy(self,strategy='emp',debug=False,pop=None):
         '''
         Lasketaan työllisyysasteet ikäluokittain
@@ -531,11 +533,10 @@ class Lifecycle():
 
         initial=(0,0,0,0,self.min_age,0,0)
         self.env.seed(1234) 
-        self.pop_num=np.array([0])
         states = env.reset()
         n=0
         p=np.zeros(self.n_pop)
-        self.pop_num=np.array([k for k in range(n_cpu)])
+        pop_num=np.array([k for k in range(n_cpu)])
         while n<self.n_pop:
             emp,_,_,_,age=self.env.state_decode(state) # current employment state    
 
@@ -573,9 +574,9 @@ class Lifecycle():
                     act=1
                 
             newstate,r,done,_=self.env.step(act)
-            self.episodestats.add(0,act,r,state,newstate,debug=debug)
+            self.episodestats.add(pop_num[0],act,r,state,newstate,debug=debug)
             state=newstate
-            self.pop_num[0]=n # =np.max(self.pop_num)+1
+            pop_num[0]=n
             
             if done:
                 if debug:
@@ -598,7 +599,7 @@ class Lifecycle():
                save='perusmalli',debug=False,simut='simut',results='simut_res',\
                results_dir='results',save_dir='saved',deterministic=True,\
                train=True,predict=True,batch1=1,batch2=100,cont=False,load='',\
-               bestname='best',plot=False):
+               bestname='best1',plot=False):
                
         '''
         run_results
@@ -613,24 +614,26 @@ class Lifecycle():
             print('train...')
             if cont:
                 self.run_protocol(rlmodel=rlmodel,steps1=steps1,steps2=steps2,\
-                              save=save,debug=debug,dir=save_dir,\
+                              save=save,debug=debug,dir=save_dir,bestname=bestname,\
                               batch1=batch1,batch2=batch,cont=cont,start_from=load)
             else:            
                 self.run_protocol(rlmodel=rlmodel,steps1=steps1,steps2=steps2,\
                               save=save,debug=debug,dir=save_dir,\
-                              batch1=batch1,batch2=batch2,cont=cont,start_from=load)
+                              batch1=batch1,batch2=batch2,cont=cont,start_from=load,\
+                              bestname=bestname)
         if predict:
             print('predict...')
             self.predict_protocol(pop=pop,rlmodel=rlmodel,results=results_dir+'/'+results,\
-                          load=save,debug=False,save_dir=save_dir,deterministic=deterministic)
+                          load=save,debug=debug,save_dir=save_dir,deterministic=deterministic,\
+                          bestname=bestname)
 
-        self.run_simstats(results_dir+'/'+results,save=results_dir+'/'+results+'_stats')
-        self.plot_simstats(results_dir+'/'+results+'_stats')
-        self.load_sim()
+        self.episodestats.run_simstats(results_dir+'/'+results,save=results_dir+'/'+results+'_stats')
+        self.episodestats.plot_simstats(results_dir+'/'+results+'_stats')
+        self.episodestats.load_sim(results_dir+'/'+results+'_best')
                           
     def run_protocol(self,steps1=2_000_000,steps2=1_000_000,rlmodel='acktr',\
                save='simut',debug=False,dir='saved',batch1=1,batch2=1000,cont=False,\
-               start_from='',bestname='best'):
+               start_from='',bestname='best3'):
         '''
         run_protocol
         
@@ -655,21 +658,29 @@ class Lifecycle():
                    use_callback=True,use_vecmonitor=True,log_interval=1,bestname=bestname)
             
     def predict_protocol(self,pop=1_00,rlmodel='acktr',results='simut_res',
-                 load='malli',debug=False,save_dir='saved',deterministic=False):
+                 load='malli',debug=False,save_dir='saved',deterministic=False,bestname='best5',
+                 onlybest=True):
         '''
         predict_protocol
         
         simulate the three models obtained from run_protocol
         '''
                  
-        self.save_to_hdf(results+'_simut','n',3,dtype='int64')
+        if not onlybest:
+            self.save_to_hdf(results+'_simut','n',3,dtype='int64')
     
-        for i in range(0,2):
+            for i in range(0,2):
+                self.simulate(pop=pop,rlmodel=rlmodel,plot=False,debug=debug,\
+                              load=load+'_'+str(100+i),save=results+'_'+str(100+i),\
+                              modify_load=True,dir=save_dir,deterministic=deterministic)
+            # simulate the saved best
             self.simulate(pop=pop,rlmodel=rlmodel,plot=False,debug=debug,\
-                          load=load+'_'+str(100+i),save=results+'_'+str(100+i),\
-                          modify_load=True,dir=save_dir,deterministic=deterministic)
-
-        # simulate the saved best
-        self.simulate(pop=pop,rlmodel=rlmodel,plot=False,debug=debug,\
-                      load=self.log_dir+'best.pkl',save=results+'_102',\
-                      modify_load=False,dir=save_dir,deterministic=deterministic)
+                          load=self.log_dir+bestname,save=results+'_102',\
+                          modify_load=False,dir=save_dir,deterministic=deterministic)
+        else:
+            self.save_to_hdf(results+'_simut','n',1,dtype='int64')
+        
+            # simulate the saved best
+            self.simulate(pop=pop,rlmodel=rlmodel,plot=False,debug=debug,\
+                          load=self.log_dir+bestname,save=results+'_100',\
+                          modify_load=False,dir=save_dir,deterministic=deterministic)
