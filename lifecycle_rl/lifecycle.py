@@ -142,7 +142,8 @@ class Lifecycle():
         os.makedirs(self.log_dir, exist_ok=True)
         self.saved_dir = "saved/" # +str(env_id)
         os.makedirs(self.saved_dir, exist_ok=True)
-            
+        self.results_dir = "results/" # +str(env_id)
+        os.makedirs(self.results_dir, exist_ok=True)
             
         self.env = gym.make(self.environment,kwargs=self.gym_kwargs)
                 
@@ -641,13 +642,14 @@ class Lifecycle():
         
         min_steps=0
         mod_steps=1
+        hist_eps=1000
         #print(_locals, _globals)
         if (self.n_steps + 1) % mod_steps == 0 and self.n_steps > min_steps:
             # Evaluate policy training performance
             x, y = ts2xy(load_results(self.log_dir), 'timesteps')
             #print(x,y)
             if len(x) > 0:
-                mean_reward = np.mean(y[-min_steps:])
+                mean_reward = np.mean(y[-hist_eps:])
                 print(x[-1], 'timesteps')
 
                 # New best model, you could save the agent here
@@ -1044,7 +1046,8 @@ class Lifecycle():
     def run_results(self,n=2,steps1=100,steps2=100,pop=1_000,rlmodel='acktr',\
                save='perusmalli',debug=False,simut='simut',results='simut_res',\
                results_dir='results',save_dir='saved',deterministic=True,\
-               train=True,predict=True,batch1=1,batch2=100,cont=False,load='',use_protocol=True):
+               train=True,predict=True,batch1=1,batch2=100,cont=False,load='',\
+               use_protocol=True,plot=True):
                
         self.n_pop=pop
 
@@ -1054,7 +1057,7 @@ class Lifecycle():
                 if use_protocol:
                     self.run_protocol(rlmodel=rlmodel,steps1=steps1,steps2=steps2,\
                                   save=save,debug=debug,dir=save_dir,\
-                                  batch1=batch1,batch2=batch,cont=cont,start_from=load)
+                                  batch1=batch1,batch2=batch2,cont=cont,start_from=load)
                 else:
                     self.ntrain(n=n,steps1=steps1,steps2=steps2,rlmodel=rlmodel,save=save,debug=debug,\
                                 dir=save_dir,batch=batch1,cont=cont,start_from=load)
@@ -1075,7 +1078,10 @@ class Lifecycle():
                 self.npredict(pop=pop,rlmodel=rlmodel,results=results_dir+'/'+results,\
                               load=save,debug=debug,save_dir=save_dir,deterministic=deterministic)
         self.run_simstats(results_dir+'/'+results,save=results_dir+'/'+results+'_stats')
-        self.plot_simstats(results_dir+'/'+results+'_stats')
+        
+        if plot:
+            self.plot_simstats(results_dir+'/'+results+'_stats')
+            self.render()
         
     def ntrain(self,n=10,steps1=2_000_000,steps2=1_000_000,rlmodel='acktr',\
                save='simut',debug=False,dir='saved',batch=1,cont=False,load=''):
