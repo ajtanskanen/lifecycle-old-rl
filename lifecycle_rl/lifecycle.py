@@ -134,13 +134,11 @@ class Lifecycle():
             else:
                 self.n_employment = 13
             
-        # Create log dir
+        # Create log dir & results dirs
         self.log_dir = "tmp/" # +str(env_id)
         os.makedirs(self.log_dir, exist_ok=True)
-        self.saved_dir = "saved/" # +str(env_id)
-        os.makedirs(self.saved_dir, exist_ok=True)
-        self.results_dir = "results/" # +str(env_id)
-        os.makedirs(self.results_dir, exist_ok=True)
+        os.makedirs("saved/", exist_ok=True)
+        os.makedirs("results/", exist_ok=True)
             
         self.env = gym.make(self.environment,kwargs=self.gym_kwargs)
         self.episodestats=SimStats(self.timestep,self.n_time,self.n_employment,self.n_pop,\
@@ -160,11 +158,8 @@ class Lifecycle():
         else:
             return int((age-self.min_age)*self.inv_timestep)
         
-    def get_multiprocess_env(self,rlmodel,save,start_from=None,debug=False,modify_load=True,dir='saved'):
+    def get_multiprocess_env(self,rlmodel,debug=False):
     
-        if start_from is None:
-            start_from=save
-            
         # multiprocess environment
         if rlmodel=='a2c':
             policy_kwargs = dict(act_fun=tf.nn.relu, net_arch=[64, 64, 16])
@@ -186,17 +181,10 @@ class Lifecycle():
             n_cpu = 1
             rlmodel='dqn'
             
-        if modify_load:
-            savename=dir+'/'+rlmodel+'_'+save
-            loadname=dir+'/'+rlmodel+'_'+start_from
-        else:
-            savename=save
-            loadname=start_from
-            
         if debug:
             n_cpu=1
         
-        return policy_kwargs,n_cpu,savename,loadname
+        return policy_kwargs,n_cpu
         
     def setup_rlmodel(self,rlmodel,loadname,env,batch,policy_kwargs,learning_rate,\
                       max_grad_norm,cont,tensorboard=False,verbose=1,n_cpu=1):
@@ -334,15 +322,15 @@ class Lifecycle():
             #print(x,y)
             if len(x) > 0:
                 mean_reward = np.mean(y[-hist_eps:])
-                print(x[-1], 'timesteps')
+                print(x[-1], 'timesteps', 'mean', mean_reward, 'out of', y[-hist_eps:])
 
                 # New best model, you could save the agent here
                 if mean_reward > self.best_mean_reward:
                     print("New best mean reward: {:.2f} - Last best reward per episode: {:.2f}".format(mean_reward,self.best_mean_reward))
                     self.best_mean_reward = mean_reward
                     # Example for saving best model                    print("Saving new best model")
-                    print('saved as ',self.log_dir + self.bestname)
-                    _locals['self'].save(self.log_dir + self.bestname)
+                    print('saved as ',self.bestname)
+                    _locals['self'].save(self.bestname)
                 else:
                     print("Best mean reward: {:.2f} - Last mean reward per episode: {:.2f}".format(self.best_mean_reward, mean_reward))
                     
@@ -351,8 +339,8 @@ class Lifecycle():
         return True        
         
     def train(self,train=False,debug=False,steps=20000,cont=False,rlmodel='dqn',\
-                save='unemp',pop=None,batch=1,max_grad_norm=0.5,learning_rate=0.25,\
-                start_from=None,modify_load=True,dir='saved',max_n_cpu=100,plot=True,\
+                save='saved/malli',pop=None,batch=1,max_grad_norm=0.5,learning_rate=0.25,\
+                start_from=None,max_n_cpu=100,plot=True,\
                 use_vecmonitor=False,bestname='best2',use_callback=False,log_interval=100,\
                 verbose=1):
 
@@ -361,9 +349,6 @@ class Lifecycle():
         if pop is not None:
             self.n_pop=pop
 
-        if start_from is None:
-            start_from=save
-            
         self.rlmodel=rlmodel
         self.bestname=bestname
         
@@ -372,8 +357,7 @@ class Lifecycle():
         
         # multiprocess environment
         #print(save,type(dir))
-        policy_kwargs,n_cpu,savename,loadname=self.get_multiprocess_env(self.rlmodel,save,\
-                                                    start_from,debug=debug,modify_load=modify_load,dir=dir)  
+        policy_kwargs,n_cpu=self.get_multiprocess_env(self.rlmodel,debug=debug)  
 
         #print(savename,loadname)
         self.savename=save
@@ -400,7 +384,7 @@ class Lifecycle():
         #    normalize_kwargs={}
         #    env = VecNormalize(env, **normalize_kwargs)
         
-        model=self.setup_rlmodel(self.rlmodel,loadname,env,batch,policy_kwargs,learning_rate,\
+        model=self.setup_rlmodel(self.rlmodel,start_from,env,batch,policy_kwargs,learning_rate,\
                                     max_grad_norm,cont,verbose=verbose,n_cpu=n_cpu)
         print('training...')
         
@@ -409,7 +393,7 @@ class Lifecycle():
         else:
             model.learn(total_timesteps=steps, log_interval=log_interval)
             
-        model.save(savename)
+        model.save(save)
         print('done')
         
         del model,env
@@ -426,29 +410,25 @@ class Lifecycle():
         return val
         
     def simulate(self,debug=False,rlmodel=None,plot=True,load=None,pop=None,\
-                 max_grad_norm=0.5,learning_rate=0.25,start_from=None,\
-                 deterministic=False,save='simulate',modify_load=True,dir='saved'):
+                 max_grad_norm=0.5,learning_rate=0.25,\
+                 deterministic=False,save='simulate'):
 
         if pop is not None:
             self.n_pop=pop
             
         if load is not None:
-            self.savename=load
+            self.loadname=load
             
-        if start_from is None:
-            start_from=self.savename
-
         if rlmodel is not None:
             self.rlmodel=rlmodel
 
         self.episodestats.reset(self.timestep,self.n_time,self.n_employment,self.n_pop,\
                                 self.env,self.minimal,self.min_age,self.max_age,self.min_retirementage)
         
-        print('simulating ',self.savename)
+        print('simulating ',self.loadname)
         
         # multiprocess environment
-        policy_kwargs,n_cpu,savename,loadname=self.get_multiprocess_env(self.rlmodel,self.savename,\
-                                                    start_from,debug=debug,modify_load=modify_load,dir=dir)
+        policy_kwargs,n_cpu=self.get_multiprocess_env(self.rlmodel,debug=debug)
         
         nonvec=False
         if nonvec:
@@ -468,15 +448,15 @@ class Lifecycle():
         print('predicting...')
 
         if self.rlmodel=='a2c':
-            model = A2C.load(savename, env=env, verbose=1,gamma=self.gamma, policy_kwargs=policy_kwargs)
+            model = A2C.load(load, env=env, verbose=1,gamma=self.gamma, policy_kwargs=policy_kwargs)
         elif self.rlmodel=='acer':
-            model = ACER.load(savename, env=env, verbose=1,gamma=self.gamma, policy_kwargs=policy_kwargs)
+            model = ACER.load(load, env=env, verbose=1,gamma=self.gamma, policy_kwargs=policy_kwargs)
         elif self.rlmodel=='acktr':
-            model = ACKTR.load(savename, env=env, verbose=1,gamma=self.gamma, policy_kwargs=policy_kwargs)
+            model = ACKTR.load(load, env=env, verbose=1,gamma=self.gamma, policy_kwargs=policy_kwargs)
         elif self.rlmodel=='trpo':
-            model = TRPO.load(savename, env=env, verbose=1,gamma=self.gamma, policy_kwargs=policy_kwargs)
+            model = TRPO.load(load, env=env, verbose=1,gamma=self.gamma, policy_kwargs=policy_kwargs)
         else:        
-            model = DQN.load(savename, env=env, verbose=1,gamma=self.gamma,prioritized_replay=True,\
+            model = DQN.load(load, env=env, verbose=1,gamma=self.gamma,prioritized_replay=True,\
                              policy_kwargs=policy_kwargs)
 
         states = env.reset()
@@ -603,11 +583,10 @@ class Lifecycle():
         '''
         self.episodestats.compare_with(cc2.episodestats)
         
-    def run_results(self,n=2,steps1=100,steps2=100,pop=1_000,rlmodel='acktr',\
-               save='perusmalli',debug=False,simut='simut',results='simut_res',\
-               results_dir='results',save_dir='saved',deterministic=True,\
-               train=True,predict=True,batch1=1,batch2=100,cont=False,load='',\
-               bestname='best1',plot=False):
+    def run_results(self,n=2,steps1=100,steps2=100,pop=1_000,rlmodel='acktr',
+               save='saved/perusmalli',debug=False,simut='simut',results='results/simut_res',
+               deterministic=True,train=True,predict=True,batch1=1,batch2=100,cont=False,
+               load=None,bestname='tmp/best1',plot=False):
                
         '''
         run_results
@@ -621,26 +600,25 @@ class Lifecycle():
         if train: 
             print('train...')
             if cont:
-                self.run_protocol(rlmodel=rlmodel,steps1=steps1,steps2=steps2,\
-                              save=save,debug=debug,dir=save_dir,bestname=bestname,\
+                self.run_protocol(rlmodel=rlmodel,steps1=steps1,steps2=steps2,
+                              save=save,debug=debug,bestname=bestname,
                               batch1=batch1,batch2=batch,cont=cont,start_from=load)
             else:            
-                self.run_protocol(rlmodel=rlmodel,steps1=steps1,steps2=steps2,\
-                              save=save,debug=debug,dir=save_dir,\
-                              batch1=batch1,batch2=batch2,cont=cont,start_from=load,\
-                              bestname=bestname)
+                self.run_protocol(rlmodel=rlmodel,steps1=steps1,steps2=steps2,save=save,
+                                 debug=debug,batch1=batch1,batch2=batch2,cont=cont,
+                                start_from=load,bestname=bestname)
         if predict:
             print('predict...')
-            self.predict_protocol(pop=pop,rlmodel=rlmodel,results=results_dir+'/'+results,\
-                          load=save,debug=debug,save_dir=save_dir,deterministic=deterministic,\
+            self.predict_protocol(pop=pop,rlmodel=rlmodel,results=results,
+                          load=save,debug=debug,deterministic=deterministic,
                           bestname=bestname)
 
-        self.episodestats.run_simstats(results_dir+'/'+results,save=results_dir+'/'+results+'_stats')
-        self.episodestats.plot_simstats(results_dir+'/'+results+'_stats')
-        self.episodestats.load_sim(results_dir+'/'+results+'_best')
+        self.episodestats.run_simstats(results,save=results+'_stats')
+        self.episodestats.plot_simstats(results+'_stats')
+        self.episodestats.load_sim(results+'_best')
                           
-    def run_protocol(self,steps1=2_000_000,steps2=1_000_000,rlmodel='acktr',\
-               save='simut',debug=False,dir='saved',batch1=1,batch2=1000,cont=False,\
+    def run_protocol(self,steps1=2_000_000,steps2=1_000_000,rlmodel='acktr',
+               save='results/simut',debug=False,batch1=1,batch2=1000,cont=False,
                start_from='',bestname='best3'):
         '''
         run_protocol
@@ -653,20 +631,20 @@ class Lifecycle():
         print('phase 1')
         if cont:
             self.train(steps=steps1,cont=cont,rlmodel='acktr',save=save+'_100',batch=batch1,debug=debug,\
-                       modify_load=True,dir=dir,start_from=load,use_callback=False,use_vecmonitor=False,\
+                       start_from=start_from,use_callback=False,use_vecmonitor=False,\
                        log_interval=1000,verbose=1)
         else:
             self.train(steps=steps1,cont=False,rlmodel='acktr',save=save+'_100',batch=batch1,debug=debug,\
-                       modify_load=True,dir=dir,use_callback=False,use_vecmonitor=False,\
+                       use_callback=False,use_vecmonitor=False,\
                        log_interval=1000,verbose=1)
         
         print('phase 2')
         self.train(steps=steps2,cont=True,rlmodel=rlmodel,save=save+'_101',\
-                   debug=debug,start_from=save+'_100',modify_load=True,dir=dir,batch=batch2,\
+                   debug=debug,start_from=save+'_100',batch=batch2,\
                    use_callback=True,use_vecmonitor=True,log_interval=1,bestname=bestname)
             
-    def predict_protocol(self,pop=1_00,rlmodel='acktr',results='simut_res',
-                 load='malli',debug=False,save_dir='saved',deterministic=False,bestname='best5',
+    def predict_protocol(self,pop=1_00,rlmodel='acktr',results='results/simut_res',
+                 load='saved/malli',debug=False,deterministic=False,bestname='best5',
                  onlybest=True):
         '''
         predict_protocol
@@ -680,15 +658,15 @@ class Lifecycle():
             for i in range(0,2):
                 self.simulate(pop=pop,rlmodel=rlmodel,plot=False,debug=debug,\
                               load=load+'_'+str(100+i),save=results+'_'+str(100+i),\
-                              modify_load=True,dir=save_dir,deterministic=deterministic)
+                              deterministic=deterministic)
             # simulate the saved best
             self.simulate(pop=pop,rlmodel=rlmodel,plot=False,debug=debug,\
-                          load=self.log_dir+bestname,save=results+'_102',\
-                          modify_load=False,dir=save_dir,deterministic=deterministic)
+                          load=bestname,save=results+'_102',\
+                          deterministic=deterministic)
         else:
             self.save_to_hdf(results+'_simut','n',1,dtype='int64')
         
             # simulate the saved best
             self.simulate(pop=pop,rlmodel=rlmodel,plot=False,debug=debug,\
-                          load=self.log_dir+bestname,save=results+'_100',\
-                          modify_load=False,dir=save_dir,deterministic=deterministic)
+                          load=bestname,save=results+'_100',\
+                          deterministic=deterministic)
