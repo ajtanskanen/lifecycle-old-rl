@@ -9,3 +9,4 @@ __pycache__/*
 lifecycle_rl/__pycache__/*
 lifecycle_rl.egg-info/*
 *.pyc
+tmp/*
