@@ -412,16 +412,8 @@ class EpisodeStats():
             ax.plot(x,diff_emp[:,10],label='osa-aikatyö')
         ax.legend()
         plt.show()
-        pop=np.array([61663,63354,65939,68253,68543,71222,70675,71691,70202,70535,67315,68282,70431,72402,73839,73065,70040,69501,68857,69035,69661,69965,68429,65261,59498,61433,63308,65305,66580,71263,72886,73253,73454,74757,75406,74448,73940,73343,72808,70259,73065,74666,73766,73522,72213,74283,71273,73404,75153,75888])
         
-        if self.minimal:
-            htv=np.round(cc2.timestep*np.sum(pop[5:42]*(diff_emp[5:42,1])))
-            tyollvaikutus=np.round(cc2.timestep*np.sum(pop[5:42]*(diff_emp[5:42,1])))
-            haj=np.mean(np.std(diff_emp[5:42,1]))
-        else:
-            htv=np.round(cc2.timestep*np.sum(pop[5:42]*(diff_emp[5:42,1]+0.5*diff_emp[5:42,10])))
-            tyollvaikutus=np.round(cc2.timestep*np.sum(pop[5:42]*(diff_emp[5:42,1]+diff_emp[5:42,10])))
-            haj=np.mean(np.std((diff_emp[5:42,1]+0.5*diff_emp[5:42,10])))
+        htv,tyollvaikutus,haj,tyollaste,tyollosuus=comp_tyollisyys_stats(self,emp,scale_time=True)
         print('Työllisyysvaikutus 25-62-vuotiaisiin noin {t} htv ja {h} työllistä'.format(t=htv,h=tyollvaikutus))
         
         # epävarmuus
@@ -429,28 +421,40 @@ class EpisodeStats():
         print('Epävarmuus työllisyysasteissa {}, hajonta {}'.format(delta,haj))
         
     def comp_tyollisyys_stats(self,emp,scale_time=True):
-        demog=np.array([61663,63354,65939,68253,68543,71222,70675,71691,70202,70535,67315,68282,70431,72402,73839,\
-                      73065,70040,69501,68857,69035,69661,69965,68429,65261,59498,61433,63308,65305,66580,71263,\
-                      72886,73253,73454,74757,75406,74448,73940,73343,72808,70259,73065,74666,73766,73522,72213,\
+        demog=np.array([61663,63354,65939,68253,68543,71222,70675,71691,70202,70535,67315,68282,70431,72402,73839,
+                      73065,70040,69501,68857,69035,69661,69965,68429,65261,59498,61433,63308,65305,66580,71263,
+                      72886,73253,73454,74757,75406,74448,73940,73343,72808,70259,73065,74666,73766,73522,72213,
                       74283,71273,73404,75153,75888])
+                      
+        demog2=np.zeros(self.n_time)
+        k2=0
+        for k in np.arange(self.min_age,self.max_age,self.timestep):
+            ind=int(np.floor(k))-self.min_age
+            demog2[k2]=demog[ind]
+            k2+=1
                       
         if scale_time:
             scale=self.timestep
         else:
             scale=1.0
 
+        min_cage=self.map_age(25)
+        max_cage=self.map_age(65)
+        
         if self.minimal:
-            htv=np.round(scale*np.sum(demog[5:42]*(emp[5:42,1])))
-            tyollvaikutus=np.round(scale*np.sum(demog[5:42]*(emp[5:42,1])))
-            haj=np.mean(np.std(emp[5:42,1]))
+            tyollosuus=emp[:,1]/np.sum(emp,1)
+            htv=np.round(scale*np.sum(demog2[min_cage:max_cage]*emp[min_cage:max_cage,1]))
+            tyollvaikutus=np.round(scale*np.sum(demog2[min_cage:max_cage]*emp[min_cage:max_cage,1]))
+            haj=np.mean(np.std(emp[min_cage:max_cage,1]))
         else:
-            htv=np.round(scale*np.sum(demog[5:42]*(emp[5:42,1]+0.5*emp[5:42,10])))
-            tyollvaikutus=np.round(scale*np.sum(demog[5:42]*(emp[5:42,1]+emp[5:42,10])))
-            haj=np.mean(np.std((emp[5:42,1]+0.5*emp[5:42,10])))
+            tyollosuus=(emp[:,1]+emp[:,10]+emp[:,8]+emp[:,9])/np.sum(emp,1)
+            htv=np.round(scale*np.sum(demog2[min_cage:max_cage]*(emp[min_cage:max_cage,1]+0.5*emp[min_cage:max_cage,10])))
+            tyollvaikutus=np.round(scale*np.sum(demog2[min_cage:max_cage]*(emp[min_cage:max_cage,1]+emp[min_cage:max_cage,10])))
+            haj=np.mean(np.std((emp[min_cage:max_cage,1]+0.5*emp[min_cage:max_cage,10])))
             
         tyollaste=tyollvaikutus/sum(demog)
             
-        return htv,tyollvaikutus,haj,tyollaste
+        return htv,tyollvaikutus,haj,tyollaste,tyollosuus
         
     def get_reward(self):
         total_reward=np.sum(self.rewstate,axis=1)
@@ -478,21 +482,24 @@ class SimStats(EpisodeStats):
         self.load_sim(results+'_100')
         base_empstate=self.empstate/self.n_pop
         emps[0,:,:]=base_empstate
-        htv_base,tyoll_base,haj_base,tyollisyysaste=self.comp_tyollisyys_stats(base_empstate,scale_time=False)
+        htv_base,tyoll_base,haj_base,tyollaste_base,tyolliset=self.comp_tyollisyys_stats(base_empstate,scale_time=True)
         reward=self.get_reward()
         agg_htv[0]=htv_base
         agg_tyoll[0]=tyoll_base
         agg_rew[0]=reward
         best_rew=reward
         best_emp=0
-        t_aste[0]=tyollisyysaste
+        t_aste[0]=tyollaste_base
+        
+        print(tyollaste_base)
 
         if plot:
             fig,ax=plt.subplots()
             ax.set_xlabel('työllisyysaste')
             ax.set_ylabel('lkm')
             x=np.linspace(self.min_age,self.max_age,self.n_time)
-            #ax.plot(x,100*tyoll_base)
+            #print(x.shape,tyoll_base.shape,self.empstate.shape)
+            ax.plot(x,100*tyolliset)
         
         for i in range(1,n):         
             self.load_sim(results+'_'+str(100+i))
@@ -503,19 +510,9 @@ class SimStats(EpisodeStats):
                 best_rew=reward
                 best_emp=i
 
-            diff_emp=empstate-base_empstate
-            if self.minimal:
-                tyol_aste=(self.empstate[:,1])/self.n_pop
-                diff_rate[i,:]=diff_emp[:,1]
-            else:
-                tyol_aste=(self.empstate[:,1]+self.empstate[:,10]+self.empstate[:,8]+self.empstate[:,9])/self.n_pop
-                diff_rate[i,:]=diff_emp[:,1]+diff_emp[:,10]
-            
+            htv,tyollvaikutus,haj,tyollisyysaste,tyolliset=self.comp_tyollisyys_stats(empstate,scale_time=True)
             if plot:
-                ax.plot(x,100*tyol_aste)
-
-            e_rate[i,:]=tyol_aste
-            htv,tyollvaikutus,haj,tyollisyysaste=self.comp_tyollisyys_stats(empstate,scale_time=False)
+                ax.plot(x,100*tyolliset)
             
             agg_htv[i]=htv
             agg_tyoll[i]=tyollvaikutus
@@ -569,9 +566,9 @@ class SimStats(EpisodeStats):
             m_best=emps[best_emp,:,1]+emps[best_emp,:,10]+emps[best_emp,:,8]+emps[best_emp,:,9]
         
         if self.minimal:
-            print('Vaikutus työllisyysasteen keskiarvo {} htv mediaan {} htv'.format(mean_htv,median_htv))
+            print('Vaikutus työllisyyteen keskiarvo {} htv mediaan {} htv'.format(mean_htv,median_htv))
         else:
-            print('Vaikutus työllisyysasteen keskiarvo {} htv, mediaani {} htv\n                        keskiarvo {} työllistä, mediaani {} työllistä'.format(mean_htv,median_htv,mean_tyoll,median_tyoll))
+            print('Vaikutus työllisyyteen keskiarvo {} htv, mediaani {} htv\n                        keskiarvo {} työllistä, mediaani {} työllistä'.format(mean_htv,median_htv,mean_tyoll,median_tyoll))
         
         fig,ax=plt.subplots()
         ax.set_xlabel('poikkeama työllisyydessä [htv]')
