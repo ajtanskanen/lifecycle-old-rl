@@ -34,7 +34,7 @@ class Lifecycle():
     def __init__(self,env=None,minimal=False,timestep=0.25,ansiopvraha_kesto300=None,\
                     ansiopvraha_kesto400=None,karenssi_kesto=None,\
                     ansiopvraha_toe=None,perustulo=None,mortality=None,\
-                    randomness=None,deterministic=None):
+                    randomness=None,deterministic=None,include_putki=None):
 
         '''
         Alusta muuttujat
@@ -73,6 +73,11 @@ class Lifecycle():
             self.ansiopvraha_kesto300=ansiopvraha_kesto300
         else:
             self.ansiopvraha_kesto300=None
+
+        if include_putki is not None:
+            self.include_putki=include_putki
+        else:
+            self.include_putki=None
 
         if ansiopvraha_kesto400 is not None:
             self.ansiopvraha_kesto400=ansiopvraha_kesto400
