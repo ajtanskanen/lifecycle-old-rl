@@ -1,3 +1,11 @@
+'''
+
+    dyn_prog.py
+    
+    implements dynamic programming -like scheme to solve the life cycle model
+
+'''
+
 import math
 import gym
 from gym import spaces, logger, utils, error
