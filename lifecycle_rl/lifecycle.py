@@ -192,7 +192,8 @@ class Lifecycle():
                       max_grad_norm,cont,tensorboard=False,verbose=1,n_cpu=1):
         #print('loadname=',loadname)
         
-        batch=int(np.ceil(batch/n_cpu))
+        #batch=int(np.ceil(batch/n_cpu))
+        #print('batch',batch)
         
         if cont:
             if rlmodel=='a2c':
