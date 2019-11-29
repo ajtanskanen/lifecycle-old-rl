@@ -192,7 +192,7 @@ class Lifecycle():
                       max_grad_norm,cont,tensorboard=False,verbose=1,n_cpu=1):
         #print('loadname=',loadname)
         
-        #batch=int(np.ceil(batch/n_cpu))
+        batch=int(np.ceil(batch/n_cpu))
         #print('batch',batch)
         
         if cont:
@@ -220,9 +220,13 @@ class Lifecycle():
                                        policy_kwargs=policy_kwargs,max_grad_norm=max_grad_norm)
             elif rlmodel=='lstm':
                 from stable_baselines.common.policies import MlpPolicy,MlpLstmPolicy # for A2C, ACER
-                model = ACKTR.load(loadname, env=env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
-                                   tensorboard_log="./a2c_unemp_tensorboard/", learning_rate=learning_rate, 
-                                   policy_kwargs=policy_kwargs,max_grad_norm=max_grad_norm)
+                if tensorboard:
+                    model = ACKTR.load(loadname, env=env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
+                                       tensorboard_log="./a2c_unemp_tensorboard/", learning_rate=learning_rate, 
+                                       policy_kwargs=policy_kwargs,max_grad_norm=max_grad_norm)
+                else:
+                    model = ACKTR.load(loadname, env=env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
+                                       learning_rate=learning_rate, policy_kwargs=policy_kwargs,max_grad_norm=max_grad_norm)                
             elif rlmodel=='trpo':
                 from stable_baselines.common.policies import MlpPolicy # for A2C, ACER
                 model = TRPO.load(loadname, env=env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
@@ -343,9 +347,8 @@ class Lifecycle():
         
     def train(self,train=False,debug=False,steps=20000,cont=False,rlmodel='dqn',
                 save='saved/malli',pop=None,batch=1,max_grad_norm=0.5,learning_rate=0.25,
-                start_from=None,max_n_cpu=100,plot=True,
-                use_vecmonitor=False,bestname='best2',use_callback=False,log_interval=100,
-                verbose=1):
+                start_from=None,max_n_cpu=100,plot=True,use_vecmonitor=False,
+                bestname='best2',use_callback=False,log_interval=100,verbose=1):
 
         self.best_mean_reward, self.n_steps = -np.inf, 0
         
@@ -590,7 +593,7 @@ class Lifecycle():
     def run_results(self,steps1=100,steps2=100,pop=1_000,rlmodel='acktr',
                save='saved/perusmalli',debug=False,simut='simut',results='results/simut_res',
                deterministic=True,train=True,predict=True,batch1=1,batch2=100,cont=False,
-               load=None,bestname='tmp/best1',plot=False):
+               start_from=None,bestname='tmp/best1',plot=False):
                
         '''
         run_results
@@ -605,12 +608,12 @@ class Lifecycle():
             print('train...')
             if cont:
                 self.run_protocol(rlmodel=rlmodel,steps1=steps1,steps2=steps2,
-                              save=save,debug=debug,bestname=bestname,
-                              batch1=batch1,batch2=batch,cont=cont,start_from=load)
+                                save=save,debug=debug,bestname=bestname,
+                                batch1=batch1,batch2=batch2,cont=cont,start_from=start_from)
             else:            
                 self.run_protocol(rlmodel=rlmodel,steps1=steps1,steps2=steps2,save=save,
                                  debug=debug,batch1=batch1,batch2=batch2,cont=cont,
-                                start_from=load,bestname=bestname)
+                                 bestname=bestname)
         if predict:
             print('predict...')
             self.predict_protocol(pop=pop,rlmodel=rlmodel,results=results,
@@ -623,7 +626,7 @@ class Lifecycle():
                           
     def run_protocol(self,steps1=2_000_000,steps2=1_000_000,rlmodel='acktr',
                save='results/simut',debug=False,batch1=1,batch2=1000,cont=False,
-               start_from='',bestname='best3'):
+               start_from=None,bestname='best3'):
         '''
         run_protocol
         
