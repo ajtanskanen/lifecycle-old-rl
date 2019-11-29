@@ -190,7 +190,8 @@ class Lifecycle():
                       max_grad_norm,cont,tensorboard=False,verbose=1,n_cpu=1):
         #print('loadname=',loadname)
         
-        batch=int(np.ceil(batch/n_cpu))
+        #batch=int(np.ceil(batch/n_cpu))
+        #print('batch',batch)
         
         if cont:
             if rlmodel=='a2c':
@@ -322,7 +323,7 @@ class Lifecycle():
             #print(x,y)
             if len(x) > 0:
                 mean_reward = np.mean(y[-hist_eps:])
-                print(x[-1], 'timesteps', 'mean', mean_reward, 'out of', y[-hist_eps:])
+                print(x[-1], 'timesteps') #, 'mean', mean_reward, 'out of', y[-hist_eps:])
 
                 # New best model, you could save the agent here
                 if mean_reward > self.best_mean_reward:
