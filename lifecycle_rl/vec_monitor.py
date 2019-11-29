@@ -88,7 +88,7 @@ class VecMonitor(VecEnvWrapper):
         
 class ResultsWriter(object):
     def __init__(self, filename, header='', extra_keys=()):
-        print('init resultswriter')
+        #print('init resultswriter')
         self.extra_keys = extra_keys
         assert filename is not None
         if not filename.endswith(VecMonitor.EXT):

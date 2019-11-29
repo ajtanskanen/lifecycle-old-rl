@@ -31,9 +31,9 @@ from .vec_monitor import VecMonitor
 
 class Lifecycle():
 
-    def __init__(self,env=None,minimal=False,timestep=0.25,ansiopvraha_kesto300=None,\
-                    ansiopvraha_kesto400=None,karenssi_kesto=None,\
-                    ansiopvraha_toe=None,perustulo=None,mortality=None,\
+    def __init__(self,env=None,minimal=False,timestep=0.25,ansiopvraha_kesto300=None,
+                    ansiopvraha_kesto400=None,karenssi_kesto=None,
+                    ansiopvraha_toe=None,perustulo=None,mortality=None,
                     randomness=None,deterministic=None,include_putki=None):
 
         '''
@@ -108,8 +108,8 @@ class Lifecycle():
 
             self.minimal=True
             self.gym_kwargs={'step': self.timestep,'gamma':self.gamma,
-                'min_age': self.min_age, 'max_age': self.max_age,\
-                'min_retirementage': self.min_retirementage, 'max_retirementage':self.max_retirementage,\
+                'min_age': self.min_age, 'max_age': self.max_age,
+                'min_retirementage': self.min_retirementage, 'max_retirementage':self.max_retirementage,
                 'deterministic': self.deterministic}
             self.n_employment = 3
             self.n_acts = 3
@@ -120,14 +120,14 @@ class Lifecycle():
             #    self.environment='unemployment-v1'
 
             self.minimal=False
-            self.gym_kwargs={'step': self.timestep,'gamma':self.gamma,\
-                'min_age': self.min_age, 'max_age': self.max_age,\
-                'min_retirementage': self.min_retirementage, 'max_retirementage':self.max_retirementage,\
-                'ansiopvraha_kesto300': self.ansiopvraha_kesto300,'ansiopvraha_kesto400': self.ansiopvraha_kesto400,\
-                'ansiopvraha_toe': self.ansiopvraha_toe,\
-                'perustulos': self.perustulo, 'karenssi_kesto': self.karenssi_kesto,\
-                'mortality': self.mortality, 'randomness': self.randomness,\
-                'deterministic': self.deterministic}
+            self.gym_kwargs={'step': self.timestep,'gamma':self.gamma,
+                'min_age': self.min_age, 'max_age': self.max_age,
+                'min_retirementage': self.min_retirementage, 'max_retirementage':self.max_retirementage,
+                'ansiopvraha_kesto300': self.ansiopvraha_kesto300,'ansiopvraha_kesto400': self.ansiopvraha_kesto400,
+                'ansiopvraha_toe': self.ansiopvraha_toe,
+                'perustulos': self.perustulo, 'karenssi_kesto': self.karenssi_kesto,
+                'mortality': self.mortality, 'randomness': self.randomness,
+                'deterministic': self.deterministic, 'include_putki': self.include_putki}
             self.n_acts = 4
             if self.mortality:
                 self.n_employment = 14
@@ -141,7 +141,7 @@ class Lifecycle():
         os.makedirs("results/", exist_ok=True)
             
         self.env = gym.make(self.environment,kwargs=self.gym_kwargs)
-        self.episodestats=SimStats(self.timestep,self.n_time,self.n_employment,self.n_pop,\
+        self.episodestats=SimStats(self.timestep,self.n_time,self.n_employment,self.n_pop,
                                    self.env,self.minimal,self.min_age,self.max_age,self.min_retirementage)
                 
     def explain(self):
@@ -151,6 +151,8 @@ class Lifecycle():
         print('Parameters of lifecycle:\ntimestep {}\ngamma {} ({} per anno)\nmin_age {}\nmax_age {}\nmin_retirementage {}'.format(self.timestep,self.gamma,self.gamma**(1.0/self.timestep),self.min_age,self.max_age,self.min_retirementage))
         print('max_retirementage {}\nansiopvraha_kesto300 {}\nansiopvraha_kesto400 {}\nansiopvraha_toe {}'.format(self.max_retirementage,self.ansiopvraha_kesto300,self.ansiopvraha_kesto400,self.ansiopvraha_toe))
         print('perustulo {}\nkarenssi_kesto {}\nmortality {}\nrandomness {}\ndeterministic {}\n'.format(self.perustulo,self.karenssi_kesto,self.mortality,self.randomness,self.deterministic))
+        print('include_putki {}\nstep {}\n'.format(self.include_putki,self.timestep))
+
 
     def map_age(self,age,start_zero=False):
         if start_zero:
@@ -186,7 +188,7 @@ class Lifecycle():
         
         return policy_kwargs,n_cpu
         
-    def setup_rlmodel(self,rlmodel,loadname,env,batch,policy_kwargs,learning_rate,\
+    def setup_rlmodel(self,rlmodel,loadname,env,batch,policy_kwargs,learning_rate,
                       max_grad_norm,cont,tensorboard=False,verbose=1,n_cpu=1):
         #print('loadname=',loadname)
         
@@ -196,83 +198,83 @@ class Lifecycle():
             if rlmodel=='a2c':
                 from stable_baselines.common.policies import MlpPolicy # for A2C, ACER
                 if tensorboard:
-                    model = A2C.load(loadname, env=env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,\
+                    model = A2C.load(loadname, env=env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
                                      tensorboard_log="./a2c_unemp_tensorboard/", policy_kwargs=policy_kwargs)
                 else:
-                    model = A2C.load(loadname, env=env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,\
+                    model = A2C.load(loadname, env=env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
                                      policy_kwargs=policy_kwargs)                
             elif rlmodel=='acer':
                 from stable_baselines.common.policies import MlpPolicy # for A2C, ACER
-                model = ACER.load(loadname, env=env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,\
+                model = ACER.load(loadname, env=env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
                                   tensorboard_log="./a2c_unemp_tensorboard/", policy_kwargs=policy_kwargs)
             elif rlmodel=='acktr' or rlmodel=='lnacktr':
                 from stable_baselines.common.policies import MlpPolicy # for A2C, ACER
                 if tensorboard:
-                    model = ACKTR.load(loadname, env=env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,\
-                                       learning_rate=learning_rate, \
+                    model = ACKTR.load(loadname, env=env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
+                                       learning_rate=learning_rate, 
                                        policy_kwargs=policy_kwargs,max_grad_norm=max_grad_norm)
                 else:
-                    model = ACKTR.load(loadname, env=env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,\
-                                       learning_rate=learning_rate, \
+                    model = ACKTR.load(loadname, env=env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
+                                       learning_rate=learning_rate, 
                                        policy_kwargs=policy_kwargs,max_grad_norm=max_grad_norm)
             elif rlmodel=='lstm':
                 from stable_baselines.common.policies import MlpPolicy,MlpLstmPolicy # for A2C, ACER
-                model = ACKTR.load(loadname, env=env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,\
-                                   tensorboard_log="./a2c_unemp_tensorboard/", learning_rate=learning_rate, \
+                model = ACKTR.load(loadname, env=env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
+                                   tensorboard_log="./a2c_unemp_tensorboard/", learning_rate=learning_rate, 
                                    policy_kwargs=policy_kwargs,max_grad_norm=max_grad_norm)
             elif rlmodel=='trpo':
                 from stable_baselines.common.policies import MlpPolicy # for A2C, ACER
-                model = TRPO.load(loadname, env=env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,\
+                model = TRPO.load(loadname, env=env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
                                    tensorboard_log="./a2c_unemp_tensorboard/", policy_kwargs=policy_kwargs)
             else:        
                 from stable_baselines.deepq.policies import MlpPolicy # for DQN
-                model = DQN.load(loadname, env=env, verbose=verbose,gamma=self.gamma,batch_size=batch,\
-                                 learning_starts=self.n_time,\
-                                 tensorboard_log="./a2c_unemp_tensorboard/",prioritized_replay=True, \
+                model = DQN.load(loadname, env=env, verbose=verbose,gamma=self.gamma,batch_size=batch,
+                                 learning_starts=self.n_time,
+                                 tensorboard_log="./a2c_unemp_tensorboard/",prioritized_replay=True, 
                                  policy_kwargs=policy_kwargs)
         else:
             if rlmodel=='a2c':
                 from stable_baselines.common.policies import MlpPolicy # for A2C, ACER
-                model = A2C(MlpPolicy, env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time, \
+                model = A2C(MlpPolicy, env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time, 
                             tensorboard_log="./a2c_unemp_tensorboard/", policy_kwargs=policy_kwargs)
             elif rlmodel=='acer':
                 from stable_baselines.common.policies import MlpPolicy # for A2C, ACER
-                model = ACER(MlpPolicy, env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time, \
+                model = ACER(MlpPolicy, env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time, 
                              tensorboard_log="./a2c_unemp_tensorboard/", policy_kwargs=policy_kwargs)
             elif rlmodel=='acktr':
                 from stable_baselines.common.policies import MlpPolicy # for A2C, ACER
                 if tensorboard:
-                    model = ACKTR(MlpPolicy, env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,\
-                                tensorboard_log="./a2c_unemp_tensorboard/", learning_rate=learning_rate, \
+                    model = ACKTR(MlpPolicy, env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
+                                tensorboard_log="./a2c_unemp_tensorboard/", learning_rate=learning_rate, 
                                 policy_kwargs=policy_kwargs,max_grad_norm=max_grad_norm)
                 else:
-                    model = ACKTR(MlpPolicy, env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,\
-                                learning_rate=learning_rate, \
+                    model = ACKTR(MlpPolicy, env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
+                                learning_rate=learning_rate, 
                                 policy_kwargs=policy_kwargs,max_grad_norm=max_grad_norm)
             elif rlmodel=='lnacktr':
                 from stable_baselines.common.policies import LnMlpPolicy # for A2C, ACER
                 if tensorboard:
-                    model = ACKTR(LnMlpPolicy, env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,\
-                                tensorboard_log="./a2c_unemp_tensorboard/", learning_rate=learning_rate, \
+                    model = ACKTR(LnMlpPolicy, env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
+                                tensorboard_log="./a2c_unemp_tensorboard/", learning_rate=learning_rate, 
                                 policy_kwargs=policy_kwargs,max_grad_norm=max_grad_norm)
                 else:
-                    model = ACKTR(LnMlpPolicy, env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,\
-                                learning_rate=learning_rate, \
+                    model = ACKTR(LnMlpPolicy, env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
+                                learning_rate=learning_rate, 
                                 policy_kwargs=policy_kwargs,max_grad_norm=max_grad_norm)
             elif rlmodel=='lstm':
                 from stable_baselines.common.policies import MlpPolicy,MlpLstmPolicy # for A2C, ACER
-                model = ACKTR(MlpLstmPolicy, env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,\
-                            tensorboard_log="./a2c_unemp_tensorboard/", learning_rate=learning_rate, \
+                model = ACKTR(MlpLstmPolicy, env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
+                            tensorboard_log="./a2c_unemp_tensorboard/", learning_rate=learning_rate, 
                             policy_kwargs=policy_kwargs,max_grad_norm=max_grad_norm)
             elif rlmodel=='trpo':
                 from stable_baselines.common.policies import MlpPolicy # for A2C, ACER
-                model = TRPO(MlpPolicy, env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time, \
+                model = TRPO(MlpPolicy, env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time, 
                              tensorboard_log="./a2c_unemp_tensorboard/", policy_kwargs=policy_kwargs)
             else:
                 from stable_baselines.deepq.policies import MlpPolicy # for DQN
-                model = DQN(MlpPolicy, env, verbose=verbose,gamma=self.gamma,batch_size=batch, \
-                            learning_starts=self.n_time,\
-                            tensorboard_log="./a2c_unemp_tensorboard/",prioritized_replay=True, \
+                model = DQN(MlpPolicy, env, verbose=verbose,gamma=self.gamma,batch_size=batch, 
+                            learning_starts=self.n_time,
+                            tensorboard_log="./a2c_unemp_tensorboard/",prioritized_replay=True, 
                             policy_kwargs=policy_kwargs) 
                             
         return model            
@@ -322,7 +324,7 @@ class Lifecycle():
             #print(x,y)
             if len(x) > 0:
                 mean_reward = np.mean(y[-hist_eps:])
-                print(x[-1], 'timesteps', 'mean', mean_reward, 'out of', y[-hist_eps:])
+                print(x[-1], 'timesteps') #, 'mean', mean_reward, 'out of', y[-hist_eps:])
 
                 # New best model, you could save the agent here
                 if mean_reward > self.best_mean_reward:
@@ -338,10 +340,10 @@ class Lifecycle():
             
         return True        
         
-    def train(self,train=False,debug=False,steps=20000,cont=False,rlmodel='dqn',\
-                save='saved/malli',pop=None,batch=1,max_grad_norm=0.5,learning_rate=0.25,\
-                start_from=None,max_n_cpu=100,plot=True,\
-                use_vecmonitor=False,bestname='best2',use_callback=False,log_interval=100,\
+    def train(self,train=False,debug=False,steps=20000,cont=False,rlmodel='dqn',
+                save='saved/malli',pop=None,batch=1,max_grad_norm=0.5,learning_rate=0.25,
+                start_from=None,max_n_cpu=100,plot=True,
+                use_vecmonitor=False,bestname='best2',use_callback=False,log_interval=100,
                 verbose=1):
 
         self.best_mean_reward, self.n_steps = -np.inf, 0
@@ -352,7 +354,7 @@ class Lifecycle():
         self.rlmodel=rlmodel
         self.bestname=bestname
         
-        self.episodestats.reset(self.timestep,self.n_time,self.n_employment,self.n_pop,\
+        self.episodestats.reset(self.timestep,self.n_time,self.n_employment,self.n_pop,
                                 self.env,self.minimal,self.min_age,self.max_age,self.min_retirementage)
         
         # multiprocess environment
@@ -363,8 +365,9 @@ class Lifecycle():
         self.savename=save
         n_cpu=min(max_n_cpu,n_cpu)
         
-        print('use_vecmonitor',use_vecmonitor)
-        print('use_callback',use_callback)
+        if debug:
+            print('use_vecmonitor',use_vecmonitor)
+            print('use_callback',use_callback)
         
         nonvec=False
         if nonvec:
@@ -384,7 +387,7 @@ class Lifecycle():
         #    normalize_kwargs={}
         #    env = VecNormalize(env, **normalize_kwargs)
         
-        model=self.setup_rlmodel(self.rlmodel,start_from,env,batch,policy_kwargs,learning_rate,\
+        model=self.setup_rlmodel(self.rlmodel,start_from,env,batch,policy_kwargs,learning_rate,
                                     max_grad_norm,cont,verbose=verbose,n_cpu=n_cpu)
         print('training...')
         
@@ -409,8 +412,8 @@ class Lifecycle():
         f.close()        
         return val
         
-    def simulate(self,debug=False,rlmodel=None,plot=True,load=None,pop=None,\
-                 max_grad_norm=0.5,learning_rate=0.25,\
+    def simulate(self,debug=False,rlmodel=None,plot=True,load=None,pop=None,
+                 max_grad_norm=0.5,learning_rate=0.25,
                  deterministic=False,save='simulate'):
 
         if pop is not None:
@@ -422,7 +425,7 @@ class Lifecycle():
         if rlmodel is not None:
             self.rlmodel=rlmodel
 
-        self.episodestats.reset(self.timestep,self.n_time,self.n_employment,self.n_pop,\
+        self.episodestats.reset(self.timestep,self.n_time,self.n_employment,self.n_pop,
                                 self.env,self.minimal,self.min_age,self.max_age,self.min_retirementage)
         
         print('simulating ',self.loadname)
@@ -456,7 +459,7 @@ class Lifecycle():
         elif self.rlmodel=='trpo':
             model = TRPO.load(load, env=env, verbose=1,gamma=self.gamma, policy_kwargs=policy_kwargs)
         else:        
-            model = DQN.load(load, env=env, verbose=1,gamma=self.gamma,prioritized_replay=True,\
+            model = DQN.load(load, env=env, verbose=1,gamma=self.gamma,prioritized_replay=True,
                              policy_kwargs=policy_kwargs)
 
         states = env.reset()
@@ -472,7 +475,7 @@ class Lifecycle():
             done=False
             for k in range(n_cpu):
                 #emp,pension,wage,age,time_in_state=self.state_decode(states[k])
-                #print('Tila {} palkka {} ikä {} t-i-s {} eläke {}'.format(\
+                #print('Tila {} palkka {} ikä {} t-i-s {} eläke {}'.format(
                 #    emp,wage,age,time_in_state,pension))
                 if dones[k]:
                     #print(infos[k]['terminal_observation'])
@@ -583,7 +586,7 @@ class Lifecycle():
         '''
         self.episodestats.compare_with(cc2.episodestats)
         
-    def run_results(self,n=2,steps1=100,steps2=100,pop=1_000,rlmodel='acktr',
+    def run_results(self,steps1=100,steps2=100,pop=1_000,rlmodel='acktr',
                save='saved/perusmalli',debug=False,simut='simut',results='results/simut_res',
                deterministic=True,train=True,predict=True,batch1=1,batch2=100,cont=False,
                load=None,bestname='tmp/best1',plot=False):
@@ -630,17 +633,17 @@ class Lifecycle():
               
         print('phase 1')
         if cont:
-            self.train(steps=steps1,cont=cont,rlmodel='acktr',save=save+'_100',batch=batch1,debug=debug,\
-                       start_from=start_from,use_callback=False,use_vecmonitor=False,\
+            self.train(steps=steps1,cont=cont,rlmodel='acktr',save=save+'_100',batch=batch1,debug=debug,
+                       start_from=start_from,use_callback=False,use_vecmonitor=False,
                        log_interval=1000,verbose=1)
         else:
-            self.train(steps=steps1,cont=False,rlmodel='acktr',save=save+'_100',batch=batch1,debug=debug,\
-                       use_callback=False,use_vecmonitor=False,\
+            self.train(steps=steps1,cont=False,rlmodel='acktr',save=save+'_100',batch=batch1,debug=debug,
+                       use_callback=False,use_vecmonitor=False,
                        log_interval=1000,verbose=1)
         
         print('phase 2')
-        self.train(steps=steps2,cont=True,rlmodel=rlmodel,save=save+'_101',\
-                   debug=debug,start_from=save+'_100',batch=batch2,\
+        self.train(steps=steps2,cont=True,rlmodel=rlmodel,save=save+'_101',
+                   debug=debug,start_from=save+'_100',batch=batch2,
                    use_callback=True,use_vecmonitor=True,log_interval=1,bestname=bestname)
             
     def predict_protocol(self,pop=1_00,rlmodel='acktr',results='results/simut_res',
@@ -656,17 +659,17 @@ class Lifecycle():
             self.save_to_hdf(results+'_simut','n',3,dtype='int64')
     
             for i in range(0,2):
-                self.simulate(pop=pop,rlmodel=rlmodel,plot=False,debug=debug,\
-                              load=load+'_'+str(100+i),save=results+'_'+str(100+i),\
+                self.simulate(pop=pop,rlmodel=rlmodel,plot=False,debug=debug,
+                              load=load+'_'+str(100+i),save=results+'_'+str(100+i),
                               deterministic=deterministic)
             # simulate the saved best
-            self.simulate(pop=pop,rlmodel=rlmodel,plot=False,debug=debug,\
-                          load=bestname,save=results+'_102',\
+            self.simulate(pop=pop,rlmodel=rlmodel,plot=False,debug=debug,
+                          load=bestname,save=results+'_102',
                           deterministic=deterministic)
         else:
             self.save_to_hdf(results+'_simut','n',1,dtype='int64')
         
             # simulate the saved best
-            self.simulate(pop=pop,rlmodel=rlmodel,plot=False,debug=debug,\
-                          load=bestname,save=results+'_100',\
+            self.simulate(pop=pop,rlmodel=rlmodel,plot=False,debug=debug,
+                          load=bestname,save=results+'_100',
                           deterministic=deterministic)
