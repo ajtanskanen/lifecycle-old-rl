@@ -677,3 +677,38 @@ class Lifecycle():
             self.simulate(pop=pop,rlmodel=rlmodel,plot=False,debug=debug,
                           load=bestname,save=results+'_100',
                           deterministic=deterministic)
+
+    def run_verify(self,n=5,steps1=100,steps2=100,pop=1_000,rlmodel='acktr',
+               save='saved/perusmalli_verify',debug=False,simut='simut',results='results/simut_res',
+               deterministic=True,train=True,predict=True,batch1=1,batch2=100,cont=False,
+               start_from=None,bestname='tmp/best1',plot=False):
+               
+        '''
+        run_results
+        
+        train a model based on a protocol, and then simulate it
+        plot results if needed
+        '''
+               
+        self.n_pop=pop
+        
+        for num in range(n):
+
+            if train: 
+                print('train...')
+                if cont:
+                    self.run_protocol(rlmodel=rlmodel,steps1=steps1,steps2=steps2,
+                                    save=save,debug=debug,bestname=bestname,
+                                    batch1=batch1,batch2=batch2,cont=cont,start_from=start_from)
+                else:            
+                    self.run_protocol(rlmodel=rlmodel,steps1=steps1,steps2=steps2,save=save,
+                                     debug=debug,batch1=batch1,batch2=batch2,cont=cont,
+                                     bestname=bestname)
+            if predict:
+                print('predict...')
+                self.predict_protocol(pop=pop,rlmodel=rlmodel,results=results,
+                              load=save,debug=debug,deterministic=deterministic,
+                              bestname=bestname)
+
+            self.episodestats.run_simstats(results,save=results+'_stats_'+str(n))
+            self.episodestats.plot_simstats(results+'_stats_'+str(n))

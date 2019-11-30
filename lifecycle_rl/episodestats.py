@@ -455,8 +455,8 @@ class EpisodeStats():
             haj=np.mean(np.std(emp[min_cage:max_cage,1]))
         else:
             tyollosuus=(emp[:,1]+emp[:,10]+emp[:,8]+emp[:,9])/np.sum(emp,1)
-            htv=np.round(scale*np.sum(demog2[min_cage:max_cage]*(emp[min_cage:max_cage,1]+0.5*emp[min_cage:max_cage,10])))
-            tyollvaikutus=np.round(scale*np.sum(demog2[min_cage:max_cage]*(emp[min_cage:max_cage,1]+emp[min_cage:max_cage,10])))
+            htv=np.round(scale*np.sum(demog2[min_cage:max_cage]*(emp[min_cage:max_cage,1]+emp[min_cage:max_cage,8]+0.5*emp[min_cage:max_cage,9]+0.5*emp[min_cage:max_cage,10])))
+            tyollvaikutus=np.round(scale*np.sum(demog2[min_cage:max_cage]*(emp[min_cage:max_cage,1]+emp[min_cage:max_cage,8]+emp[min_cage:max_cage,9]+emp[min_cage:max_cage,10])))
             haj=np.mean(np.std((emp[min_cage:max_cage,1]+0.5*emp[min_cage:max_cage,10])))
             
         tyollaste=tyollvaikutus/sum(demog)
