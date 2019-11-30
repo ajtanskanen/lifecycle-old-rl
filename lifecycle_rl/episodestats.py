@@ -420,7 +420,7 @@ class EpisodeStats():
         ax.legend()
         plt.show()
         
-        htv,tyollvaikutus,haj,tyollaste,tyollosuus=comp_tyollisyys_stats(self,emp,scale_time=True)
+        htv,tyollvaikutus,haj,tyollaste,tyollosuus=self.comp_tyollisyys_stats(emp,scale_time=True)
         print('Työllisyysvaikutus 25-62-vuotiaisiin noin {t} htv ja {h} työllistä'.format(t=htv,h=tyollvaikutus))
         
         # epävarmuus
