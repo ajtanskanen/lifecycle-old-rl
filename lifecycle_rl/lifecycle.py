@@ -327,9 +327,9 @@ class Lifecycle():
             # Evaluate policy training performance
             x, y = ts2xy(load_results(self.log_dir), 'timesteps')
             #print(x,y)
-            if len(x) > 0:
+            if len(x) > hist_eps:
                 mean_reward = np.mean(y[-hist_eps:])
-                print(x[-1], 'timesteps') #, 'mean', mean_reward, 'out of', y[-hist_eps:])
+                print(x[-1], 'timesteps', len(y), 'episodes') #, 'mean', mean_reward, 'out of', y[-hist_eps:])
 
                 # New best model, you could save the agent here
                 if mean_reward > self.best_mean_reward:
@@ -483,7 +483,7 @@ class Lifecycle():
                 #    emp,wage,age,time_in_state,pension))
                 if dones[k]:
                     #print(infos[k]['terminal_observation'])
-                    terminal_state=infos[k]['terminal_observation']
+                    terminal_state=infos[k]['terminal_observation']  
                     self.episodestats.add(pop_num[k],0,rewards[k],states[k],newstate[k],debug=debug)
                     self.episodestats.add(pop_num[k],act[k],rewards[k],states[k],terminal_state,debug=debug)
                     tqdm_e.update(1)

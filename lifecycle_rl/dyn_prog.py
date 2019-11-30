@@ -2,7 +2,9 @@
 
     dyn_prog.py
     
-    implements dynamic programming -like scheme to solve the life cycle model
+    implements a scheme similar to solving valuation of american options for the life cycle model
+    despite the name, it is questionable 
+    
 
 '''
 
@@ -40,10 +42,10 @@ class DynProgLifecycle(Lifecycle):
         self.hila_elake0 = 0
         
         # dynaamisen ohjelmoinnin parametrejä
-        self.n_palkka = 100
-        self.deltapalkka = 1_000
-        self.n_elake = 50
-        self.deltaelake = 1_000
+        self.n_palkka = 200
+        self.deltapalkka = 500
+        self.n_elake = 100
+        self.deltaelake = 500
         self.n_tis = 5
         self.deltatis = 1
 
@@ -262,7 +264,8 @@ class DynProgLifecycle(Lifecycle):
         if pop is not None:
             self.n_pop=pop
 
-        self.episodestats_init()
+        self.episodestats.reset(self.timestep,self.n_time,self.n_employment,self.n_pop,
+                                self.env,self.minimal,self.min_age,self.max_age,self.min_retirementage)
         self.load_V('dynamic_prog_V.h5')        
 
         self.env.seed(1234)        
@@ -270,7 +273,7 @@ class DynProgLifecycle(Lifecycle):
 
         for n in range(pop):
             state=self.env.reset()
-            self.salaries[0,n]=self.env.salary[0]
+            #self.salaries[0,n]=self.env.salary[0]
             
             for t in range(self.n_time):
                 if debug:
@@ -278,11 +281,12 @@ class DynProgLifecycle(Lifecycle):
                 else:
                     act,maxV=self.get_actV(t,state)
 
-                self.aveV[t,n]=maxV
+                #self.aveV[t,n]=maxV
                 
                 newstate,r,done,info=self.env.step(act)
                 r=info['r']
-                self.episodestats(n,act,r,state,newstate,debug=debug,dyn=True)
+                #self.episodestats(n,act,r,state,newstate,debug=debug,dyn=True)
+                self.episodestats.add(n,act,r,state,newstate,debug=debug,aveV=maxV)
                 state=newstate
                 
                 if done:
@@ -291,7 +295,7 @@ class DynProgLifecycle(Lifecycle):
                     break      
         
         if save is not None:
-            self.save_sim(save)
+            self.episodestats.save_sim(save)
           
     def plot_statsV(self,aveV):
         x=np.linspace(self.min_age,self.max_age,self.n_time)

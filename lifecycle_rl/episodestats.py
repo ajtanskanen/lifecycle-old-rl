@@ -45,7 +45,7 @@ class EpisodeStats():
         self.stat_paidpension=np.zeros((self.n_time,n_emps))
         self.stat_unemp_len=np.zeros((self.n_time,self.n_pop))
         
-    def add(self,n,act,r,state,newstate,debug=False,plot=False,dyn=False):
+    def add(self,n,act,r,state,newstate,debug=False,plot=False,aveV=None): #,dyn=False):
         #if debug:
         #    print((int(state[0]),int(state[1]),state[2],state[3],state[4]),':',act,(int(newstate[0]),int(newstate[1]),newstate[2],newstate[3],newstate[4]))
             
@@ -79,6 +79,9 @@ class EpisodeStats():
                 self.stat_pension[t,newemp]+=newpen
                 self.stat_paidpension[t,newemp]+=paidpens
                 self.stat_unemp_len[t,n]=tis
+            
+            if aveV is not None:
+                self.aveV[t,n]=aveV
 
             if not emp==newemp:
                 self.siirtyneet[t,emp]+=1
@@ -192,7 +195,7 @@ class EpisodeStats():
                     show_legend=show_legend,parent=parent,unemp=unemp,start_from=start_from,stack=stack)
 
     def plot_states(self,statistic,ylabel='',ylimit=None,show_legend=True,parent=False,unemp=False,
-                    start_from=None,stack=True):
+                    start_from=None,stack=True,save=False,filename='fig.png'):
         if start_from is None:
             x=np.linspace(self.min_age,self.max_age,self.n_time)
         else:
@@ -268,8 +271,12 @@ class EpisodeStats():
         if show_legend:
             ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
         if ylimit is not None:
-            ax.set_ylim([0,ylimit])        
+            ax.set_ylim([0,ylimit])  
+        #fig.tight_layout()
         plt.show()    
+        
+        if save:
+            plt.savefig(filename,bbox_inches='tight')
         
     def plot_toe(self):            
         if not self.minimal:
