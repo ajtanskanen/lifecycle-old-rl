@@ -321,7 +321,7 @@ class Lifecycle():
         
         min_steps=0
         mod_steps=1
-        hist_eps=1000
+        hist_eps=10000
         #print(_locals, _globals)
         if (self.n_steps + 1) % mod_steps == 0 and self.n_steps > min_steps:
             # Evaluate policy training performance

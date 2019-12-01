@@ -223,6 +223,7 @@ class EpisodeStats():
         fig,ax=plt.subplots()
         if stack:
             pal=sns.color_palette("hsl", self.n_employment)  # hsl, husl, cubehelix
+            #alpha=0.8
             if parent:
                 if not self.minimal:        
                     ax.stackplot(x,ura_mother,ura_dad,ura_kht,
@@ -430,11 +431,13 @@ class EpisodeStats():
         ax.plot(x,diff_emp[:,1],label='kokoaikatyö')
         if not self.minimal:
             ax.plot(x,diff_emp[:,10],label='osa-aikatyö')
+            ax.plot(x,diff_emp[:,1]+diff_emp[:,10],label='työ yhteensä')
         ax.legend()
         plt.show()
         
-        htv,tyollvaikutus,haj,tyollaste,tyollosuus=self.comp_tyollisyys_stats(emp,scale_time=True)
+        htv,tyollvaikutus,haj,tyollaste,tyollosuus=self.comp_tyollisyys_stats(diff_emp,scale_time=True)
         print('Työllisyysvaikutus 25-62-vuotiaisiin noin {t} htv ja {h} työllistä'.format(t=htv,h=tyollvaikutus))
+        print('Työllisyysasteerp 25-62-vuotiailla noin {} prosenttia'.format(tyollosuus*100))
         
         # epävarmuus
         delta=1.96*1.0/np.sqrt(self.n_pop)
@@ -462,12 +465,12 @@ class EpisodeStats():
         max_cage=self.map_age(65)
         
         if self.minimal:
-            tyollosuus=emp[:,1]/np.sum(emp,1)
+            tyollosuus=emp[min_cage:max_cage,1]/np.sum(emp[min_cage:max_cage,:],1)
             htv=np.round(scale*np.sum(demog2[min_cage:max_cage]*emp[min_cage:max_cage,1]))
             tyollvaikutus=np.round(scale*np.sum(demog2[min_cage:max_cage]*emp[min_cage:max_cage,1]))
             haj=np.mean(np.std(emp[min_cage:max_cage,1]))
         else:
-            tyollosuus=(emp[:,1]+emp[:,10]+emp[:,8]+emp[:,9])/np.sum(emp,1)
+            tyollosuus=(emp[min_cage:max_cage,1]+emp[min_cage:max_cage,8]+emp[min_cage:max_cage,9]+emp[min_cage:max_cage,10])/np.sum(emp[min_cage:max_cage,:],1)
             htv=np.round(scale*np.sum(demog2[min_cage:max_cage]*(emp[min_cage:max_cage,1]+emp[min_cage:max_cage,8]+0.5*emp[min_cage:max_cage,9]+0.5*emp[min_cage:max_cage,10])))
             tyollvaikutus=np.round(scale*np.sum(demog2[min_cage:max_cage]*(emp[min_cage:max_cage,1]+emp[min_cage:max_cage,8]+emp[min_cage:max_cage,9]+emp[min_cage:max_cage,10])))
             haj=np.mean(np.std((emp[min_cage:max_cage,1]+0.5*emp[min_cage:max_cage,10])))
