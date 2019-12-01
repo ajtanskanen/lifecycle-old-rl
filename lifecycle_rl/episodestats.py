@@ -10,7 +10,7 @@
 import h5py
 import numpy as np
 import matplotlib.pyplot as plt
-
+import seaborn as sns
 
 class EpisodeStats():
     def __init__(self,timestep,n_time,n_emps,n_pop,env,minimal,min_age,max_age,min_retirementage):
@@ -195,7 +195,7 @@ class EpisodeStats():
                     show_legend=show_legend,parent=parent,unemp=unemp,start_from=start_from,stack=stack)
 
     def plot_states(self,statistic,ylabel='',ylimit=None,show_legend=True,parent=False,unemp=False,
-                    start_from=None,stack=True,save=False,filename='fig.png'):
+                    start_from=None,stack=True,save=False,filename='fig.png',yminlim=None,ymaxlim=None):
         if start_from is None:
             x=np.linspace(self.min_age,self.max_age,self.n_time)
         else:
@@ -222,23 +222,34 @@ class EpisodeStats():
         
         fig,ax=plt.subplots()
         if stack:
+            pal=sns.color_palette("hsl", self.n_employment)  # hsl, husl, cubehelix
             if parent:
                 if not self.minimal:        
                     ax.stackplot(x,ura_mother,ura_dad,ura_kht,
-                        labels=('äitiysvapaa','isyysvapaa','khtuki'))
+                        labels=('äitiysvapaa','isyysvapaa','khtuki'), colors=pal)
             elif unemp:
                 if not self.minimal:        
                     ax.stackplot(x,ura_unemp,ura_pipe,ura_student,ura_outsider,
-                        labels=('tyött','putki','opiskelija','ulkona'))
+                        labels=('tyött','putki','opiskelija','ulkona'), colors=pal)
                 else:
-                    ax.stackplot(x,ura_unemp,labels=('tyött'))
+                    ax.stackplot(x,ura_unemp,labels=('tyött'), colors=pal)
             else:
                 if not self.minimal:        
                     ax.stackplot(x,ura_emp,ura_osatyo,ura_vetyo,ura_veosatyo,ura_unemp,ura_pipe,ura_disab,ura_mother,ura_dad,ura_kht,ura_ret,ura_student,ura_outsider,
-                        labels=('työssä','osatyö','ve+työ','ve+osatyö','työtön','työttömyysputki','tk','äitiysvapaa','isyysvapaa','khtuki','vanhuuseläke','opiskelija','ulkona'))
+                        labels=('työssä','osatyö','ve+työ','ve+osatyö','työtön','työttömyysputki','tk','äitiysvapaa','isyysvapaa','khtuki','vanhuuseläke','opiskelija','ulkona'), 
+                        colors=pal)
                 else:
                     ax.stackplot(x,ura_emp,ura_unemp,ura_ret,
-                        labels=('työssä','työtön','vanhuuseläke'))
+                        labels=('työssä','työtön','vanhuuseläke'), colors=pal)
+            if start_from is None:
+                ax.set_xlim(self.min_age,self.max_age)
+            else:
+                ax.set_xlim(60,self.max_age)
+                
+            if ymaxlim is None:
+                ax.set_ylim(0, 100)
+            else:
+                ax.set_ylim(yminlim,ymaxlim)
         else:
             if parent:
                 if not self.minimal:        
@@ -286,10 +297,12 @@ class EpisodeStats():
         self.plot_ratiostates(self.salaries_emp,'Keskipalkka [e/v]',stack=False)
 
     def plot_moved(self):
-        siirtyneet_ratio=self.siirtyneet/self.alive
-        self.plot_states(siirtyneet_ratio,ylabel='Siirtyneet tilasta',stack=True)
-        pysyneet_ratio=self.pysyneet/self.alive
-        self.plot_states(pysyneet_ratio,ylabel='Pysyneet tilassa',stack=True)
+        siirtyneet_ratio=self.siirtyneet/self.alive*100
+        self.plot_states(siirtyneet_ratio,ylabel='Siirtyneet tilasta',stack=True,
+                        yminlim=0,ymaxlim=min(100,1.1*np.nanmax(np.cumsum(siirtyneet_ratio,1))))
+        pysyneet_ratio=self.pysyneet/self.alive*100
+        self.plot_states(pysyneet_ratio,ylabel='Pysyneet tilassa',stack=True,
+                        yminlim=0,ymaxlim=min(100,1.1*np.nanmax(np.cumsum(pysyneet_ratio,1))))
         
     def plot_ave_stay(self):
         self.plot_ratiostates(self.time_in_state,ylabel='Ka kesto tilassa',stack=False)

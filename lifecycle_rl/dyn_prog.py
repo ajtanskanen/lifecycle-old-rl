@@ -239,7 +239,7 @@ class DynProgLifecycle(Lifecycle):
             print('at age {} mean V {} mean r {}'.format(age,np.mean(self.Hila[t,:,:,:,:]),qr/m),qw/m)
 
                                 
-    def train(self,debug=False):
+    def train(self,debug=False,save='dynamic_prog_V.h5'):
         '''
         Lasketaan optimaalinen työllistyminen/työttömyys/eläköityminen valitulla valintametodilla
         '''
@@ -254,10 +254,10 @@ class DynProgLifecycle(Lifecycle):
             tqdm_e.set_description("Year " + str(t))
             tqdm_e.update(1)
 
-        self.save_V('dynamic_prog_V.h5')
+        self.save_V(save)
           
         
-    def simulate(self,debug=False,pop=1_000,save=None):
+    def simulate(self,debug=False,pop=1_000,save=None,load='dynamic_prog_V.h5'):
         '''
         Lasketaan työllisyysasteet ikäluokittain
         '''
@@ -266,7 +266,7 @@ class DynProgLifecycle(Lifecycle):
 
         self.episodestats.reset(self.timestep,self.n_time,self.n_employment,self.n_pop,
                                 self.env,self.minimal,self.min_age,self.max_age,self.min_retirementage)
-        self.load_V('dynamic_prog_V.h5')        
+        self.load_V(load)        
 
         self.env.seed(1234)        
         self.env.env_seed(4567)            
