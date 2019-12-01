@@ -10,7 +10,8 @@
 import h5py
 import numpy as np
 import matplotlib.pyplot as plt
-
+import seaborn as sns
+ 
 
 class EpisodeStats():
     def __init__(self,timestep,n_time,n_emps,n_pop,env,minimal,min_age,max_age,min_retirementage):
@@ -222,23 +223,27 @@ class EpisodeStats():
         
         fig,ax=plt.subplots()
         if stack:
+            pal = sns.color_palette("Set1")
+            alpha=0.8
+
             if parent:
                 if not self.minimal:        
                     ax.stackplot(x,ura_mother,ura_dad,ura_kht,
-                        labels=('äitiysvapaa','isyysvapaa','khtuki'))
+                        labels=('äitiysvapaa','isyysvapaa','khtuki'),colors=pal, alpha=0.4 )
             elif unemp:
                 if not self.minimal:        
                     ax.stackplot(x,ura_unemp,ura_pipe,ura_student,ura_outsider,
-                        labels=('tyött','putki','opiskelija','ulkona'))
+                        labels=('tyött','putki','opiskelija','ulkona'),colors=pal, alpha=0.4 )
                 else:
-                    ax.stackplot(x,ura_unemp,labels=('tyött'))
+                    ax.stackplot(x,ura_unemp,labels=('tyött'),colors=pal, alpha=0.4 )
             else:
                 if not self.minimal:        
                     ax.stackplot(x,ura_emp,ura_osatyo,ura_vetyo,ura_veosatyo,ura_unemp,ura_pipe,ura_disab,ura_mother,ura_dad,ura_kht,ura_ret,ura_student,ura_outsider,
-                        labels=('työssä','osatyö','ve+työ','ve+osatyö','työtön','työttömyysputki','tk','äitiysvapaa','isyysvapaa','khtuki','vanhuuseläke','opiskelija','ulkona'))
+                        labels=('työssä','osatyö','ve+työ','ve+osatyö','työtön','työttömyysputki','tk','äitiysvapaa','isyysvapaa','khtuki','vanhuuseläke','opiskelija','ulkona'),
+                        colors=pal, alpha=0.4 )
                 else:
                     ax.stackplot(x,ura_emp,ura_unemp,ura_ret,
-                        labels=('työssä','työtön','vanhuuseläke'))
+                        labels=('työssä','työtön','vanhuuseläke'),colors=pal, alpha=0.4 )
         else:
             if parent:
                 if not self.minimal:        
@@ -417,11 +422,13 @@ class EpisodeStats():
         ax.plot(x,diff_emp[:,1],label='kokoaikatyö')
         if not self.minimal:
             ax.plot(x,diff_emp[:,10],label='osa-aikatyö')
+            ax.plot(x,diff_emp[:,1]+diff_emp[:,10],label='työ yhteensä')
         ax.legend()
         plt.show()
         
-        htv,tyollvaikutus,haj,tyollaste,tyollosuus=self.comp_tyollisyys_stats(emp,scale_time=True)
+        htv,tyollvaikutus,haj,tyollaste,tyollosuus=self.comp_tyollisyys_stats(diff_emp,scale_time=True)
         print('Työllisyysvaikutus 25-62-vuotiaisiin noin {t} htv ja {h} työllistä'.format(t=htv,h=tyollvaikutus))
+        print('Työllisyysasteerp 25-62-vuotiailla noin {} prosenttia'.format(tyollosuus*100))
         
         # epävarmuus
         delta=1.96*1.0/np.sqrt(self.n_pop)
@@ -449,12 +456,12 @@ class EpisodeStats():
         max_cage=self.map_age(65)
         
         if self.minimal:
-            tyollosuus=emp[:,1]/np.sum(emp,1)
+            tyollosuus=emp[min_cage:max_cage,1]/np.sum(emp[min_cage:max_cage,:],1)
             htv=np.round(scale*np.sum(demog2[min_cage:max_cage]*emp[min_cage:max_cage,1]))
             tyollvaikutus=np.round(scale*np.sum(demog2[min_cage:max_cage]*emp[min_cage:max_cage,1]))
             haj=np.mean(np.std(emp[min_cage:max_cage,1]))
         else:
-            tyollosuus=(emp[:,1]+emp[:,10]+emp[:,8]+emp[:,9])/np.sum(emp,1)
+            tyollosuus=(emp[min_cage:max_cage,1]+emp[min_cage:max_cage,8]+emp[min_cage:max_cage,9]+emp[min_cage:max_cage,10])/np.sum(emp[min_cage:max_cage,:],1)
             htv=np.round(scale*np.sum(demog2[min_cage:max_cage]*(emp[min_cage:max_cage,1]+emp[min_cage:max_cage,8]+0.5*emp[min_cage:max_cage,9]+0.5*emp[min_cage:max_cage,10])))
             tyollvaikutus=np.round(scale*np.sum(demog2[min_cage:max_cage]*(emp[min_cage:max_cage,1]+emp[min_cage:max_cage,8]+emp[min_cage:max_cage,9]+emp[min_cage:max_cage,10])))
             haj=np.mean(np.std((emp[min_cage:max_cage,1]+0.5*emp[min_cage:max_cage,10])))
