@@ -693,22 +693,25 @@ class Lifecycle():
         self.n_pop=pop
         
         for num in range(n):
+        
+            bestname2=bestname+'_v'+str(num)
+            results2=results+'_v'+str(num)+'_'
 
             if train: 
-                print('train...')
+                print('{}: train...'.format(num))
                 if cont:
                     self.run_protocol(rlmodel=rlmodel,steps1=steps1,steps2=steps2,
-                                    save=save,debug=debug,bestname=bestname,
+                                    save=save,debug=debug,bestname=bestname2,
                                     batch1=batch1,batch2=batch2,cont=cont,start_from=start_from)
                 else:            
                     self.run_protocol(rlmodel=rlmodel,steps1=steps1,steps2=steps2,save=save,
-                                     debug=debug,batch1=batch1,batch2=batch2,cont=cont,
-                                     bestname=bestname)
+                                     debug=debug,batch1=batch1,batch2=batch2,cont=False,
+                                     bestname=bestname2)
             if predict:
-                print('predict...')
-                self.predict_protocol(pop=pop,rlmodel=rlmodel,results=results,
+                print('{}: predict...'.format(num))
+                self.predict_protocol(pop=pop,rlmodel=rlmodel,results=results2,
                               load=save,debug=debug,deterministic=deterministic,
-                              bestname=bestname)
+                              bestname=bestname2)
 
-            self.episodestats.run_simstats(results,save=results+'_stats_'+str(n))
-            self.episodestats.plot_simstats(results+'_stats_'+str(n))
+            self.episodestats.run_simstats(results2,save=results2+'_stats_'+str(n))
+            self.episodestats.plot_simstats(results2+'_stats_'+str(n))

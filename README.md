@@ -7,6 +7,11 @@ saatavaa hyötyä verrataan työnteon tuottamaan nettotuloon.
 Malli on toteutettu Python-kielellä, ja helpoimmin malli voi ajaa unemployment_with_RL_3:n 
 avulla. Mallia voi ajaa suoraan Colabissa. 
 
+# Life cycle model
+
+Description of the lifecycle model can be found (in Finnish!) from articles (Tanskanen, 2019a; Tanskanen, 2019b).
+
+
 ## Viittaukset
 
 	@misc{lifecycle_rl_,
