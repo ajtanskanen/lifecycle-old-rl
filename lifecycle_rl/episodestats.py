@@ -222,7 +222,7 @@ class EpisodeStats():
         
         fig,ax=plt.subplots()
         if stack:
-            pal=sns.color_palette("hsl", self.n_employment)  # hsl, husl, cubehelix
+            pal=sns.color_palette("hls", self.n_employment)  # hls, husl, cubehelix
             #alpha=0.8
             if parent:
                 if not self.minimal:        
@@ -522,6 +522,7 @@ class SimStats(EpisodeStats):
             ax.set_ylabel('lkm')
             x=np.linspace(self.min_age,self.max_age,self.n_time)
             #print(x.shape,tyoll_base.shape,self.empstate.shape)
+            print(self.min_age,self.max_age,x.shape)
             ax.plot(x,100*tyolliset)
         
         for i in range(1,n):         
