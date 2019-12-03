@@ -437,17 +437,19 @@ class EpisodeStats():
         
         htv,tyollvaikutus,haj,tyollaste,tyollosuus=self.comp_tyollisyys_stats(diff_emp,scale_time=True)
         print('Työllisyysvaikutus 25-62-vuotiaisiin noin {t} htv ja {h} työllistä'.format(t=htv,h=tyollvaikutus))
-        print('Työllisyysasteerp 25-62-vuotiailla noin {} prosenttia'.format(tyollosuus*100))
+        print('Työllisyysasteerp 25-62-vuotiailla noin {} prosenttia'.format(tyollaste*100))
         
         # epävarmuus
         delta=1.96*1.0/np.sqrt(self.n_pop)
         print('Epävarmuus työllisyysasteissa {}, hajonta {}'.format(delta,haj))
         
     def comp_tyollisyys_stats(self,emp,scale_time=True):
-        demog=np.array([61663,63354,65939,68253,68543,71222,70675,71691,70202,70535,67315,68282,70431,72402,73839,
-                      73065,70040,69501,68857,69035,69661,69965,68429,65261,59498,61433,63308,65305,66580,71263,
-                      72886,73253,73454,74757,75406,74448,73940,73343,72808,70259,73065,74666,73766,73522,72213,
-                      74283,71273,73404,75153,75888])
+        demog=np.array([61663,63354,65939,68253,68543,71222,70675,71691,70202,70535, # 20-29 y
+                        67315,68282,70431,72402,73839,73065,70040,69501,68857,69035, # 30-39 y
+                        69661,69965,68429,65261,59498,61433,63308,65305,66580,71263, # 40-49 y
+                        72886,73253,73454,74757,75406,74448,73940,73343,72808,70259, # 50-59 y
+                        73065,74666,73766,73522,72213,74283,71273,73404,75153,75888  # 60-69 y
+                        ])
                       
         demog2=np.zeros(self.n_time)
         k2=0
@@ -465,17 +467,17 @@ class EpisodeStats():
         max_cage=self.map_age(65)
         
         if self.minimal:
-            tyollosuus=emp[min_cage:max_cage,1]/np.sum(emp[min_cage:max_cage,:],1)
+            tyollosuus=emp[:,1]/np.sum(emp,1)
             htv=np.round(scale*np.sum(demog2[min_cage:max_cage]*emp[min_cage:max_cage,1]))
             tyollvaikutus=np.round(scale*np.sum(demog2[min_cage:max_cage]*emp[min_cage:max_cage,1]))
             haj=np.mean(np.std(emp[min_cage:max_cage,1]))
         else:
-            tyollosuus=(emp[min_cage:max_cage,1]+emp[min_cage:max_cage,8]+emp[min_cage:max_cage,9]+emp[min_cage:max_cage,10])/np.sum(emp[min_cage:max_cage,:],1)
+            tyollosuus=(emp[:,1]+emp[:,8]+emp[:,9]+emp[:,10])/np.sum(emp,1)
             htv=np.round(scale*np.sum(demog2[min_cage:max_cage]*(emp[min_cage:max_cage,1]+emp[min_cage:max_cage,8]+0.5*emp[min_cage:max_cage,9]+0.5*emp[min_cage:max_cage,10])))
             tyollvaikutus=np.round(scale*np.sum(demog2[min_cage:max_cage]*(emp[min_cage:max_cage,1]+emp[min_cage:max_cage,8]+emp[min_cage:max_cage,9]+emp[min_cage:max_cage,10])))
             haj=np.mean(np.std((emp[min_cage:max_cage,1]+0.5*emp[min_cage:max_cage,10])))
             
-        tyollaste=tyollvaikutus/sum(demog)
+        tyollaste=tyollvaikutus/sum(demog[5:(5+max_cage-min_cage)])
             
         return htv,tyollvaikutus,haj,tyollaste,tyollosuus
         
@@ -505,7 +507,7 @@ class SimStats(EpisodeStats):
         self.load_sim(results+'_100')
         base_empstate=self.empstate/self.n_pop
         emps[0,:,:]=base_empstate
-        htv_base,tyoll_base,haj_base,tyollaste_base,tyolliset=self.comp_tyollisyys_stats(base_empstate,scale_time=True)
+        htv_base,tyoll_base,haj_base,tyollaste_base,tyolliset_base=self.comp_tyollisyys_stats(base_empstate,scale_time=True)
         reward=self.get_reward()
         agg_htv[0]=htv_base
         agg_tyoll[0]=tyoll_base
@@ -523,7 +525,7 @@ class SimStats(EpisodeStats):
             x=np.linspace(self.min_age,self.max_age,self.n_time)
             #print(x.shape,tyoll_base.shape,self.empstate.shape)
             print(self.min_age,self.max_age,x.shape)
-            ax.plot(x,100*tyolliset)
+            ax.plot(x,100*tyolliset_base)
         
         for i in range(1,n):         
             self.load_sim(results+'_'+str(100+i))
