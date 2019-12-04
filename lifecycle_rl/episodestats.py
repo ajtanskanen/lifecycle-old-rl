@@ -363,6 +363,7 @@ class EpisodeStats():
     def save_sim(self,filename):
         f = h5py.File(filename, 'w')
         ftype='float64'
+        dset = f.create_dataset('n_pop', data=self.n_pop, dtype=ftype)
         dset = f.create_dataset('empstate', data=self.empstate, dtype=ftype)
         dset = f.create_dataset('deceiced', data=self.deceiced, dtype=ftype)
         dset = f.create_dataset('rewstate', data=self.rewstate, dtype=ftype)
@@ -502,8 +503,11 @@ class EpisodeStats():
         
             
 class SimStats(EpisodeStats):
-    def run_simstats(self,results,save,plot=True):
-        n=self.load_hdf(results+'_simut','n')
+    def run_simstats(self,results,save,n,plot=True):
+        '''
+        Multiple stats, not used
+        '''
+        #n=self.load_hdf(results+'_simut','n')
         e_rate=np.zeros((n,self.n_time))
         diff_rate=np.zeros((n,self.n_time))
         agg_htv=np.zeros(n)
