@@ -3,6 +3,7 @@ a2c_unemp_tensorboard/*
 dynamic_prog_V.h5
 old/*
 saved/*
+results/*
 .ipynb_checkpoints/*
 __pycache__/*
 lifecycle_rl/__pycache__/*
