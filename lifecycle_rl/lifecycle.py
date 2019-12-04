@@ -618,7 +618,7 @@ class Lifecycle():
             print('predict...')
             self.predict_protocol(pop=pop,rlmodel=rlmodel,results=results,
                           load=save,debug=debug,deterministic=deterministic,
-                          bestname=bestname)
+                          bestname=results+'_best',onlybest=True)
 
         self.episodestats.run_simstats(results,save=results+'_stats')
         self.episodestats.plot_simstats(results+'_stats')
@@ -711,7 +711,7 @@ class Lifecycle():
                 print('{}: predict...'.format(num))
                 self.predict_protocol(pop=pop,rlmodel=rlmodel,results=results2,
                               load=save,debug=debug,deterministic=deterministic,
-                              bestname=bestname2)
+                              bestname=bestname2,onlybest=True)
 
             self.episodestats.run_simstats(results2,save=results2+'_stats_'+str(n))
             self.episodestats.plot_simstats(results2+'_stats_'+str(n))
