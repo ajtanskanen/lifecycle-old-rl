@@ -421,9 +421,23 @@ class EpisodeStats():
         #self.plot_reward()   
         
     def compare_with(self,cc2):
+        print(self.n_pop,cc2.n_pop)
         diff_emp=self.empstate/self.n_pop-cc2.empstate/cc2.n_pop
         x=np.linspace(self.min_age,self.max_age,self.n_time)
         #x=range(self.age_min,self.age_min+self.n_time)
+        
+        htv1,tyoll1,haj1,tyollaste1,tyolliset1=self.comp_tyollisyys_stats(self.empstate/self.n_pop,scale_time=True)
+        htv2,tyoll2,haj2,tyollaste2,tyolliset2=self.comp_tyollisyys_stats(cc2.empstate/cc2.n_pop,scale_time=True)
+        htv,tyollvaikutus,haj,tyollaste,tyollosuus=self.comp_tyollisyys_stats(diff_emp,scale_time=True)
+        
+        fig,ax=plt.subplots()
+        ax.set_xlabel('Ikä [v]')
+        ax.set_ylabel('Työllisyysaste')
+        ax.plot(x,tyolliset1,label='cc1')
+        ax.plot(x,tyolliset2,label='cc2')
+        ax.legend()
+        plt.show()
+
         fig,ax=plt.subplots()
         ax.set_xlabel('Ikä [v]')
         ax.set_ylabel('Ero työttömyysasteessa')
@@ -435,7 +449,6 @@ class EpisodeStats():
         ax.legend()
         plt.show()
         
-        htv,tyollvaikutus,haj,tyollaste,tyollosuus=self.comp_tyollisyys_stats(diff_emp,scale_time=True)
         print('Työllisyysvaikutus 25-62-vuotiaisiin noin {t} htv ja {h} työllistä'.format(t=htv,h=tyollvaikutus))
         print('Työllisyysasteerp 25-62-vuotiailla noin {} prosenttia'.format(tyollaste*100))
         
