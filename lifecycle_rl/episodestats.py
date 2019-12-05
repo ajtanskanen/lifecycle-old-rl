@@ -528,8 +528,11 @@ class EpisodeStats():
         
             
 class SimStats(EpisodeStats):
-    def run_simstats(self,results,save,plot=True):
-        n=self.load_hdf(results+'_simut','n')
+    def run_simstats(self,results,save,n,plot=True):
+        '''
+        Multiple stats, not used
+        '''
+        #n=self.load_hdf(results+'_simut','n')
         e_rate=np.zeros((n,self.n_time))
         diff_rate=np.zeros((n,self.n_time))
         agg_htv=np.zeros(n)
@@ -610,7 +613,7 @@ class SimStats(EpisodeStats):
     def plot_simstats(self,filename):
         #print('load',filename)
         diff_htv,diff_tyoll,agg_htv,agg_tyoll,agg_rew,mean_emp,std_emp,median_emp,emps,\
-            best_rew,best_emp=self.load_simstats(filename)
+            best_rew,best_emp,n_pop=self.load_simstats(filename)
         
         mean_htv=np.mean(agg_htv)
         median_htv=np.median(agg_htv)
@@ -671,7 +674,7 @@ class SimStats(EpisodeStats):
         
     def get_simstats(filename):
         diff1_htv,diff1_tyoll,agg1_htv,agg1_tyoll,agg1_rew,mean1_emp,std1_emp,median1_emp,emps1,\
-            best1_rew,best1_emp=self.load_simstats(filename1)
+            best1_rew,best1_emp,n_pop=self.load_simstats(filename1)
         
         mean_htv=np.mean(agg_htv)
         median_htv=np.median(agg_htv)
@@ -741,6 +744,7 @@ class SimStats(EpisodeStats):
     def save_simstats(self,filename,diff_htv,diff_tyoll,agg_htv,agg_tyoll,agg_rew,mean_emp,\
                       std_emp,median_emp,emps,best_rew,best_emp):
         f = h5py.File(filename, 'w')
+        dset = f.create_dataset('n_pop', data=n_pop, dtype='float64')
         dset = f.create_dataset('agg_htv', data=agg_htv, dtype='float64')
         dset = f.create_dataset('agg_tyoll', data=agg_tyoll, dtype='float64')
         dset = f.create_dataset('diff_htv', data=diff_htv, dtype='float64')
@@ -756,6 +760,7 @@ class SimStats(EpisodeStats):
         
     def load_simstats(self,filename):
         f = h5py.File(filename, 'r')
+        n_pop = f.get('n_pop').value
         agg_htv = f.get('agg_htv').value
         agg_tyoll = f.get('agg_tyoll').value
         diff_htv = f.get('diff_htv').value
@@ -769,4 +774,4 @@ class SimStats(EpisodeStats):
         best_emp = int(f.get('best_emp').value)
         f.close()
         return diff_htv,diff_tyoll,agg_htv,agg_tyoll,agg_rew,mean_emp,std_emp,median_emp,\
-               emps,best_rew,best_emp
+               emps,best_rew,best_emp,n_pop

@@ -34,7 +34,8 @@ class Lifecycle():
     def __init__(self,env=None,minimal=False,timestep=0.25,ansiopvraha_kesto300=None,
                     ansiopvraha_kesto400=None,karenssi_kesto=None,
                     ansiopvraha_toe=None,perustulo=None,mortality=None,
-                    randomness=None,deterministic=None,include_putki=None):
+                    randomness=None,deterministic=None,include_putki=None,
+                    callback_minsteps=None):
 
         '''
         Alusta muuttujat
@@ -46,6 +47,7 @@ class Lifecycle():
         self.min_retirementage=65
         self.max_retirementage=70
         self.n_pop = 1000
+        self.callback_minsteps = 1_000
                 
         # apumuuttujia
         self.n_age = self.max_age-self.min_age+1
@@ -53,6 +55,9 @@ class Lifecycle():
         self.gamma = 0.92**timestep # skaalataan vuositasolle!
         
         self.karenssi_kesto=0.25
+        
+        if callback_minsteps is not None:
+            self.callback_minsteps=callback_minsteps
         
         if karenssi_kesto is not None:
             self.karenssi_kesto=karenssi_kesto
@@ -321,7 +326,10 @@ class Lifecycle():
         
         min_steps=0
         mod_steps=1
-        hist_eps=10000
+        if self.callback_minsteps is not None:
+            hist_eps=self.callback_minsteps
+        else:
+            hist_eps=10000
         #print(_locals, _globals)
         if (self.n_steps + 1) % mod_steps == 0 and self.n_steps > min_steps:
             # Evaluate policy training performance
@@ -347,8 +355,8 @@ class Lifecycle():
         
     def train(self,train=False,debug=False,steps=20000,cont=False,rlmodel='dqn',
                 save='saved/malli',pop=None,batch=1,max_grad_norm=0.5,learning_rate=0.25,
-                start_from=None,max_n_cpu=100,plot=True,use_vecmonitor=False,
-                bestname='best2',use_callback=False,log_interval=100,verbose=1):
+                start_from=None,max_n_cpu=1000,plot=True,use_vecmonitor=False,
+                bestname='tmp/best2',use_callback=False,log_interval=100,verbose=1):
 
         self.best_mean_reward, self.n_steps = -np.inf, 0
         
@@ -418,7 +426,7 @@ class Lifecycle():
         
     def simulate(self,debug=False,rlmodel=None,plot=True,load=None,pop=None,
                  max_grad_norm=0.5,learning_rate=0.25,
-                 deterministic=False,save='simulate'):
+                 deterministic=False,save='results/testsimulate'):
 
         if pop is not None:
             self.n_pop=pop
@@ -592,8 +600,8 @@ class Lifecycle():
         
     def run_results(self,steps1=100,steps2=100,pop=1_000,rlmodel='acktr',
                save='saved/perusmalli',debug=False,simut='simut',results='results/simut_res',
-               deterministic=True,train=True,predict=True,batch1=1,batch2=100,cont=False,
-               start_from=None,bestname='tmp/best1',plot=False):
+               stats='results/simut_stats',deterministic=True,train=True,predict=True,
+               batch1=1,batch2=100,cont=False,start_from=None,plot=False,callback_minsteps=None):
                
         '''
         run_results
@@ -603,30 +611,27 @@ class Lifecycle():
         '''
                
         self.n_pop=pop
+        if callback_minsteps is not None:
+            self.callback_minsteps=callback_minsteps
 
         if train: 
             print('train...')
             if cont:
                 self.run_protocol(rlmodel=rlmodel,steps1=steps1,steps2=steps2,
-                                save=save,debug=debug,bestname=bestname,
-                                batch1=batch1,batch2=batch2,cont=cont,start_from=start_from)
+                                  debug=debug,save=save,batch1=batch1,batch2=batch2,
+                                  cont=cont,start_from=start_from)
             else:            
-                self.run_protocol(rlmodel=rlmodel,steps1=steps1,steps2=steps2,save=save,
+                self.run_protocol(rlmodel=rlmodel,steps1=steps1,steps2=steps2,
                                  debug=debug,batch1=batch1,batch2=batch2,cont=cont,
-                                 bestname=bestname)
+                                 save=save)
         if predict:
             print('predict...')
-            self.predict_protocol(pop=pop,rlmodel=rlmodel,results=results,
-                          load=save,debug=debug,deterministic=deterministic,
-                          bestname=bestname)
-
-        self.episodestats.run_simstats(results,save=results+'_stats')
-        self.episodestats.plot_simstats(results+'_stats')
-        self.episodestats.load_sim(results+'_best')
+            self.predict_protocol(pop=pop,rlmodel=rlmodel,load=save,
+                          debug=debug,deterministic=deterministic,results=results)
                           
     def run_protocol(self,steps1=2_000_000,steps2=1_000_000,rlmodel='acktr',
-               save='results/simut',debug=False,batch1=1,batch2=1000,cont=False,
-               start_from=None,bestname='best3'):
+               debug=False,batch1=1,batch2=1000,cont=False,
+               start_from=None,save='best3'):
         '''
         run_protocol
         
@@ -635,23 +640,23 @@ class Lifecycle():
         2. train with a long batch, save the best model during the training
         '''
               
+        tmpname='tmp/simut'
         print('phase 1')
         if cont:
-            self.train(steps=steps1,cont=cont,rlmodel='acktr',save=save+'_100',batch=batch1,debug=debug,
+            self.train(steps=steps1,cont=cont,rlmodel='acktr',save=tmpname+'_100',batch=batch1,debug=debug,
                        start_from=start_from,use_callback=False,use_vecmonitor=False,
                        log_interval=1000,verbose=1)
         else:
-            self.train(steps=steps1,cont=False,rlmodel='acktr',save=save+'_100',batch=batch1,debug=debug,
-                       use_callback=False,use_vecmonitor=False,
-                       log_interval=1000,verbose=1)
+            self.train(steps=steps1,cont=False,rlmodel='acktr',save=tmpname+'_100',batch=batch1,debug=debug,
+                       use_callback=False,use_vecmonitor=False,log_interval=1000,verbose=1)
         
         print('phase 2')
-        self.train(steps=steps2,cont=True,rlmodel=rlmodel,save=save+'_101',
-                   debug=debug,start_from=save+'_100',batch=batch2,
-                   use_callback=True,use_vecmonitor=True,log_interval=1,bestname=bestname)
+        self.train(steps=steps2,cont=True,rlmodel=rlmodel,save=tmpname+'_101',
+                   debug=debug,start_from=tmpname+'_100',batch=batch2,
+                   use_callback=True,use_vecmonitor=True,log_interval=1,bestname=save)
             
     def predict_protocol(self,pop=1_00,rlmodel='acktr',results='results/simut_res',
-                 load='saved/malli',debug=False,deterministic=False,bestname='best5',
+                 load='saved/malli',debug=False,deterministic=False,
                  onlybest=True):
         '''
         predict_protocol
@@ -659,24 +664,10 @@ class Lifecycle():
         simulate the three models obtained from run_protocol
         '''
                  
-        if not onlybest:
-            self.save_to_hdf(results+'_simut','n',3,dtype='int64')
-    
-            for i in range(0,2):
-                self.simulate(pop=pop,rlmodel=rlmodel,plot=False,debug=debug,
-                              load=load+'_'+str(100+i),save=results+'_'+str(100+i),
-                              deterministic=deterministic)
-            # simulate the saved best
-            self.simulate(pop=pop,rlmodel=rlmodel,plot=False,debug=debug,
-                          load=bestname,save=results+'_102',
-                          deterministic=deterministic)
-        else:
-            self.save_to_hdf(results+'_simut','n',1,dtype='int64')
-        
-            # simulate the saved best
-            self.simulate(pop=pop,rlmodel=rlmodel,plot=False,debug=debug,
-                          load=bestname,save=results+'_100',
-                          deterministic=deterministic)
+        # simulate the saved best
+        self.simulate(pop=pop,rlmodel=rlmodel,plot=False,debug=debug,
+                      load=load,save=results,
+                      deterministic=deterministic)
 
     def run_verify(self,n=5,steps1=100,steps2=100,pop=1_000,rlmodel='acktr',
                save='saved/perusmalli_verify',debug=False,simut='simut',results='results/simut_res',
@@ -684,7 +675,7 @@ class Lifecycle():
                start_from=None,bestname='tmp/best1',plot=False):
                
         '''
-        run_results
+        run_verify
         
         train a model based on a protocol, and then simulate it
         plot results if needed
@@ -711,7 +702,7 @@ class Lifecycle():
                 print('{}: predict...'.format(num))
                 self.predict_protocol(pop=pop,rlmodel=rlmodel,results=results2,
                               load=save,debug=debug,deterministic=deterministic,
-                              bestname=bestname2)
+                              bestname=bestname2,onlybest=True)
 
-            self.episodestats.run_simstats(results2,save=results2+'_stats_'+str(n))
-            self.episodestats.plot_simstats(results2+'_stats_'+str(n))
+        self.episodestats.run_simstats(results2,save=results2+'_stats')
+        self.episodestats.plot_simstats(results2+'_stats')
