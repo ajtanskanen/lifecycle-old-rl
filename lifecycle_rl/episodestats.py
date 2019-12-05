@@ -363,6 +363,7 @@ class EpisodeStats():
     def save_sim(self,filename):
         f = h5py.File(filename, 'w')
         ftype='float64'
+        dset = f.create_dataset('n_pop', data=self.n_pop, dtype=ftype)
         dset = f.create_dataset('empstate', data=self.empstate, dtype=ftype)
         dset = f.create_dataset('deceiced', data=self.deceiced, dtype=ftype)
         dset = f.create_dataset('rewstate', data=self.rewstate, dtype=ftype)
@@ -392,8 +393,15 @@ class EpisodeStats():
         f.close()        
         return val
         
-    def load_sim(self,filename):
+    def load_sim(self,filename,n_pop=None):
         f = h5py.File(filename, 'r')
+        if 'n_pop' in f:
+            self.n_pop=f.get('n_pop').value
+        else:
+            self.n_pop=1_000
+        if n_pop is not None:
+            self.n_pop=n_pop
+            
         self.empstate=f.get('empstate').value
         self.deceiced=f.get('deceiced').value
         self.rewstate=f.get('rewstate').value
@@ -421,42 +429,66 @@ class EpisodeStats():
         #self.plot_reward()   
         
     def compare_with(self,cc2):
-        print(self.n_pop,cc2.n_pop)
         diff_emp=self.empstate/self.n_pop-cc2.empstate/cc2.n_pop
         x=np.linspace(self.min_age,self.max_age,self.n_time)
         #x=range(self.age_min,self.age_min+self.n_time)
         
-        htv1,tyoll1,haj1,tyollaste1,tyolliset1=self.comp_tyollisyys_stats(self.empstate/self.n_pop,scale_time=True)
-        htv2,tyoll2,haj2,tyollaste2,tyolliset2=self.comp_tyollisyys_stats(cc2.empstate/cc2.n_pop,scale_time=True)
-        htv,tyollvaikutus,haj,tyollaste,tyollosuus=self.comp_tyollisyys_stats(diff_emp,scale_time=True)
+        s=30
+        e=63
+
+        tyoll_osuus1,htv_osuus1,tyot_osuus1,kokotyo_osuus1,osatyo_osuus1=self.comp_employed(self.empstate)
+        tyoll_osuus2,htv_osuus2,tyot_osuus2,kokotyo_osuus2,osatyo_osuus2=self.comp_employed(cc2.empstate)
+        htv1,tyoll1,haj1,tyollaste1,tyolliset1=self.comp_tyollisyys_stats(self.empstate/self.n_pop,scale_time=True,start=s,end=e)
+        htv2,tyoll2,haj2,tyollaste2,tyolliset2=self.comp_tyollisyys_stats(cc2.empstate/cc2.n_pop,scale_time=True,start=s,end=e)
+        #htv,tyollvaikutus,haj,tyollaste,tyollosuus=self.comp_tyollisyys_stats(diff_emp,scale_time=True)
         
         fig,ax=plt.subplots()
         ax.set_xlabel('Ikä [v]')
-        ax.set_ylabel('Työllisyysaste')
-        ax.plot(x,tyolliset1,label='cc1')
-        ax.plot(x,tyolliset2,label='cc2')
+        ax.set_ylabel('Työllisyysaste [%]')
+        ax.plot(x,100*tyolliset1,label='cc1')
+        ax.plot(x,100*tyolliset2,label='cc2')
         ax.legend()
         plt.show()
 
         fig,ax=plt.subplots()
         ax.set_xlabel('Ikä [v]')
-        ax.set_ylabel('Ero työttömyysasteessa')
-        ax.plot(x,diff_emp[:,0],label='työttömyys')
-        ax.plot(x,diff_emp[:,1],label='kokoaikatyö')
+        ax.set_ylabel('Ero osuuksissa [%]')
+        diff_emp=diff_emp*100
+        ax.plot(x,100*(tyot_osuus1-tyot_osuus2),label='työttömyys')
+        ax.plot(x,100*(kokotyo_osuus1-kokotyo_osuus2),label='kokoaikatyö')
         if not self.minimal:
-            ax.plot(x,diff_emp[:,10],label='osa-aikatyö')
-            ax.plot(x,diff_emp[:,1]+diff_emp[:,10],label='työ yhteensä')
+            ax.plot(x,100*(osatyo_osuus1-osatyo_osuus2),label='osa-aikatyö')
+            ax.plot(x,100*(tyolliset1-tyolliset2),label='työ yhteensä')
+            ax.plot(x,100*(htv_osuus1-htv_osuus2),label='htv yhteensä')
         ax.legend()
         plt.show()
         
-        print('Työllisyysvaikutus 25-62-vuotiaisiin noin {t} htv ja {h} työllistä'.format(t=htv,h=tyollvaikutus))
-        print('Työllisyysasteerp 25-62-vuotiailla noin {} prosenttia'.format(tyollaste*100))
+        print('Työllisyysvaikutus {}-{}-vuotiaisiin noin {t} htv ja {h} työllistä'.format(s,e,t=htv1-htv2,
+            h=tyoll1-tyoll2))
+        print('Työllisyysastevaikutus {}-{}-vuotiailla noin {} prosenttia'.format(s,e,(tyollaste1-tyollaste2)*100))
         
         # epävarmuus
         delta=1.96*1.0/np.sqrt(self.n_pop)
-        print('Epävarmuus työllisyysasteissa {}, hajonta {}'.format(delta,haj))
+        print('Epävarmuus työllisyysasteissa {}, hajonta {}'.format(delta,haj1))
         
-    def comp_tyollisyys_stats(self,emp,scale_time=True):
+    def comp_employed(self,emp):
+        if self.minimal:
+            tyoll_osuus=emp[:,1]/np.sum(emp,1)
+            tyot_osuus=emp[:,0]/np.sum(emp,1)
+            htv=emp[:,1]/np.sum(emp,1)
+            kokotyo_osuus=tyollosuus
+            osatyo_osuus=0
+        else:
+            tyoll_osuus=(emp[:,1]+emp[:,8]+emp[:,9]+emp[:,10])/np.sum(emp,1)
+            tyot_osuus=(emp[:,0]+emp[:,4])/np.sum(emp,1)
+            htv=(emp[:,1]+emp[:,8]+0.5*emp[:,9]+0.5*emp[:,10])/np.sum(emp,1)
+            kokotyo_osuus=(emp[:,1]+emp[:,8])/np.sum(emp,1)
+            osatyo_osuus=(emp[:,9]+emp[:,10])/np.sum(emp,1)
+            
+        return tyoll_osuus,htv,tyot_osuus,kokotyo_osuus,osatyo_osuus
+    
+        
+    def comp_tyollisyys_stats(self,emp,scale_time=True,start=30,end=63):
         demog=np.array([61663,63354,65939,68253,68543,71222,70675,71691,70202,70535, # 20-29 y
                         67315,68282,70431,72402,73839,73065,70040,69501,68857,69035, # 30-39 y
                         69661,69965,68429,65261,59498,61433,63308,65305,66580,71263, # 40-49 y
@@ -476,21 +508,16 @@ class EpisodeStats():
         else:
             scale=1.0
 
-        min_cage=self.map_age(25)
-        max_cage=self.map_age(65)
+        min_cage=self.map_age(start)
+        max_cage=self.map_age(end)
         
-        if self.minimal:
-            tyollosuus=emp[:,1]/np.sum(emp,1)
-            htv=np.round(scale*np.sum(demog2[min_cage:max_cage]*emp[min_cage:max_cage,1]))
-            tyollvaikutus=np.round(scale*np.sum(demog2[min_cage:max_cage]*emp[min_cage:max_cage,1]))
-            haj=np.mean(np.std(emp[min_cage:max_cage,1]))
-        else:
-            tyollosuus=(emp[:,1]+emp[:,8]+emp[:,9]+emp[:,10])/np.sum(emp,1)
-            htv=np.round(scale*np.sum(demog2[min_cage:max_cage]*(emp[min_cage:max_cage,1]+emp[min_cage:max_cage,8]+0.5*emp[min_cage:max_cage,9]+0.5*emp[min_cage:max_cage,10])))
-            tyollvaikutus=np.round(scale*np.sum(demog2[min_cage:max_cage]*(emp[min_cage:max_cage,1]+emp[min_cage:max_cage,8]+emp[min_cage:max_cage,9]+emp[min_cage:max_cage,10])))
-            haj=np.mean(np.std((emp[min_cage:max_cage,1]+0.5*emp[min_cage:max_cage,10])))
+        tyollosuus,htvosuus,_,_,_=self.comp_employed(emp)
+        
+        htv=np.round(scale*np.sum(demog2[min_cage:max_cage]*htvosuus[min_cage:max_cage]))
+        tyollvaikutus=np.round(scale*np.sum(demog2[min_cage:max_cage]*tyollosuus[min_cage:max_cage]))
+        haj=np.mean(np.std(tyollosuus[min_cage:max_cage]))
             
-        tyollaste=tyollvaikutus/sum(demog[5:(5+max_cage-min_cage)])
+        tyollaste=tyollvaikutus/sum(demog[min_cage:max_cage])
             
         return htv,tyollvaikutus,haj,tyollaste,tyollosuus
         
