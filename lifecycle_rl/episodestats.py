@@ -1,7 +1,7 @@
 '''
 
     episodestats.py
-    
+
     implements statistic that are used in producing employment statistics for the
     lifecycle model
 
@@ -15,7 +15,7 @@ import seaborn as sns
 class EpisodeStats():
     def __init__(self,timestep,n_time,n_emps,n_pop,env,minimal,min_age,max_age,min_retirementage):
         self.reset(timestep,n_time,n_emps,n_pop,env,minimal,min_age,max_age,min_retirementage)
-        
+
     def reset(self,timestep,n_time,n_emps,n_pop,env,minimal,min_age,max_age,min_retirementage):
         self.min_age=min_age
         self.max_age=max_age
@@ -24,13 +24,21 @@ class EpisodeStats():
         self.n_employment=n_emps
         self.n_time=n_time
         self.timestep=timestep # 0.25 = 3kk askel
-        self.inv_timestep=int(np.round(1/self.timestep)) # pitäisi olla kokonaisluku        
+        self.inv_timestep=int(np.round(1/self.timestep)) # pitäisi olla kokonaisluku
         self.n_pop=n_pop
         self.env=env
+        
+        if self.minimal:
+            self.n_groups=1
+        else:
+            self.n_groups=6
+        
         n_emps=self.n_employment
         self.empstate=np.zeros((self.n_time,n_emps))
+        self.gempstate=np.zeros((self.n_time,n_emps,self.n_groups))
         self.deceiced=np.zeros((self.n_time,1))
         self.alive=np.zeros((self.n_time,1))
+        self.galive=np.zeros((self.n_time,self.n_groups))
         self.rewstate=np.zeros((self.n_time,n_emps))
         self.salaries_emp=np.zeros((self.n_time,n_emps))
         self.actions=np.zeros((self.n_time,self.n_pop))
@@ -44,23 +52,24 @@ class EpisodeStats():
         self.stat_pension=np.zeros((self.n_time,n_emps))
         self.stat_paidpension=np.zeros((self.n_time,n_emps))
         self.stat_unemp_len=np.zeros((self.n_time,self.n_pop))
-        
+
     def add(self,n,act,r,state,newstate,debug=False,plot=False,aveV=None): #,dyn=False):
         #if debug:
         #    print((int(state[0]),int(state[1]),state[2],state[3],state[4]),':',act,(int(newstate[0]),int(newstate[1]),newstate[2],newstate[3],newstate[4]))
-            
+    
         if self.minimal:
             emp,_,_,a,_=self.env.state_decode(state) # current employment state
             newemp,_,newsal,a2,tis=self.env.state_decode(newstate)
+            g=0
         else:
             emp,_,_,_,a,_,_,_,_,_=self.env.state_decode(state) # current employment state
-            newemp,_,newpen,newsal,a2,tis,paidpens,pink,toe,ura=self.env.state_decode(newstate)
-            
+            newemp,g,newpen,newsal,a2,tis,paidpens,pink,toe,ura=self.env.state_decode(newstate)
+    
         #if emp==2 and a<self.min_retirementage:
         #    emp=12
         #if newemp==2 and a2<self.min_retirementage:
         #    emp=12
-            
+    
         t=int(np.round((a-self.min_age)*self.inv_timestep))
         if a2>a and newemp>=0: # new state is not reset (age2>age)
             if a2>self.min_retirementage and newemp==3:
@@ -74,12 +83,14 @@ class EpisodeStats():
             self.salaries_emp[t,newemp]+=newsal
             self.time_in_state[t,newemp]+=tis
             if not self.minimal:
+                self.gempstate[t,newemp,g]+=1
+                self.galive[t,g]+=1
                 self.stat_tyoura[t,newemp]+=ura
                 self.stat_toe[t,newemp]+=toe
                 self.stat_pension[t,newemp]+=newpen
                 self.stat_paidpension[t,newemp]+=paidpens
                 self.stat_unemp_len[t,n]=tis
-            
+    
             if aveV is not None:
                 self.aveV[t,n]=aveV
 
@@ -89,16 +100,16 @@ class EpisodeStats():
                 self.pysyneet[t,emp]+=1
         elif newemp<0:
             self.deceiced[t]+=1
-            
+    
     def map_age(self,age,start_zero=False):
         if start_zero:
             return int((age)*self.inv_timestep)
         else:
             return int((age-self.min_age)*self.inv_timestep)
-            
+    
     def episodestats_exit(self):
         plt.close(self.episode_fig)
-        
+
     def plot_ratiostats(self,t):
         '''
         Tee kuvia tuloksista
@@ -118,74 +129,131 @@ class EpisodeStats():
         ax.plot(x,meansal+stdsal)
         ax.plot(x,meansal-stdsal)
         plt.show()
-    
-    def plot_emp(self):
-        employed=self.empstate[:,1]
-        retired=self.empstate[:,2]
-        unemployed=self.empstate[:,0]
+
+    def comp_empratios(self,emp,alive):
+        employed=emp[:,1]
+        retired=emp[:,2]
+        unemployed=emp[:,0]
         if not self.minimal:
-            disabled=self.empstate[:,3]
-            piped=self.empstate[:,4]
-            mother=self.empstate[:,5]
-            dad=self.empstate[:,6]
-            kotihoidontuki=self.empstate[:,7]
-            vetyo=self.empstate[:,8]
-            veosatyo=self.empstate[:,9]
-            osatyo=self.empstate[:,10]
-            outsider=self.empstate[:,11]
-            student=self.empstate[:,12]
-        
+            disabled=emp[:,3]
+            piped=emp[:,4]
+            mother=emp[:,5]
+            dad=emp[:,6]
+            kotihoidontuki=emp[:,7]
+            vetyo=emp[:,8]
+            veosatyo=emp[:,9]
+            osatyo=emp[:,10]
+            outsider=emp[:,11]
+            student=emp[:,12]
+
         if not self.minimal:
-            tyollisyysaste=100*(employed+osatyo+veosatyo+vetyo)/self.alive[:,0]
+            tyollisyysaste=100*(employed+osatyo+veosatyo+vetyo)/alive[:,0]
             osatyoaste=100*(osatyo+veosatyo)/(employed+osatyo+veosatyo+vetyo)
             tyottomyysaste=100*(unemployed+piped)/(unemployed+employed+piped+osatyo+veosatyo+vetyo)
             ka_tyottomyysaste=100*np.sum(unemployed+piped)/np.sum(unemployed+employed+piped+osatyo+veosatyo+vetyo)
         else:
-            tyollisyysaste=100*(employed)/self.alive[:,0]
-            osatyoaste=np.zeros(self.alive.shape)
+            tyollisyysaste=100*(employed)/alive[:,0]
+            osatyoaste=np.zeros(alive)
             tyottomyysaste=100*(unemployed)/(unemployed+employed)
             ka_tyottomyysaste=100*np.sum(unemployed)/np.sum(unemployed+employed)
-        
+
+        return tyollisyysaste,osatyoaste,tyottomyysaste,ka_tyottomyysaste
+
+    def plot_emp(self):
+
+        tyollisyysaste,osatyoaste,tyottomyysaste,ka_tyottomyysaste=self.comp_empratios(self.empstate,self.alive)
+
         x=np.linspace(self.min_age,self.max_age,self.n_time)
         fig,ax=plt.subplots()
         ax.plot(x,tyollisyysaste,label='työllisyysaste')
         ax.plot(x,tyottomyysaste,label='työttömyys')
         emp_statsratio=100*self.emp_stats()
-        ax.plot(x,emp_statsratio,label='havainto')        
+        ax.plot(x,emp_statsratio,label='havainto')
         ax.set_xlabel('Ikä [v]')
-        ax.set_ylabel('Osuus tilassa [%]')        
+        ax.set_ylabel('Osuus tilassa [%]')
         ax.legend()
         plt.show()
-        
+
         fig,ax=plt.subplots()
         ax.set_xlabel('Ikä [v]')
         ax.set_ylabel('Työttömyysaste (ka '+str(ka_tyottomyysaste)+')')
         ax.plot(x,tyottomyysaste)
-        plt.show()        
+        plt.show()
 
         if not self.minimal:
             fig,ax=plt.subplots()
             ax.plot(x,osatyoaste,label='osatyössäolevie kaikista töissäolevista')
             ax.legend()
             plt.show()
-            
+    
         empstate_ratio=100*self.empstate/self.alive
         self.plot_states(empstate_ratio,ylabel='Osuus tilassa [%]',stack=True)
 
         if not self.minimal:
             self.plot_states(empstate_ratio,ylabel='Osuus tilassa [%]',ylimit=20,stack=False)
-        
+
         if not self.minimal:
             self.plot_states(empstate_ratio,ylabel='Osuus tilassa [%]',parent=True,stack=False)
             self.plot_states(empstate_ratio,ylabel='Osuus tilassa [%]',unemp=True,stack=False)
-        
+
         self.plot_states(empstate_ratio,ylabel='Osuus tilassa [%]',start_from=60,stack=True)
+
+    def plot_group_emp(self):
+        fig,ax=plt.subplots()
+        for gender in range(2):
+            if gender==0:
+                leg='Miehet'
+                gempstate=np.sum(self.gempstate[:,:,0:3],axis=2)
+                alive=np.zeros((self.galive.shape[0],1))
+                alive[:,0]=np.sum(self.galive[:,0:3],1)
+            else:
+                gempstate=np.sum(self.gempstate[:,:,3:6],axis=2)
+                alive=np.zeros((self.galive.shape[0],1))
+                alive[:,0]=np.sum(self.galive[:,3:6],1)
+                leg='Naiset'
         
+            tyollisyysaste,osatyoaste,tyottomyysaste,ka_tyottomyysaste=self.comp_empratios(gempstate,alive)
+        
+            x=np.linspace(self.min_age,self.max_age,self.n_time)
+            ax.plot(x,tyollisyysaste,label='työllisyysaste {}'.format(leg))
+            #ax.plot(x,tyottomyysaste,label='työttömyys {}'.format(leg))
+            
+        emp_statsratio=100*self.emp_stats()
+        ax.plot(x,emp_statsratio,label='havainto')
+        ax.set_xlabel('Ikä [v]')
+        ax.set_ylabel('Osuus tilassa [%]')
+        ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
+        plt.show()
+
+            #fig,ax=plt.subplots()
+            #ax.set_xlabel('Ikä [v]')
+            #ax.set_ylabel('Työttömyysaste (ka '+str(ka_tyottomyysaste)+')')
+            #ax.plot(x,tyottomyysaste)
+            #plt.show()
+
+            #if not self.minimal:
+            #    fig,ax=plt.subplots()
+            #    ax.plot(x,osatyoaste,label='osatyössäolevie kaikista töissäolevista')
+            #    ax.legend()
+            #    plt.show()
+    
+            #empstate_ratio=100*gempstate/self.alive
+            #self.plot_states(empstate_ratio,ylabel='Osuus tilassa [%]',stack=True)
+
+            #if not self.minimal:
+            #    self.plot_states(empstate_ratio,ylabel='Osuus tilassa [%]',ylimit=20,stack=False)
+
+            #if not self.minimal:
+            #    self.plot_states(empstate_ratio,ylabel='Osuus tilassa [%]',parent=True,stack=False)
+            #    self.plot_states(empstate_ratio,ylabel='Osuus tilassa [%]',unemp=True,stack=False)
+
+            #self.plot_states(empstate_ratio,ylabel='Osuus tilassa [%]',start_from=60,stack=True)
+
     def plot_pensions(self):
         if not self.minimal:
             self.plot_ratiostates(self.stat_pension,ylabel='Tuleva eläke [e/v]',stack=False)
-        
-    def plot_career(self):            
+
+    def plot_career(self):    
         if not self.minimal:
             self.plot_ratiostates(self.stat_tyoura,ylabel='Työuran pituus [v]',stack=False)
 
@@ -200,15 +268,15 @@ class EpisodeStats():
             x=np.linspace(self.min_age,self.max_age,self.n_time)
         else:
             x_n = self.max_age-60+1
-            x_t = int(np.round(x_n*self.inv_timestep+1))        
+            x_t = int(np.round(x_n*self.inv_timestep+1))
             x=np.linspace(start_from,self.max_age,x_t)
             #x=np.linspace(start_from,self.max_age,self.n_time)
             statistic=statistic[self.map_age(start_from):]
-            
+    
         ura_emp=statistic[:,1]
         ura_ret=statistic[:,2]
         ura_unemp=statistic[:,0]
-        if not self.minimal:        
+        if not self.minimal:
             ura_disab=statistic[:,3]
             ura_pipe=statistic[:,4]
             ura_mother=statistic[:,5]
@@ -219,23 +287,23 @@ class EpisodeStats():
             ura_osatyo=statistic[:,10]
             ura_outsider=statistic[:,11]
             ura_student=statistic[:,12]
-        
+
         fig,ax=plt.subplots()
         if stack:
             pal=sns.color_palette("hls", self.n_employment)  # hls, husl, cubehelix
             #alpha=0.8
             if parent:
-                if not self.minimal:        
+                if not self.minimal:
                     ax.stackplot(x,ura_mother,ura_dad,ura_kht,
                         labels=('äitiysvapaa','isyysvapaa','khtuki'), colors=pal)
             elif unemp:
-                if not self.minimal:        
+                if not self.minimal:
                     ax.stackplot(x,ura_unemp,ura_pipe,ura_student,ura_outsider,
                         labels=('tyött','putki','opiskelija','ulkona'), colors=pal)
                 else:
                     ax.stackplot(x,ura_unemp,labels=('tyött'), colors=pal)
             else:
-                if not self.minimal:        
+                if not self.minimal:
                     ax.stackplot(x,ura_emp,ura_osatyo,ura_vetyo,ura_veosatyo,ura_unemp,ura_pipe,ura_disab,ura_mother,ura_dad,ura_kht,ura_ret,ura_student,ura_outsider,
                         labels=('työssä','osatyö','ve+työ','ve+osatyö','työtön','työttömyysputki','tk','äitiysvapaa','isyysvapaa','khtuki','vanhuuseläke','opiskelija','ulkona'), 
                         colors=pal)
@@ -246,20 +314,20 @@ class EpisodeStats():
                 ax.set_xlim(self.min_age,self.max_age)
             else:
                 ax.set_xlim(60,self.max_age)
-                
+        
             if ymaxlim is None:
                 ax.set_ylim(0, 100)
             else:
                 ax.set_ylim(yminlim,ymaxlim)
         else:
             if parent:
-                if not self.minimal:        
+                if not self.minimal:
                     ax.plot(x,ura_mother,label='äitiysvapaa')
                     ax.plot(x,ura_dad,label='isyysvapaa')
                     ax.plot(x,ura_kht,label='khtuki')
             elif unemp:
                 ax.plot(x,ura_unemp,label='tyött')
-                if not self.minimal:        
+                if not self.minimal:
                     ax.plot(x,ura_student,label='student')
                     ax.plot(x,ura_outsider,label='outsider')
                     ax.plot(x,ura_pipe,label='putki')
@@ -267,7 +335,7 @@ class EpisodeStats():
                 ax.plot(x,ura_unemp,label='tyött')
                 ax.plot(x,ura_ret,label='eläke')
                 ax.plot(x,ura_emp,label='työ')
-                if not self.minimal:        
+                if not self.minimal:
                     ax.plot(x,ura_disab,label='tk')
                     ax.plot(x,ura_pipe,label='putki')
                     ax.plot(x,ura_mother,label='äitiysvapaa')
@@ -285,15 +353,15 @@ class EpisodeStats():
         if ylimit is not None:
             ax.set_ylim([0,ylimit])  
         #fig.tight_layout()
-        plt.show()    
-        
+        plt.show()
+
         if save:
             plt.savefig(filename,bbox_inches='tight')
-        
-    def plot_toe(self):            
+
+    def plot_toe(self):    
         if not self.minimal:
             self.plot_ratiostates(self.stat_toe,'Työssäolo-ehdon pituus 28 kk aikana [v]',stack=False)
-        
+
     def plot_sal(self):
         self.plot_ratiostates(self.salaries_emp,'Keskipalkka [e/v]',stack=False)
 
@@ -304,13 +372,13 @@ class EpisodeStats():
         pysyneet_ratio=self.pysyneet/self.alive*100
         self.plot_states(pysyneet_ratio,ylabel='Pysyneet tilassa',stack=True,
                         yminlim=0,ymaxlim=min(100,1.1*np.nanmax(np.cumsum(pysyneet_ratio,1))))
-        
+
     def plot_ave_stay(self):
         self.plot_ratiostates(self.time_in_state,ylabel='Ka kesto tilassa',stack=False)
-        
+
     def plot_reward(self):
         self.plot_ratiostates(self.rewstate,ylabel='Keskireward tilassa',stack=False)
-        
+
         x=np.linspace(self.min_age,self.max_age,self.n_time)
         total_reward=np.sum(self.rewstate,axis=1)
         fig,ax=plt.subplots()
@@ -318,31 +386,33 @@ class EpisodeStats():
         ax.set_xlabel('Aika')
         ax.set_ylabel('Koko reward tilassa')
         ax.legend()
-        plt.show()          
-        
+        plt.show()  
+
         rr=np.sum(total_reward)/self.n_pop
         print('Yhteensä reward {r}'.format(r=rr))
-        
+
     def plot_stats(self):
         self.plot_emp()
+        if not self.minimal:
+            self.plot_group_emp()
         self.plot_sal()
         self.plot_moved()
         self.plot_ave_stay()
-        self.plot_reward()        
-        self.plot_pensions()        
-        self.plot_career()        
-        self.plot_toe()        
-        
+        self.plot_reward()
+        self.plot_pensions()
+        self.plot_career()
+        self.plot_toe()
+
     def plot_img(self,img,xlabel="Eläke",ylabel="Palkka",title="Employed"):
         fig, ax = plt.subplots()
         im = ax.imshow(img)
         heatmap = plt.pcolor(img) 
-        plt.colorbar(heatmap)        
+        plt.colorbar(heatmap)
         ax.set_xlabel(xlabel)
         ax.set_ylabel(ylabel)
         plt.title(title)
         plt.show()
-                
+        
     def emp_stats(self):
         emp_ratio=np.zeros(self.n_time)
         #emp_ratio[15:20]=0.245
@@ -359,7 +429,7 @@ class EpisodeStats():
         #emp_ratio[70:74]=0.073
 
         return emp_ratio
-        
+
     def save_sim(self,filename):
         f = h5py.File(filename, 'w')
         ftype='float64'
@@ -381,18 +451,17 @@ class EpisodeStats():
         dset = f.create_dataset('stat_paidpension', data=self.stat_paidpension, dtype=ftype)
         dset = f.create_dataset('stat_unemp_len', data=self.stat_unemp_len, dtype=ftype)
         f.close()
-        
+
     def save_to_hdf(self,filename,nimi,arr,dtype):
         f = h5py.File(filename, 'w')
         dset = f.create_dataset(nimi, data=arr, dtype=dtype)
         f.close()
-        
+
     def load_hdf(self,filename,nimi):
         f = h5py.File(filename, 'r')
         val=f.get(nimi).value
-        f.close()        
+        f.close()
         return val
-        
     def load_sim(self,filename,n_pop=None):
         f = h5py.File(filename, 'r')
         if 'n_pop' in f:
@@ -423,16 +492,16 @@ class EpisodeStats():
     def render(self,load=None):
         if load is not None:
             self.load_sim(load)
-    
+
         #self.plot_stats(5)
         self.plot_stats()
         #self.plot_reward()   
-        
+
     def compare_with(self,cc2):
         diff_emp=self.empstate/self.n_pop-cc2.empstate/cc2.n_pop
         x=np.linspace(self.min_age,self.max_age,self.n_time)
         #x=range(self.age_min,self.age_min+self.n_time)
-        
+
         s=30
         e=63
 
@@ -445,8 +514,8 @@ class EpisodeStats():
         fig,ax=plt.subplots()
         ax.set_xlabel('Ikä [v]')
         ax.set_ylabel('Työllisyysaste [%]')
-        ax.plot(x,100*tyolliset1,label='cc1')
-        ax.plot(x,100*tyolliset2,label='cc2')
+        ax.plot(x,100*tyolliset1,label='vaihtoehto')
+        ax.plot(x,100*tyolliset2,label='perus')
         ax.legend()
         plt.show()
 
@@ -462,7 +531,7 @@ class EpisodeStats():
             ax.plot(x,100*(htv_osuus1-htv_osuus2),label='htv yhteensä')
         ax.legend()
         plt.show()
-        
+
         print('Työllisyysvaikutus {}-{}-vuotiaisiin noin {t} htv ja {h} työllistä'.format(s,e,t=htv1-htv2,
             h=tyoll1-tyoll2))
         print('Työllisyysastevaikutus {}-{}-vuotiailla noin {} prosenttia'.format(s,e,(tyollaste1-tyollaste2)*100))
@@ -495,14 +564,14 @@ class EpisodeStats():
                         72886,73253,73454,74757,75406,74448,73940,73343,72808,70259, # 50-59 y
                         73065,74666,73766,73522,72213,74283,71273,73404,75153,75888  # 60-69 y
                         ])
-                      
+              
         demog2=np.zeros(self.n_time)
         k2=0
         for k in np.arange(self.min_age,self.max_age,self.timestep):
             ind=int(np.floor(k))-self.min_age
             demog2[k2]=demog[ind]
             k2+=1
-                      
+              
         if scale_time:
             scale=self.timestep
         else:
@@ -520,13 +589,13 @@ class EpisodeStats():
         tyollaste=tyollvaikutus/sum(demog[min_cage:max_cage])
             
         return htv,tyollvaikutus,haj,tyollaste,tyollosuus
-        
+
     def get_reward(self):
         total_reward=np.sum(self.rewstate,axis=1)
         rr=np.sum(total_reward)/self.n_pop
-        return rr        
-        
-            
+        return rr
+
+    
 class SimStats(EpisodeStats):
     def run_simstats(self,results,save,n,plot=True):
         '''
@@ -558,7 +627,7 @@ class SimStats(EpisodeStats):
         best_rew=reward
         best_emp=0
         t_aste[0]=tyollaste_base
-        
+
         print(tyollaste_base)
 
         if plot:
@@ -569,8 +638,8 @@ class SimStats(EpisodeStats):
             #print(x.shape,tyoll_base.shape,self.empstate.shape)
             print(self.min_age,self.max_age,x.shape)
             ax.plot(x,100*tyolliset_base)
-        
-        for i in range(1,n):         
+
+        for i in range(1,n): 
             self.load_sim(results+'_'+str(100+i))
             empstate=self.empstate/self.n_pop
             emps[i,:,:]=empstate
@@ -582,39 +651,39 @@ class SimStats(EpisodeStats):
             htv,tyollvaikutus,haj,tyollisyysaste,tyolliset=self.comp_tyollisyys_stats(empstate,scale_time=True)
             if plot:
                 ax.plot(x,100*tyolliset)
-            
+    
             agg_htv[i]=htv
             agg_tyoll[i]=tyollvaikutus
             agg_rew[i]=reward
             diff_htv[i]=htv-htv_base
             diff_tyoll[i]=tyollvaikutus-tyoll_base
             t_aste[i]=tyollisyysaste
-            
+    
         if plot:
             x=np.linspace(self.min_age,self.max_age,self.n_time)
             emp_statsratio=100*self.emp_stats()
             ax.plot(x,emp_statsratio,label='havainto')
             plt.show()
-        
+
         mean_emp=np.mean(emps,axis=0)
         std_emp=np.std(emps,axis=0)
         median_emp=np.median(emps,axis=0)
-        
+
         #print(agg_htv,agg_tyoll)
         self.save_simstats(save,diff_htv,diff_tyoll,agg_htv,agg_tyoll,agg_rew,\
                             mean_emp,std_emp,median_emp,emps,best_rew,best_emp)
-                            
+                    
         # save the best
         self.load_sim(results+'_'+str(100+best_emp))
         self.save_sim(results+'_best')
-                            
+                    
         print('best_emp',best_emp)
-        
+
     def plot_simstats(self,filename):
         #print('load',filename)
         diff_htv,diff_tyoll,agg_htv,agg_tyoll,agg_rew,mean_emp,std_emp,median_emp,emps,\
             best_rew,best_emp,n_pop=self.load_simstats(filename)
-        
+
         mean_htv=np.mean(agg_htv)
         median_htv=np.median(agg_htv)
         mean_tyoll=np.mean(agg_tyoll)
@@ -622,7 +691,7 @@ class SimStats(EpisodeStats):
         std_htv=np.std(agg_htv)
         diff_htv=agg_htv-mean_htv
         diff_tyoll=agg_tyoll-mean_tyoll
-        
+
         if self.minimal:
             m_emp=mean_emp[:,1]
             m_median=median_emp[:,1]
@@ -633,18 +702,18 @@ class SimStats(EpisodeStats):
             m_median=median_emp[:,1]+median_emp[:,10]+median_emp[:,8]+median_emp[:,9]
             s_emp=std_emp[:,1]
             m_best=emps[best_emp,:,1]+emps[best_emp,:,10]+emps[best_emp,:,8]+emps[best_emp,:,9]
-        
+
         if self.minimal:
             print('Vaikutus työllisyyteen keskiarvo {} htv mediaan {} htv'.format(mean_htv,median_htv))
         else:
             print('Vaikutus työllisyyteen keskiarvo {} htv, mediaani {} htv\n                        keskiarvo {} työllistä, mediaani {} työllistä'.format(mean_htv,median_htv,mean_tyoll,median_tyoll))
-        
+
         fig,ax=plt.subplots()
         ax.set_xlabel('poikkeama työllisyydessä [htv]')
         ax.set_ylabel('lkm')
         ax.hist(diff_htv)
         plt.show()
-        
+
         if not self.minimal:
             fig,ax=plt.subplots()
             ax.set_xlabel('poikkeama työllisyydessä [henkilöä]')
@@ -668,14 +737,14 @@ class SimStats(EpisodeStats):
         #ax.plot(x,100*(m_emp-s_emp),label='ka-std')
         ax.plot(x,100*m_best,label='paras')
         emp_statsratio=100*self.emp_stats()
-        ax.plot(x,emp_statsratio,label='havainto')        
+        ax.plot(x,emp_statsratio,label='havainto')
         ax.legend()
         plt.show()
-        
+
     def get_simstats(filename):
         diff1_htv,diff1_tyoll,agg1_htv,agg1_tyoll,agg1_rew,mean1_emp,std1_emp,median1_emp,emps1,\
             best1_rew,best1_emp,n_pop=self.load_simstats(filename1)
-        
+
         mean_htv=np.mean(agg_htv)
         median_htv=np.median(agg_htv)
         mean_tyoll=np.mean(agg_tyoll)
@@ -683,7 +752,7 @@ class SimStats(EpisodeStats):
         std_htv=np.std(agg_htv)
         diff_htv=agg_htv-mean_htv
         diff_tyoll=agg_tyoll-mean_tyoll
-        
+
         if self.minimal:
             m_emp=mean_emp[:,1]
             m_median=median_emp[:,1]
@@ -694,14 +763,14 @@ class SimStats(EpisodeStats):
             m_median=median_emp[:,1]+median_emp[:,10]+median_emp[:,8]+median_emp[:,9]
             s_emp=std_emp[:,1]
             m_best=emps[best_emp,:,1]+emps[best_emp,:,10]+emps[best_emp,:,8]+emps[best_emp,:,9]
-            
+    
         if plot:
             fig,ax=plt.subplots()
             ax.set_xlabel('poikkeama työllisyydessä [htv]')
             ax.set_ylabel('lkm')
             ax.hist(diff_htv)
             plt.show()
-        
+
             if not self.minimal:
                 fig,ax=plt.subplots()
                 ax.set_xlabel('poikkeama työllisyydessä [henkilöä]')
@@ -713,13 +782,13 @@ class SimStats(EpisodeStats):
             ax.set_xlabel('Palkkio')
             ax.set_ylabel('lkm')
             ax.hist(agg_rew)
-            plt.show()            
-            
+            plt.show()    
+    
         return m_best,m_emp,m_meadian,s_emp
 
     def compare_simstats(self,filename1,filename2):
         #print('load',filename)
-        
+
         if self.minimal:
             print('Vaikutus työllisyysasteen keskiarvo {} htv mediaan {} htv'.format(mean_htv,median_htv))
         else:
@@ -736,11 +805,11 @@ class SimStats(EpisodeStats):
         ax.plot(x,100*m_median2,label='mediaani2')
         ax.plot(x,100*m_best2,label='paras2')
         emp_statsratio=100*self.emp_stats()
-        ax.plot(x,emp_statsratio,label='havainto')        
+        ax.plot(x,emp_statsratio,label='havainto')
         ax.legend()
         plt.show()
 
-        
+
     def save_simstats(self,filename,diff_htv,diff_tyoll,agg_htv,agg_tyoll,agg_rew,mean_emp,\
                       std_emp,median_emp,emps,best_rew,best_emp):
         f = h5py.File(filename, 'w')
@@ -757,7 +826,7 @@ class SimStats(EpisodeStats):
         dset = f.create_dataset('best_rew', data=best_rew, dtype='float64')
         dset = f.create_dataset('best_emp', data=best_emp, dtype='float64')
         f.close()
-        
+
     def load_simstats(self,filename):
         f = h5py.File(filename, 'r')
         n_pop = f.get('n_pop').value
