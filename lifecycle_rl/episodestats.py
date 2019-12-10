@@ -476,7 +476,7 @@ class EpisodeStats():
             tyoll_osuus=emp[:,1]/np.sum(emp,1)
             tyot_osuus=emp[:,0]/np.sum(emp,1)
             htv=emp[:,1]/np.sum(emp,1)
-            kokotyo_osuus=tyollosuus
+            kokotyo_osuus=tyoll_osuus
             osatyo_osuus=0
         else:
             tyoll_osuus=(emp[:,1]+emp[:,8]+emp[:,9]+emp[:,10])/np.sum(emp,1)
