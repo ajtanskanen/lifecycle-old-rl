@@ -42,10 +42,10 @@ class DynProgLifecycle(Lifecycle):
         self.hila_elake0 = 0
         
         # dynaamisen ohjelmoinnin parametrejä
-        self.n_palkka = 200
-        self.deltapalkka = 500
-        self.n_elake = 100
-        self.deltaelake = 500
+        self.n_palkka = 10
+        self.deltapalkka = 5000
+        self.n_elake = 10
+        self.deltaelake = 2500
         self.n_tis = 5
         self.deltatis = 1
 
@@ -186,7 +186,7 @@ class DynProgLifecycle(Lifecycle):
         sps=[]
         
         start_state=self.env.state_encode(*s)
-        deco=self.env.state_decode(start_state)
+        #deco=self.env.state_decode(start_state)
         #print('s',*s) #,start_state,deco)
         for a in actions:
             self.env.state=start_state
@@ -226,20 +226,20 @@ class DynProgLifecycle(Lifecycle):
                         
                         for ind,a in enumerate(act_set):
                             m=m+1
-                            qr=qr+rts[ind]
+                            #qr=qr+rts[ind]
                             w=self.get_V(t+1,Sps[ind])
-                            qw=qw+self.gamma*w
+                            #qw=qw+self.gamma*w
                             self.actHila[t,p,el,emp,tis,a]=rts[ind]+self.gamma*w
 
                         self.Hila[t,p,el,emp,tis]=np.max(self.actHila[t,p,el,emp,tis,:])
 
-        #self.print_actV(t)
-        #self.print_V(t)
         if debug:
+            self.print_actV(t)
+            self.print_V(t)
             print('at age {} mean V {} mean r {}'.format(age,np.mean(self.Hila[t,:,:,:,:]),qr/m),qw/m)
 
                                 
-    def train(self,debug=False,save='dynamic_prog_V.h5'):
+    def train(self,debug=False,save='best/dynamic_prog_V.h5'):
         '''
         Lasketaan optimaalinen työllistyminen/työttömyys/eläköityminen valitulla valintametodilla
         '''
@@ -247,7 +247,7 @@ class DynProgLifecycle(Lifecycle):
         print('Optimizing behavior')
         tqdm_e = tqdm(range(int(self.n_time)), desc='Score', leave=True, unit=" year")
 
-        for age in range(self.max_age,self.min_age,-1):
+        for age in range(self.max_age,self.min_age-1,-1):
             t=age-self.min_age
             #print(t)
             self.backtrack(t)
@@ -268,28 +268,27 @@ class DynProgLifecycle(Lifecycle):
                                 self.env,self.minimal,self.min_age,self.max_age,self.min_retirementage)
         self.load_V(load)        
 
-        self.env.seed(1234)        
+        self.env.seed(1234)   
         self.env.env_seed(4567)            
+        tqdm_e = tqdm(range(int(pop)), desc='Population', leave=True, unit=" p")
 
         for n in range(pop):
             state=self.env.reset()
-            #self.salaries[0,n]=self.env.salary[0]
             
             for t in range(self.n_time):
                 if debug:
                     act,maxV,v=self.get_actV(t,state,full=True)
                 else:
                     act,maxV=self.get_actV(t,state)
-
-                #self.aveV[t,n]=maxV
                 
                 newstate,r,done,info=self.env.step(act)
-                r=info['r']
-                #self.episodestats(n,act,r,state,newstate,debug=debug,dyn=True)
+                #print(r,info['r'])
+                #r=info['r']
                 self.episodestats.add(n,act,r,state,newstate,debug=debug,aveV=maxV)
                 state=newstate
                 
                 if done:
+                    tqdm_e.update(1)                
                     if debug:
                         print('done')
                     break      
@@ -365,10 +364,15 @@ class DynProgLifecycle(Lifecycle):
 
     def print_actV(self,t):
         print('t=',t)
-        print('töissä (act ero)\n',self.actHila[t,:,:,1,0,1]-self.actHila[t,:,:,1,0,0])
-        print('töissä (act) pois\n',self.actHila[t,:,:,1,0,1],'\ntöissä (act) pysyy\n',self.actHila[t,:,:,1,0,0])
-        print('ei töissä (act ero)\n',self.actHila[t,:,:,0,0,1]-self.actHila[t,:,:,0,0,0])
-        print('ei töissä (act) pois\n',self.actHila[t,:,:,0,0,1],'\nei töissä (act) pysyy\n',self.actHila[t,:,:,0,0,0])
+        if t+self.min_age>self.min_retirementage:
+            print('eläke (act) pois\n{}\neläke (act) pysyy\n{}\n'.format(self.actHila[t,:,:,2,0,1],self.actHila[t,:,:,2,0,0]))
+            print('töissä (act) pois\n{}\ntöissä (act) pysyy\n{}\ntöissä (act) eläköityy\n{}\n'.format(self.actHila[t,:,:,1,0,1],self.actHila[t,:,:,1,0,0],self.actHila[t,:,:,1,0,2]))
+            print('ei töissä (act) pois\n{}\nei töissä (act) pysyy\n{}\nei töissä eläköityy\n{}\n'.format(self.actHila[t,:,:,0,0,1],self.actHila[t,:,:,0,0,0],self.actHila[t,:,:,0,0,2]))
+        else:
+            print('töissä (act) pois\n',self.actHila[t,:,:,1,0,1],'\ntöissä (act) pysyy\n',self.actHila[t,:,:,1,0,0])
+            print('ei töissä (act) pois\n',self.actHila[t,:,:,0,0,1],'\nei töissä (act) pysyy\n',self.actHila[t,:,:,0,0,0])
+        #print('töissä (act ero)\n',self.actHila[t,:,:,1,0,1]-self.actHila[t,:,:,1,0,0])
+        #print('ei töissä (act ero)\n',self.actHila[t,:,:,0,0,1]-self.actHila[t,:,:,0,0,0])
 
     def plot_actV_diff(self,t):
         self.plot_img(self.actHila[t,:,:,1,0,1]-self.actHila[t,:,:,1,0,0],xlabel="Eläke",ylabel="Palkka",title='Töissä (ero switch-stay)')

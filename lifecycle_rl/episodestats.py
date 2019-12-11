@@ -71,6 +71,7 @@ class EpisodeStats():
         #    emp=12
     
         t=int(np.round((a-self.min_age)*self.inv_timestep))
+        #print(t,r,a,emp,newemp)
         if a2>a and newemp>=0: # new state is not reset (age2>age)
             if a2>self.min_retirementage and newemp==3:
                 newemp=2
@@ -152,8 +153,8 @@ class EpisodeStats():
             tyottomyysaste=100*(unemployed+piped)/(unemployed+employed+piped+osatyo+veosatyo+vetyo)
             ka_tyottomyysaste=100*np.sum(unemployed+piped)/np.sum(unemployed+employed+piped+osatyo+veosatyo+vetyo)
         else:
-            tyollisyysaste=100*(employed)/alive[:,0]
-            osatyoaste=np.zeros(alive)
+            tyollisyysaste=100*(employed)
+            osatyoaste=np.zeros(employed.shape)
             tyottomyysaste=100*(unemployed)/(unemployed+employed)
             ka_tyottomyysaste=100*np.sum(unemployed)/np.sum(unemployed+employed)
 
@@ -545,7 +546,7 @@ class EpisodeStats():
             tyoll_osuus=emp[:,1]/np.sum(emp,1)
             tyot_osuus=emp[:,0]/np.sum(emp,1)
             htv=emp[:,1]/np.sum(emp,1)
-            kokotyo_osuus=tyollosuus
+            kokotyo_osuus=tyoll_osuus
             osatyo_osuus=0
         else:
             tyoll_osuus=(emp[:,1]+emp[:,8]+emp[:,9]+emp[:,10])/np.sum(emp,1)

@@ -180,6 +180,10 @@ class Lifecycle():
             #policy_kwargs = dict(act_fun=tf.nn.relu, net_arch=[512, 512]) # 256, 256?
             policy_kwargs = dict(act_fun=tf.nn.relu, net_arch=[512, 512, 256]) # 256, 256?
             n_cpu = 12
+        elif rlmodel=='small_acktr':
+            #policy_kwargs = dict(act_fun=tf.nn.relu, net_arch=[512, 512]) # 256, 256?
+            policy_kwargs = dict(act_fun=tf.nn.relu, net_arch=[512, 512]) # 256, 256?
+            n_cpu = 12
         elif rlmodel=='lstm':
             policy_kwargs = dict()
             n_cpu = 4
@@ -219,7 +223,7 @@ class Lifecycle():
                 from stable_baselines.common.policies import MlpPolicy # for A2C, ACER
                 model = ACER.load(loadname, env=env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
                                   tensorboard_log=self.tenb_dir, policy_kwargs=policy_kwargs)
-            elif rlmodel=='acktr':
+            elif rlmodel=='small_acktr' or rlmodel=='lnacktr':
                 from stable_baselines.common.policies import MlpPolicy # for A2C, ACER
                 if tensorboard:
                     model = ACKTR.load(loadname, env=env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
@@ -280,7 +284,7 @@ class Lifecycle():
                     model = ACKTR(MlpPolicy, env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
                                 learning_rate=np.sqrt(batch)*learning_rate, 
                                 policy_kwargs=policy_kwargs,max_grad_norm=max_grad_norm,lr_schedule='linear')
-            elif rlmodel=='lnacktr':
+            elif rlmodel=='small_acktr' or rlmodel=='lnacktr':
                 from stable_baselines.common.policies import LnMlpPolicy # for A2C, ACER
                 if tensorboard:
                     model = ACKTR(LnMlpPolicy, env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
@@ -487,7 +491,7 @@ class Lifecycle():
             model = A2C.load(load, env=env, verbose=1,gamma=self.gamma, policy_kwargs=policy_kwargs)
         elif self.rlmodel=='acer':
             model = ACER.load(load, env=env, verbose=1,gamma=self.gamma, policy_kwargs=policy_kwargs)
-        elif self.rlmodel=='acktr':
+        elif self.rlmodel=='acktr' or 'small_acktr':
             model = ACKTR.load(load, env=env, verbose=1,gamma=self.gamma, policy_kwargs=policy_kwargs)
         elif self.rlmodel=='trpo':
             model = TRPO.load(load, env=env, verbose=1,gamma=self.gamma, policy_kwargs=policy_kwargs)
@@ -513,7 +517,7 @@ class Lifecycle():
                 if dones[k]:
                     #print(infos[k]['terminal_observation'])
                     terminal_state=infos[k]['terminal_observation']  
-                    self.episodestats.add(pop_num[k],0,rewards[k],states[k],newstate[k],debug=debug)
+                    #self.episodestats.add(pop_num[k],0,rewards[k],states[k],newstate[k],debug=debug)
                     self.episodestats.add(pop_num[k],act[k],rewards[k],states[k],terminal_state,debug=debug)
                     tqdm_e.update(1)
                     n+=1
@@ -619,7 +623,7 @@ class Lifecycle():
         '''
         self.episodestats.compare_with(cc2.episodestats)
 
-    def run_results(self,steps1=100,steps2=100,pop=1_000,rlmodel='acktr',
+    def run_results(self,steps1=100,steps2=100,pop=1_000,rlmodel='acktr',twostage=True,
                save='saved/perusmalli',debug=False,simut='simut',results='results/simut_res',
                stats='results/simut_stats',deterministic=True,train=True,predict=True,
                batch1=1,batch2=100,cont=False,start_from=None,plot=False,callback_minsteps=None):
@@ -640,18 +644,18 @@ class Lifecycle():
             if cont:
                 self.run_protocol(rlmodel=rlmodel,steps1=steps1,steps2=steps2,
                                   debug=debug,save=save,batch1=batch1,batch2=batch2,
-                                  cont=cont,start_from=start_from)
+                                  cont=cont,start_from=start_from,twostage=twostage)
             else:
                 self.run_protocol(rlmodel=rlmodel,steps1=steps1,steps2=steps2,
                                  debug=debug,batch1=batch1,batch2=batch2,cont=cont,
-                                 save=save)
+                                 save=save,twostage=twostage)
         if predict:
             print('predict...')
             self.predict_protocol(pop=pop,rlmodel=rlmodel,load=save,
                           debug=debug,deterministic=deterministic,results=results)
           
     def run_protocol(self,steps1=2_000_000,steps2=1_000_000,rlmodel='acktr',
-               debug=False,batch1=1,batch2=1000,cont=False,
+               debug=False,batch1=1,batch2=1000,cont=False,twostage=True,
                start_from=None,save='best3'):
         '''
         run_protocol
@@ -661,20 +665,25 @@ class Lifecycle():
         2. train with a long batch, save the best model during the training
         '''
   
-        tmpname='tmp/simut'
+        if twostage:
+            tmpname='tmp/simut_100'
+        else:
+            tmpname=save
+            
         print('phase 1')
         if cont:
-            self.train(steps=steps1,cont=cont,rlmodel='acktr',save=tmpname+'_100',batch=batch1,debug=debug,
+            self.train(steps=steps1,cont=cont,rlmodel=rlmodel,save=tmpname,batch=batch1,debug=debug,
                        start_from=start_from,use_callback=False,use_vecmonitor=False,
                        log_interval=10,verbose=1)
         else:
-            self.train(steps=steps1,cont=False,rlmodel='acktr',save=tmpname+'_100',batch=batch1,debug=debug,
+            self.train(steps=steps1,cont=False,rlmodel=rlmodel,save=tmpname,batch=batch1,debug=debug,
                        use_callback=False,use_vecmonitor=False,log_interval=1000,verbose=1)
 
-        print('phase 2')
-        self.train(steps=steps2,cont=True,rlmodel=rlmodel,save=tmpname+'_101',
-                   debug=debug,start_from=tmpname+'_100',batch=batch2,
-                   use_callback=True,use_vecmonitor=True,log_interval=1,bestname=save)
+        if twostage:
+            print('phase 2')
+            self.train(steps=steps2,cont=True,rlmodel=rlmodel,save=tmpname,
+                       debug=debug,start_from=tmpname+'_100',batch=batch2,
+                       use_callback=True,use_vecmonitor=True,log_interval=1,bestname=save)
 
     def predict_protocol(self,pop=1_00,rlmodel='acktr',results='results/simut_res',
                  load='saved/malli',debug=False,deterministic=False,
