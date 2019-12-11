@@ -135,6 +135,7 @@ class EpisodeStats():
         employed=emp[:,1]
         retired=emp[:,2]
         unemployed=emp[:,0]
+
         if not self.minimal:
             disabled=emp[:,3]
             piped=emp[:,4]
@@ -146,8 +147,6 @@ class EpisodeStats():
             osatyo=emp[:,10]
             outsider=emp[:,11]
             student=emp[:,12]
-
-        if not self.minimal:
             tyollisyysaste=100*(employed+osatyo+veosatyo+vetyo)/alive[:,0]
             osatyoaste=100*(osatyo+veosatyo)/(employed+osatyo+veosatyo+vetyo)
             tyottomyysaste=100*(unemployed+piped)/(unemployed+employed+piped+osatyo+veosatyo+vetyo)
