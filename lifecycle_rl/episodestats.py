@@ -70,7 +70,7 @@ class EpisodeStats():
         #if newemp==2 and a2<self.min_retirementage:
         #    emp=12
     
-        t=int(np.round((a-self.min_age)*self.inv_timestep))
+        t=int(np.round((a2-self.min_age)*self.inv_timestep))
         #print(t,r,a,emp,newemp)
         if a2>a and newemp>=0: # new state is not reset (age2>age)
             if a2>self.min_retirementage and newemp==3:
@@ -224,30 +224,6 @@ class EpisodeStats():
         ax.set_ylabel('Osuus tilassa [%]')
         ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
         plt.show()
-
-            #fig,ax=plt.subplots()
-            #ax.set_xlabel('Ikä [v]')
-            #ax.set_ylabel('Työttömyysaste (ka '+str(ka_tyottomyysaste)+')')
-            #ax.plot(x,tyottomyysaste)
-            #plt.show()
-
-            #if not self.minimal:
-            #    fig,ax=plt.subplots()
-            #    ax.plot(x,osatyoaste,label='osatyössäolevie kaikista töissäolevista')
-            #    ax.legend()
-            #    plt.show()
-    
-            #empstate_ratio=100*gempstate/self.alive
-            #self.plot_states(empstate_ratio,ylabel='Osuus tilassa [%]',stack=True)
-
-            #if not self.minimal:
-            #    self.plot_states(empstate_ratio,ylabel='Osuus tilassa [%]',ylimit=20,stack=False)
-
-            #if not self.minimal:
-            #    self.plot_states(empstate_ratio,ylabel='Osuus tilassa [%]',parent=True,stack=False)
-            #    self.plot_states(empstate_ratio,ylabel='Osuus tilassa [%]',unemp=True,stack=False)
-
-            #self.plot_states(empstate_ratio,ylabel='Osuus tilassa [%]',start_from=60,stack=True)
 
     def plot_pensions(self):
         if not self.minimal:
