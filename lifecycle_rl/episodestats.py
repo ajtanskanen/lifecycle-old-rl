@@ -269,7 +269,7 @@ class EpisodeStats():
             x=np.linspace(self.min_age,self.max_age,self.n_time)
         else:
             x_n = self.max_age-60+1
-            x_t = int(np.round(x_n*self.inv_timestep+1))
+            x_t = int(np.round(x_n*self.inv_timestep))
             x=np.linspace(start_from,self.max_age,x_t)
             #x=np.linspace(start_from,self.max_age,self.n_time)
             statistic=statistic[self.map_age(start_from):]
