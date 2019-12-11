@@ -247,7 +247,7 @@ class DynProgLifecycle(Lifecycle):
         print('Optimizing behavior')
         tqdm_e = tqdm(range(int(self.n_time)), desc='Score', leave=True, unit=" year")
 
-        for age in range(self.max_age,self.min_age,-1):
+        for age in range(self.max_age,self.min_age-1,-1):
             t=age-self.min_age
             #print(t)
             self.backtrack(t)
@@ -280,11 +280,10 @@ class DynProgLifecycle(Lifecycle):
                     act,maxV,v=self.get_actV(t,state,full=True)
                 else:
                     act,maxV=self.get_actV(t,state)
-
-                #self.aveV[t,n]=maxV
                 
                 newstate,r,done,info=self.env.step(act)
-                r=info['r']
+                #print(r,info['r'])
+                #r=info['r']
                 self.episodestats.add(n,act,r,state,newstate,debug=debug,aveV=maxV)
                 state=newstate
                 
