@@ -44,8 +44,8 @@ class Lifecycle():
         self.inv_timestep=int(np.round(1/self.timestep)) # pitäisi olla kokonaisluku
         self.min_age = 20
         self.max_age = 70
-        self.min_retirementage=65
-        self.max_retirementage=70
+        self.min_retirementage=63.5
+        self.max_retirementage=68.5
         self.n_pop = 1000
         self.callback_minsteps = 1_000
 
@@ -686,7 +686,7 @@ class Lifecycle():
         if twostage:
             print('phase 2')
             self.train(steps=steps2,cont=True,rlmodel=rlmodel,save=tmpname,
-                       debug=debug,start_from=tmpname+'_100',batch=batch2,
+                       debug=debug,start_from=tmpname,batch=batch2,
                        use_callback=True,use_vecmonitor=True,log_interval=1,bestname=save)
 
     def predict_protocol(self,pop=1_00,rlmodel='acktr',results='results/simut_res',
@@ -726,12 +726,12 @@ class Lifecycle():
                 print('{}: train...'.format(num))
                 if cont:
                     self.run_protocol(rlmodel=rlmodel,steps1=steps1,steps2=steps2,
-                                    save=save,debug=debug,bestname=bestname2,
+                                    save=save,debug=debug,bestname=bestname2,twostage=False,
                                     batch1=batch1,batch2=batch2,cont=cont,start_from=start_from)
                 else:
                     self.run_protocol(rlmodel=rlmodel,steps1=steps1,steps2=steps2,save=save,
                                      debug=debug,batch1=batch1,batch2=batch2,cont=False,
-                                     bestname=bestname2)
+                                     bestname=bestname2,twostage=False)
             if predict:
                 print('{}: predict...'.format(num))
                 self.predict_protocol(pop=pop,rlmodel=rlmodel,results=results2,
