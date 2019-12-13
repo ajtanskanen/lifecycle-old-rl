@@ -34,8 +34,8 @@ class Lifecycle():
     def __init__(self,env=None,minimal=False,timestep=0.25,ansiopvraha_kesto300=None,
                     ansiopvraha_kesto400=None,karenssi_kesto=None,
                     ansiopvraha_toe=None,perustulo=None,mortality=None,
-                    randomness=None,deterministic=None,include_putki=None,
-                    callback_minsteps=None,pinkslip=True):
+                    randomness=None,include_putki=None,
+                    callback_minsteps=None,pinkslip=True,printdebug=False):
 
         '''
         Alusta muuttujat
@@ -62,6 +62,11 @@ class Lifecycle():
         if karenssi_kesto is not None:
             self.karenssi_kesto=karenssi_kesto
 
+        if printdebug is not None:
+            self.printdebug=printdebug
+        else:
+            self.printdebug=False
+
         if pinkslip is not None:
             self.include_pinkslip=pinkslip
         else:
@@ -71,11 +76,6 @@ class Lifecycle():
             self.mortality=mortality
         else:
             self.mortality=False
-
-        if mortality is not None:
-            self.deterministic=deterministic
-        else:
-            self.deterministic=False
 
         self.randomness=randomness
 
@@ -119,8 +119,7 @@ class Lifecycle():
             self.minimal=True
             self.gym_kwargs={'step': self.timestep,'gamma':self.gamma,
                 'min_age': self.min_age, 'max_age': self.max_age,
-                'min_retirementage': self.min_retirementage, 'max_retirementage':self.max_retirementage,
-                'deterministic': self.deterministic}
+                'min_retirementage': self.min_retirementage, 'max_retirementage':self.max_retirementage}
             self.n_employment = 3
             self.n_acts = 3
         else:
@@ -137,7 +136,8 @@ class Lifecycle():
                 'ansiopvraha_toe': self.ansiopvraha_toe,'include_pinkslip':self.include_pinkslip,
                 'perustulos': self.perustulo, 'karenssi_kesto': self.karenssi_kesto,
                 'mortality': self.mortality, 'randomness': self.randomness,
-                'deterministic': self.deterministic, 'include_putki': self.include_putki}
+                'include_putki': self.include_putki,
+                'printdebug': self.printdebug}
             self.n_acts = 4
             if self.mortality:
                 self.n_employment = 14
@@ -162,8 +162,8 @@ class Lifecycle():
         '''
         print('Parameters of lifecycle:\ntimestep {}\ngamma {} ({} per anno)\nmin_age {}\nmax_age {}\nmin_retirementage {}'.format(self.timestep,self.gamma,self.gamma**(1.0/self.timestep),self.min_age,self.max_age,self.min_retirementage))
         print('max_retirementage {}\nansiopvraha_kesto300 {}\nansiopvraha_kesto400 {}\nansiopvraha_toe {}'.format(self.max_retirementage,self.ansiopvraha_kesto300,self.ansiopvraha_kesto400,self.ansiopvraha_toe))
-        print('perustulo {}\nkarenssi_kesto {}\nmortality {}\nrandomness {}\ndeterministic {}\n'.format(self.perustulo,self.karenssi_kesto,self.mortality,self.randomness,self.deterministic))
-        print('include_putki {}\nstep {}\n'.format(self.include_putki,self.timestep))
+        print('perustulo {}\nkarenssi_kesto {}\nmortality {}\nrandomness {}'.format(self.perustulo,self.karenssi_kesto,self.mortality,self.randomness))
+        print('include_putki {}\ninclude_pinkslip {}\nstep {}\n'.format(self.include_putki,self.include_pinkslip,self.timestep))
 
 
     def map_age(self,age,start_zero=False):
