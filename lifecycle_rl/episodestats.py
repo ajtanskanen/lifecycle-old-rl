@@ -51,6 +51,7 @@ class EpisodeStats():
         self.stat_toe=np.zeros((self.n_time,n_emps))
         self.stat_pension=np.zeros((self.n_time,n_emps))
         self.stat_paidpension=np.zeros((self.n_time,n_emps))
+        self.out_of_work=np.zeros((self.n_time,n_emps))
         self.stat_unemp_len=np.zeros((self.n_time,self.n_pop))
 
     def add(self,n,act,r,state,newstate,debug=False,plot=False,aveV=None): #,dyn=False):
@@ -62,8 +63,8 @@ class EpisodeStats():
             newemp,_,newsal,a2,tis=self.env.state_decode(newstate)
             g=0
         else:
-            emp,_,_,_,a,_,_,_,_,_=self.env.state_decode(state) # current employment state
-            newemp,g,newpen,newsal,a2,tis,paidpens,pink,toe,ura=self.env.state_decode(newstate)
+            emp,_,_,_,a,_,_,_,_,_,_=self.env.state_decode(state) # current employment state
+            newemp,g,newpen,newsal,a2,tis,paidpens,pink,toe,ura,oof=self.env.state_decode(newstate)
     
         #if emp==2 and a<self.min_retirementage:
         #    emp=12
@@ -91,6 +92,7 @@ class EpisodeStats():
                 self.stat_pension[t,newemp]+=newpen
                 self.stat_paidpension[t,newemp]+=paidpens
                 self.stat_unemp_len[t,n]=tis
+                self.out_of_work[t,newemp]+=oof
     
             if aveV is not None:
                 self.aveV[t,n]=aveV
@@ -337,6 +339,10 @@ class EpisodeStats():
     def plot_toe(self):    
         if not self.minimal:
             self.plot_ratiostates(self.stat_toe,'Työssäolo-ehdon pituus 28 kk aikana [v]',stack=False)
+            
+    def plot_oof(self):
+        if not self.minimal:
+            self.plot_ratiostates(self.out_of_work,'Poissa työstä [v]',stack=False)
 
     def plot_sal(self):
         self.plot_ratiostates(self.salaries_emp,'Keskipalkka [e/v]',stack=False)
@@ -378,6 +384,7 @@ class EpisodeStats():
         self.plot_pensions()
         self.plot_career()
         self.plot_toe()
+        self.plot_oof()
 
     def plot_img(self,img,xlabel="Eläke",ylabel="Palkka",title="Employed"):
         fig, ax = plt.subplots()

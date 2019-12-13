@@ -35,7 +35,7 @@ class Lifecycle():
                     ansiopvraha_kesto400=None,karenssi_kesto=None,
                     ansiopvraha_toe=None,perustulo=None,mortality=None,
                     randomness=None,deterministic=None,include_putki=None,
-                    callback_minsteps=None):
+                    callback_minsteps=None,pinkslip=True):
 
         '''
         Alusta muuttujat
@@ -62,6 +62,11 @@ class Lifecycle():
         if karenssi_kesto is not None:
             self.karenssi_kesto=karenssi_kesto
 
+        if pinkslip is not None:
+            self.include_pinkslip=pinkslip
+        else:
+            self.include_pinkslip=True
+            
         if mortality is not None:
             self.mortality=mortality
         else:
@@ -129,7 +134,7 @@ class Lifecycle():
                 'min_age': self.min_age, 'max_age': self.max_age,
                 'min_retirementage': self.min_retirementage, 'max_retirementage':self.max_retirementage,
                 'ansiopvraha_kesto300': self.ansiopvraha_kesto300,'ansiopvraha_kesto400': self.ansiopvraha_kesto400,
-                'ansiopvraha_toe': self.ansiopvraha_toe,
+                'ansiopvraha_toe': self.ansiopvraha_toe,'include_pinkslip':self.include_pinkslip,
                 'perustulos': self.perustulo, 'karenssi_kesto': self.karenssi_kesto,
                 'mortality': self.mortality, 'randomness': self.randomness,
                 'deterministic': self.deterministic, 'include_putki': self.include_putki}
@@ -205,6 +210,10 @@ class Lifecycle():
         batch=max(1,int(np.ceil(batch/n_cpu)))
         
         full_tensorboard_log=True
+        
+        if cont:
+            learning_rate=0.5*learning_rate
+        
         scaled_learning_rate=learning_rate*np.sqrt(batch)
         print('batch {} learning rate {} scaled {}'.format(batch,learning_rate,
             scaled_learning_rate))
@@ -395,10 +404,8 @@ class Lifecycle():
                                 self.env,self.minimal,self.min_age,self.max_age,self.min_retirementage)
 
         # multiprocess environment
-        #print(save,type(dir))
         policy_kwargs,n_cpu=self.get_multiprocess_env(self.rlmodel,debug=debug)  
 
-        #print(savename,loadname)
         self.savename=save
         n_cpu=min(max_n_cpu,n_cpu)
 
@@ -423,8 +430,6 @@ class Lifecycle():
         #if normalize:
         #    normalize_kwargs={}
         #    env = VecNormalize(env, **normalize_kwargs)
-
-        print(rlmodel,self.rlmodel)
 
         model=self.setup_rlmodel(self.rlmodel,start_from,env,batch,policy_kwargs,learning_rate,
                                     max_grad_norm,cont,verbose=verbose,n_cpu=n_cpu)
