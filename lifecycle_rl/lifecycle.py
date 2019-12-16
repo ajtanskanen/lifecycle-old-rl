@@ -35,7 +35,7 @@ class Lifecycle():
                     ansiopvraha_kesto400=None,karenssi_kesto=None,
                     ansiopvraha_toe=None,perustulo=None,mortality=None,
                     randomness=None,include_putki=None,
-                    callback_minsteps=None,pinkslip=True,printdebug=False):
+                    callback_minsteps=None,pinkslip=True,plotdebug=False):
 
         '''
         Alusta muuttujat
@@ -62,10 +62,10 @@ class Lifecycle():
         if karenssi_kesto is not None:
             self.karenssi_kesto=karenssi_kesto
 
-        if printdebug is not None:
-            self.printdebug=printdebug
+        if plotdebug is not None:
+            self.plotdebug=plotdebug
         else:
-            self.printdebug=False
+            self.plotdebug=False
 
         if pinkslip is not None:
             self.include_pinkslip=pinkslip
@@ -137,7 +137,7 @@ class Lifecycle():
                 'perustulos': self.perustulo, 'karenssi_kesto': self.karenssi_kesto,
                 'mortality': self.mortality, 'randomness': self.randomness,
                 'include_putki': self.include_putki,
-                'printdebug': self.printdebug}
+                'plotdebug': self.plotdebug}
             self.n_acts = 4
             if self.mortality:
                 self.n_employment = 14
@@ -183,7 +183,7 @@ class Lifecycle():
             n_cpu = 4
         elif rlmodel=='acktr' or 'lnacktr':
             policy_kwargs = dict(act_fun=tf.nn.relu, net_arch=[512, 512, 256]) # 256, 256?
-            n_cpu = 12
+            n_cpu = 12 # 20
         elif rlmodel=='small_acktr' or rlmodel=='small_lnacktr':
             policy_kwargs = dict(act_fun=tf.nn.relu, net_arch=[512, 512]) # 256, 256?
             n_cpu = 12
