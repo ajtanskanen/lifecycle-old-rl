@@ -236,11 +236,11 @@ class EpisodeStats():
             self.plot_ratiostates(self.stat_tyoura,ylabel='Työuran pituus [v]',stack=False)
 
     def plot_ratiostates(self,statistic,ylabel='',ylimit=None, show_legend=True, parent=False,\
-                         unemp=False,start_from=None,stack=False):
-        self.plot_states(statistic/self.empstate,ylabel=ylabel,ylimit=ylimit,\
+                         unemp=False,start_from=None,stack=False,no_ve=False):
+        self.plot_states(statistic/self.empstate,ylabel=ylabel,ylimit=ylimit,no_ve=no_ve,\
                     show_legend=show_legend,parent=parent,unemp=unemp,start_from=start_from,stack=stack)
 
-    def plot_states(self,statistic,ylabel='',ylimit=None,show_legend=True,parent=False,unemp=False,
+    def plot_states(self,statistic,ylabel='',ylimit=None,show_legend=True,parent=False,unemp=False,no_ve=False,
                     start_from=None,stack=True,save=False,filename='fig.png',yminlim=None,ymaxlim=None):
         if start_from is None:
             x=np.linspace(self.min_age,self.max_age,self.n_time)
@@ -265,6 +265,9 @@ class EpisodeStats():
             ura_osatyo=statistic[:,10]
             ura_outsider=statistic[:,11]
             ura_student=statistic[:,12]
+
+        if no_ve:
+            ura_ret=0*ura_ret
 
         fig,ax=plt.subplots()
         if stack:
@@ -360,7 +363,7 @@ class EpisodeStats():
 
     def plot_reward(self):
         self.plot_ratiostates(self.rewstate,ylabel='Keskireward tilassa',stack=False)
-
+        self.plot_ratiostates(self.rewstate,ylabel='Keskireward tilassa',stack=False,no_ve=True)
         x=np.linspace(self.min_age,self.max_age,self.n_time)
         total_reward=np.sum(self.rewstate,axis=1)
         fig,ax=plt.subplots()
