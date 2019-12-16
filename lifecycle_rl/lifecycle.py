@@ -708,10 +708,11 @@ class Lifecycle():
                       load=load,save=results,
                       deterministic=deterministic)
 
-    def run_verify(self,n=5,steps1=100,steps2=100,pop=1_000,rlmodel='acktr',
-               save='saved/perusmalli_verify',debug=False,simut='simut',results='results/simut_res',
+    def run_distrib(self,n=5,steps1=100,steps2=100,pop=1_000,rlmodel='acktr',
+               save='saved/distrib_base_',debug=False,simut='simut',results='results/distrib_',
                deterministic=True,train=True,predict=True,batch1=1,batch2=100,cont=False,
-               start_from=None,bestname='tmp/best1',plot=False):
+               start_from=None,plot=False,twostage=False,callback_minsteps=None,
+               stats_results='results/distrib_stats'):
    
         '''
         run_verify
@@ -722,26 +723,21 @@ class Lifecycle():
    
         self.n_pop=pop
 
+        results1=results+'_v'
+        # repeat simulation n times
         for num in range(n):
+            bestname2=save+'_v'+str(100+num)
+            results2=results1+'_'+str(100+num)
+        
+            self.run_results(steps1=steps1,steps2=steps2,pop=pop,rlmodel=rlmodel,
+               twostage=twostage,save=bestname2,debug=debug,simut=simut,results=results2,
+               deterministic=deterministic,train=train,predict=predict,
+               batch1=batch1,batch2=batch2,cont=cont,start_from=start_from,plot=False,
+               callback_minsteps=callback_minsteps)
 
-            bestname2=bestname+'_v'+str(num)
-            results2=results+'_v'+str(num)+'_'
+        self.episodestats.run_simstats(results1,stats_results,n)
+        self.episodestats.plot_simstats(stats_results)
 
-            if train: 
-                print('{}: train...'.format(num))
-                if cont:
-                    self.run_protocol(rlmodel=rlmodel,steps1=steps1,steps2=steps2,
-                                    save=save,debug=debug,bestname=bestname2,twostage=False,
-                                    batch1=batch1,batch2=batch2,cont=cont,start_from=start_from)
-                else:
-                    self.run_protocol(rlmodel=rlmodel,steps1=steps1,steps2=steps2,save=save,
-                                     debug=debug,batch1=batch1,batch2=batch2,cont=False,
-                                     bestname=bestname2,twostage=False)
-            if predict:
-                print('{}: predict...'.format(num))
-                self.predict_protocol(pop=pop,rlmodel=rlmodel,results=results2,
-                              load=save,debug=debug,deterministic=deterministic,
-                              bestname=bestname2,onlybest=True)
-
-        self.episodestats.run_simstats(results2,save=results2+'_stats')
-        self.episodestats.plot_simstats(results2+'_stats')
+        # gather results ...
+        if plot:
+            print('plot')
