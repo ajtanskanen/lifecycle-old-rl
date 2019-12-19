@@ -182,6 +182,13 @@ class EpisodeStats():
         ax.plot(x,tyottomyysaste)
         plt.show()
 
+        fig,ax=plt.subplots()
+        ax.set_xlabel('Ikä [v]')
+        ax.set_ylabel('Työttömyysaste')
+        ax.stackplot(x,ura_unemp,colors=pal)
+        #ax.plot(x,tyottomyysaste)
+        plt.show()
+
         if not self.minimal:
             fig,ax=plt.subplots()
             ax.plot(x,osatyoaste,label='osatyössäolevie kaikista töissäolevista')
@@ -421,6 +428,7 @@ class EpisodeStats():
         ftype='float64'
         dset = f.create_dataset('n_pop', data=self.n_pop, dtype=ftype)
         dset = f.create_dataset('empstate', data=self.empstate, dtype=ftype)
+        dset = f.create_dataset('gempstate', data=self.gempstate, dtype=ftype)
         dset = f.create_dataset('deceiced', data=self.deceiced, dtype=ftype)
         dset = f.create_dataset('rewstate', data=self.rewstate, dtype=ftype)
         dset = f.create_dataset('salaries_emp', data=self.salaries_emp, dtype=ftype)
@@ -448,6 +456,7 @@ class EpisodeStats():
         val=f.get(nimi).value
         f.close()
         return val
+        
     def load_sim(self,filename,n_pop=None):
         f = h5py.File(filename, 'r')
         if 'n_pop' in f:
@@ -458,6 +467,7 @@ class EpisodeStats():
             self.n_pop=n_pop
             
         self.empstate=f.get('empstate').value
+        self.gempstate=f.get('gempstate').value
         self.deceiced=f.get('deceiced').value
         self.rewstate=f.get('rewstate').value
         self.salaries_emp=f.get('salaries_emp').value
