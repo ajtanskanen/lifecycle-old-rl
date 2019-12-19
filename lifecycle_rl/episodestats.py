@@ -182,6 +182,13 @@ class EpisodeStats():
         ax.plot(x,tyottomyysaste)
         plt.show()
 
+        fig,ax=plt.subplots()
+        ax.set_xlabel('Ikä [v]')
+        ax.set_ylabel('Työttömyysaste')
+        ax.stackplot(x,ura_unemp,colors=pal)
+        #ax.plot(x,tyottomyysaste)
+        plt.show()
+
         if not self.minimal:
             fig,ax=plt.subplots()
             ax.plot(x,osatyoaste,label='osatyössäolevie kaikista töissäolevista')
