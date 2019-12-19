@@ -181,13 +181,16 @@ class Lifecycle():
         elif rlmodel=='acer':
             policy_kwargs = dict(act_fun=tf.nn.relu, net_arch=[64, 64, 16])
             n_cpu = 4
-        elif rlmodel=='acktr' or 'lnacktr':
+        elif rlmodel=='acktr':
             policy_kwargs = dict(act_fun=tf.nn.relu, net_arch=[512, 512, 256]) # 256, 256?
             n_cpu = 12 # 20
         elif rlmodel=='small_acktr' or rlmodel=='small_lnacktr':
             policy_kwargs = dict(act_fun=tf.nn.relu, net_arch=[512, 512]) # 256, 256?
             n_cpu = 12
-        elif rlmodel=='lstm':
+        elif rlmodel=='large_acktr':
+            policy_kwargs = dict(act_fun=tf.nn.relu, net_arch=[256, 256, 64, 16]) # 256, 256?
+            n_cpu = 12
+        elif rlmodel=='lstm' or rlmodel=='lnacktr':
             policy_kwargs = dict()
             n_cpu = 4
         elif rlmodel=='trpo':
@@ -231,7 +234,7 @@ class Lifecycle():
                 from stable_baselines.common.policies import MlpPolicy 
                 model = ACER.load(loadname, env=env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
                                   tensorboard_log=self.tenb_dir, policy_kwargs=policy_kwargs)
-            elif rlmodel=='small_acktr' or rlmodel=='acktr':
+            elif rlmodel=='small_acktr' or rlmodel=='acktr' or rlmodel=='large_acktr':
                 from stable_baselines.common.policies import MlpPolicy 
                 if tensorboard:
                     model = ACKTR.load(loadname, env=env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
@@ -243,7 +246,7 @@ class Lifecycle():
                                        learning_rate=np.sqrt(batch)*learning_rate, 
                                        policy_kwargs=policy_kwargs,max_grad_norm=max_grad_norm,lr_schedule='linear')
             elif rlmodel=='small_lnacktr' or rlmodel=='lnacktr':
-                from stable_baselines.common.policies import LnMlpPolicy 
+                from stable_baselines.common.policies import MlpLnLstmPolicy 
                 if tensorboard:
                     model = ACKTR.load(loadname, env=env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
                                        tensorboard_log=self.tenb_dir, learning_rate=scaled_learning_rate, 
@@ -282,7 +285,7 @@ class Lifecycle():
                 from stable_baselines.common.policies import MlpPolicy 
                 model = ACER(MlpPolicy, env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time, 
                              tensorboard_log=self.tenb_dir, policy_kwargs=policy_kwargs)
-            elif rlmodel=='small_acktr' or rlmodel=='acktr':
+            elif rlmodel=='small_acktr' or rlmodel=='acktr' or rlmodel=='large_acktr':
                 from stable_baselines.common.policies import MlpPolicy 
                 if tensorboard:
                     model = ACKTR(MlpPolicy, env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
@@ -294,9 +297,9 @@ class Lifecycle():
                                 learning_rate=np.sqrt(batch)*learning_rate, 
                                 policy_kwargs=policy_kwargs,max_grad_norm=max_grad_norm,lr_schedule='linear')
             elif rlmodel=='small_lnacktr' or rlmodel=='lnacktr':
-                from stable_baselines.common.policies import LnMlpPolicy 
+                from stable_baselines.common.policies import MlpLnLstmPolicy 
                 if tensorboard:
-                    model = ACKTR(LnMlpPolicy, env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
+                    model = ACKTR(MlpLnLstmPolicy, env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
                                 tensorboard_log=self.tenb_dir, learning_rate=scaled_learning_rate, 
                                 policy_kwargs=policy_kwargs,max_grad_norm=max_grad_norm,full_tensorboard_log=full_tensorboard_log)
                 else:
