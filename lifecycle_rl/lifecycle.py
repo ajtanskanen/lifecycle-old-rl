@@ -657,10 +657,10 @@ class Lifecycle():
                                  debug=debug,batch1=batch1,batch2=batch2,cont=cont,
                                  save=save,twostage=twostage)
         if predict:
-            print('predict...')
+            #print('predict...')
             self.predict_protocol(pop=pop,rlmodel=rlmodel,load=save,
                           debug=debug,deterministic=deterministic,results=results)
-        elif plot:
+        if plot:
             self.render(load=results)
           
     def run_protocol(self,steps1=2_000_000,steps2=1_000_000,rlmodel='acktr',
