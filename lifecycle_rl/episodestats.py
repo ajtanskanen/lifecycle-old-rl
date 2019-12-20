@@ -54,10 +54,7 @@ class EpisodeStats():
         self.out_of_work=np.zeros((self.n_time,n_emps))
         self.stat_unemp_len=np.zeros((self.n_time,self.n_pop))
 
-    def add(self,n,act,r,state,newstate,debug=False,plot=False,aveV=None): #,dyn=False):
-        #if debug:
-        #    print((int(state[0]),int(state[1]),state[2],state[3],state[4]),':',act,(int(newstate[0]),int(newstate[1]),newstate[2],newstate[3],newstate[4]))
-    
+    def add(self,n,act,r,state,newstate,debug=False,plot=False,aveV=None): 
         if self.minimal:
             emp,_,_,a,_=self.env.state_decode(state) # current employment state
             newemp,_,newsal,a2,tis=self.env.state_decode(newstate)
@@ -66,13 +63,8 @@ class EpisodeStats():
             emp,_,_,_,a,_,_,_,_,_,_=self.env.state_decode(state) # current employment state
             newemp,g,newpen,newsal,a2,tis,paidpens,pink,toe,ura,oof=self.env.state_decode(newstate)
     
-        #if emp==2 and a<self.min_retirementage:
-        #    emp=12
-        #if newemp==2 and a2<self.min_retirementage:
-        #    emp=12
-    
         t=int(np.round((a2-self.min_age)*self.inv_timestep))
-        #print(t,r,a,emp,newemp)
+        
         if a2>a and newemp>=0: # new state is not reset (age2>age)
             if a2>self.min_retirementage and newemp==3:
                 newemp=2
@@ -154,7 +146,7 @@ class EpisodeStats():
             tyottomyysaste=100*(unemployed+piped)/(unemployed+employed+piped+osatyo+veosatyo+vetyo)
             ka_tyottomyysaste=100*np.sum(unemployed+piped)/np.sum(unemployed+employed+piped+osatyo+veosatyo+vetyo)
         else:
-            tyollisyysaste=100*(employed)
+            tyollisyysaste=100*(employed)/alive[:,0]
             osatyoaste=np.zeros(employed.shape)
             tyottomyysaste=100*(unemployed)/(unemployed+employed)
             ka_tyottomyysaste=100*np.sum(unemployed)/np.sum(unemployed+employed)
@@ -185,7 +177,8 @@ class EpisodeStats():
         fig,ax=plt.subplots()
         ax.set_xlabel('Ikä [v]')
         ax.set_ylabel('Työttömyysaste')
-        ax.stackplot(x,ura_unemp,colors=pal)
+        pal=sns.color_palette("hls", self.n_employment)  # hls, husl, cubehelix
+        ax.stackplot(x,tyottomyysaste,colors=pal)
         #ax.plot(x,tyottomyysaste)
         plt.show()
 
@@ -253,7 +246,7 @@ class EpisodeStats():
             x=np.linspace(self.min_age,self.max_age,self.n_time)
         else:
             x_n = self.max_age-60+1
-            x_t = int(np.round(x_n*self.inv_timestep))
+            x_t = int(np.round((x_n-1)*self.inv_timestep))+2
             x=np.linspace(start_from,self.max_age,x_t)
             #x=np.linspace(start_from,self.max_age,self.n_time)
             statistic=statistic[self.map_age(start_from):]
