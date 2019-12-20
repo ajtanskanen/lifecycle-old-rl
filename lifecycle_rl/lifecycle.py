@@ -51,7 +51,7 @@ class Lifecycle():
 
         # apumuuttujia
         self.n_age = self.max_age-self.min_age+1
-        self.n_time = int(np.round(self.n_age*self.inv_timestep))
+        self.n_time = int(np.round((self.n_age-1)*self.inv_timestep))+2
         self.gamma = 0.92**timestep # skaalataan vuositasolle!
 
         self.karenssi_kesto=0.25
@@ -699,8 +699,7 @@ class Lifecycle():
                        use_callback=True,use_vecmonitor=True,log_interval=1,bestname=save)
 
     def predict_protocol(self,pop=1_00,rlmodel='acktr',results='results/simut_res',
-                 load='saved/malli',debug=False,deterministic=False,
-                 onlybest=True):
+                         load='saved/malli',debug=False,deterministic=False):
         '''
         predict_protocol
 
@@ -709,8 +708,7 @@ class Lifecycle():
  
         # simulate the saved best
         self.simulate(pop=pop,rlmodel=rlmodel,plot=False,debug=debug,
-                      load=load,save=results,
-                      deterministic=deterministic)
+                      load=load,save=results,deterministic=deterministic)
 
     def run_distrib(self,n=5,steps1=100,steps2=100,pop=1_000,rlmodel='acktr',
                save='saved/distrib_base_',debug=False,simut='simut',results='results/distrib_',
