@@ -682,16 +682,17 @@ class Lifecycle():
         else:
             tmpname=save
             
-        print('phase 1')
-        if cont:
-            self.train(steps=steps1,cont=cont,rlmodel=rlmodel,save=tmpname,batch=batch1,debug=debug,
-                       start_from=start_from,use_callback=False,use_vecmonitor=False,
-                       log_interval=10,verbose=1)
-        else:
-            self.train(steps=steps1,cont=False,rlmodel=rlmodel,save=tmpname,batch=batch1,debug=debug,
-                       use_callback=False,use_vecmonitor=False,log_interval=1000,verbose=1)
+        if steps1>0:
+            print('phase 1')
+            if cont:
+                self.train(steps=steps1,cont=cont,rlmodel=rlmodel,save=tmpname,batch=batch1,debug=debug,
+                           start_from=start_from,use_callback=False,use_vecmonitor=False,
+                           log_interval=10,verbose=1)
+            else:
+                self.train(steps=steps1,cont=False,rlmodel=rlmodel,save=tmpname,batch=batch1,debug=debug,
+                           use_callback=False,use_vecmonitor=False,log_interval=1000,verbose=1)
 
-        if twostage:
+        if twostage and steps2>0:
             print('phase 2')
             self.train(steps=steps2,cont=True,rlmodel=rlmodel,save=tmpname,
                        debug=debug,start_from=tmpname,batch=batch2,
@@ -736,7 +737,13 @@ class Lifecycle():
                batch1=batch1,batch2=batch2,cont=cont,start_from=start_from,plot=False,
                callback_minsteps=callback_minsteps)
 
-        self.episodestats.run_simstats(results1,stats_results,n)
+        self.render_distrib(load=results1,n=n,stats_results=stats_results)
+            
+    def render_distrib(self,load=None,n=1,stats_results='results/distrib_stats',plot=False):
+        if load is None:
+            return
+            
+        self.episodestats.run_simstats(load,stats_results,n)
         self.episodestats.plot_simstats(stats_results)
 
         # gather results ...

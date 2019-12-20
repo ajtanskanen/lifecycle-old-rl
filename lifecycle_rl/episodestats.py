@@ -679,7 +679,7 @@ class SimStats(EpisodeStats):
         median_tyoll=np.median(agg_tyoll)
         std_htv=np.std(agg_htv)
         diff_htv=agg_htv-mean_htv
-        diff_tyoll=agg_tyoll-mean_tyoll
+        diff_tyoll=agg_tyoll-median_tyoll
 
         if self.minimal:
             m_emp=mean_emp[:,1]
