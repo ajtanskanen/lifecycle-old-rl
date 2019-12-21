@@ -168,20 +168,6 @@ class EpisodeStats():
         ax.legend()
         plt.show()
 
-        fig,ax=plt.subplots()
-        ax.set_xlabel('Ikä [v]')
-        ax.set_ylabel('Työttömyysaste (ka '+str(ka_tyottomyysaste)+')')
-        ax.plot(x,tyottomyysaste)
-        plt.show()
-
-        fig,ax=plt.subplots()
-        ax.set_xlabel('Ikä [v]')
-        ax.set_ylabel('Työttömyysaste')
-        pal=sns.color_palette("hls", self.n_employment)  # hls, husl, cubehelix
-        ax.stackplot(x,tyottomyysaste,colors=pal)
-        #ax.plot(x,tyottomyysaste)
-        plt.show()
-
         if not self.minimal:
             fig,ax=plt.subplots()
             ax.plot(x,osatyoaste,label='osatyössäolevie kaikista töissäolevista')
@@ -199,6 +185,55 @@ class EpisodeStats():
             self.plot_states(empstate_ratio,ylabel='Osuus tilassa [%]',unemp=True,stack=False)
 
         self.plot_states(empstate_ratio,ylabel='Osuus tilassa [%]',start_from=60,stack=True)
+
+    def plot_unemp(self):
+        tyollisyysaste,osatyoaste,tyottomyysaste,ka_tyottomyysaste=self.comp_empratios(self.empstate,self.alive)
+
+        x=np.linspace(self.min_age,self.max_age,self.n_time)
+        unemp_statsratio=100*self.unemp_stats()
+
+        fig,ax=plt.subplots()
+        ax.set_xlabel('Ikä [v]')
+        ax.set_ylabel('Työttömyysaste (ka '+str(ka_tyottomyysaste)+')')
+        ax.plot(x,unemp_statsratio,label='havainto')
+        ax.plot(x,tyottomyysaste)
+        plt.show()
+
+        fig,ax=plt.subplots()
+        ax.set_xlabel('Ikä [v]')
+        ax.set_ylabel('Työttömyysaste')
+        ax.plot(x,unemp_statsratio,label='havainto')
+        pal=sns.color_palette("hls", self.n_employment)  # hls, husl, cubehelix
+        ax.stackplot(x,tyottomyysaste,colors=pal)
+        #ax.plot(x,tyottomyysaste)
+        plt.show()
+
+        fig,ax=plt.subplots()
+        for gender in range(2):
+            if gender==0:
+                leg='Miehet'
+                gempstate=np.sum(self.gempstate[:,:,0:3],axis=2)
+                alive=np.zeros((self.galive.shape[0],1))
+                alive[:,0]=np.sum(self.galive[:,0:3],1)
+            else:
+                gempstate=np.sum(self.gempstate[:,:,3:6],axis=2)
+                alive=np.zeros((self.galive.shape[0],1))
+                alive[:,0]=np.sum(self.galive[:,3:6],1)
+                leg='Naiset'
+        
+            tyollisyysaste,osatyoaste,tyottomyysaste,ka_tyottomyysaste=self.comp_empratios(gempstate,alive)
+        
+            x=np.linspace(self.min_age,self.max_age,self.n_time)
+            ax.plot(x,tyottomyysaste,label='työttömyysaste {}'.format(leg))
+            
+        emp_statsratio=100*self.unemp_stats(g=1)
+        ax.plot(x,emp_statsratio,label='havainto, naiset')
+        emp_statsratio=100*self.unemp_stats(g=2)
+        ax.plot(x,emp_statsratio,label='havainto, miehet')
+        ax.set_xlabel('Ikä [v]')
+        ax.set_ylabel('Osuus tilassa [%]')
+        ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
+        plt.show()
 
     def plot_group_emp(self):
         fig,ax=plt.subplots()
@@ -220,8 +255,10 @@ class EpisodeStats():
             ax.plot(x,tyollisyysaste,label='työllisyysaste {}'.format(leg))
             #ax.plot(x,tyottomyysaste,label='työttömyys {}'.format(leg))
             
-        emp_statsratio=100*self.emp_stats()
-        ax.plot(x,emp_statsratio,label='havainto')
+        emp_statsratio=100*self.emp_stats(g=1)
+        ax.plot(x,emp_statsratio,label='havainto, naiset')
+        emp_statsratio=100*self.emp_stats(g=2)
+        ax.plot(x,emp_statsratio,label='havainto, miehet')
         ax.set_xlabel('Ikä [v]')
         ax.set_ylabel('Osuus tilassa [%]')
         ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
@@ -378,6 +415,7 @@ class EpisodeStats():
 
     def plot_stats(self):
         self.plot_emp()
+        self.plot_unemp()
         if not self.minimal:
             self.plot_group_emp()
         self.plot_sal()
@@ -399,21 +437,82 @@ class EpisodeStats():
         plt.title(title)
         plt.show()
         
-    def emp_stats(self):
+    def emp_stats(self,g=0):
         emp_ratio=np.zeros(self.n_time)
-        #emp_ratio[15:20]=0.245
-        #emp_ratio[20:25]=0.595
-        emp_ratio[self.map_age(25):self.map_age(30)]=0.747
-        emp_ratio[self.map_age(30):self.map_age(35)]=0.789
-        emp_ratio[self.map_age(35):self.map_age(40)]=0.836
-        emp_ratio[self.map_age(40):self.map_age(45)]=0.867
-        emp_ratio[self.map_age(45):self.map_age(50)]=0.857
-        emp_ratio[self.map_age(50):self.map_age(55)]=0.853
-        emp_ratio[self.map_age(55):self.map_age(60)]=0.791
-        emp_ratio[self.map_age(60):self.map_age(65)]=0.517
-        emp_ratio[self.map_age(65):self.map_age(70)]=0.141
-        #emp_ratio[70:74]=0.073
+        if g==0: # kaikki
+            emp_ratio[self.map_age(20):self.map_age(25)]=0.595
+            emp_ratio[self.map_age(25):self.map_age(30)]=0.747
+            emp_ratio[self.map_age(30):self.map_age(35)]=0.789
+            emp_ratio[self.map_age(35):self.map_age(40)]=0.836
+            emp_ratio[self.map_age(40):self.map_age(45)]=0.867
+            emp_ratio[self.map_age(45):self.map_age(50)]=0.857
+            emp_ratio[self.map_age(50):self.map_age(55)]=0.853
+            emp_ratio[self.map_age(55):self.map_age(60)]=0.791
+            emp_ratio[self.map_age(60):self.map_age(65)]=0.517
+            emp_ratio[self.map_age(65):self.map_age(70)]=0.141
+            #emp_ratio[70:74]=0.073
+        elif g==1: # naiset
+            emp_ratio[self.map_age(20):self.map_age(25)]=0.608
+            emp_ratio[self.map_age(25):self.map_age(30)]=0.703
+            emp_ratio[self.map_age(30):self.map_age(35)]=0.719
+            emp_ratio[self.map_age(35):self.map_age(40)]=0.789
+            emp_ratio[self.map_age(40):self.map_age(45)]=0.856
+            emp_ratio[self.map_age(45):self.map_age(50)]=0.844
+            emp_ratio[self.map_age(50):self.map_age(55)]=0.861
+            emp_ratio[self.map_age(55):self.map_age(60)]=0.708
+            emp_ratio[self.map_age(60):self.map_age(65)]=0.525
+            emp_ratio[self.map_age(65):self.map_age(70)]=0.107
+            #emp_ratio[70:74]=0.073
+        else: # miehet
+            emp_ratio[self.map_age(20):self.map_age(25)]=0.583
+            emp_ratio[self.map_age(25):self.map_age(30)]=0.789
+            emp_ratio[self.map_age(30):self.map_age(35)]=0.857
+            emp_ratio[self.map_age(35):self.map_age(40)]=0.879
+            emp_ratio[self.map_age(40):self.map_age(45)]=0.878
+            emp_ratio[self.map_age(45):self.map_age(50)]=0.870
+            emp_ratio[self.map_age(50):self.map_age(55)]=0.846
+            emp_ratio[self.map_age(55):self.map_age(60)]=0.774
+            emp_ratio[self.map_age(60):self.map_age(65)]=0.509
+            emp_ratio[self.map_age(65):self.map_age(70)]=0.177
+            #emp_ratio[70:74]=0.073
 
+        return emp_ratio
+        
+    def unemp_stats(self,g=0):
+        emp_ratio=np.zeros(self.n_time)
+        if g==0:
+            emp_ratio[self.map_age(20):self.map_age(25)]=0.134
+            emp_ratio[self.map_age(25):self.map_age(30)]=0.084
+            emp_ratio[self.map_age(30):self.map_age(35)]=0.072
+            emp_ratio[self.map_age(35):self.map_age(40)]=0.056
+            emp_ratio[self.map_age(40):self.map_age(45)]=0.046
+            emp_ratio[self.map_age(45):self.map_age(50)]=0.050
+            emp_ratio[self.map_age(50):self.map_age(55)]=0.056
+            emp_ratio[self.map_age(55):self.map_age(60)]=0.060
+            emp_ratio[self.map_age(60):self.map_age(65)]=0.082
+            emp_ratio[self.map_age(65):self.map_age(70)]=0
+        elif g==1: # naiset
+            emp_ratio[self.map_age(20):self.map_age(25)]=0.130
+            emp_ratio[self.map_age(25):self.map_age(30)]=0.079
+            emp_ratio[self.map_age(30):self.map_age(35)]=0.079
+            emp_ratio[self.map_age(35):self.map_age(40)]=0.057
+            emp_ratio[self.map_age(40):self.map_age(45)]=0.045
+            emp_ratio[self.map_age(45):self.map_age(50)]=0.056
+            emp_ratio[self.map_age(50):self.map_age(55)]=0.052
+            emp_ratio[self.map_age(55):self.map_age(60)]=0.052
+            emp_ratio[self.map_age(60):self.map_age(65)]=0.072
+            emp_ratio[self.map_age(65):self.map_age(70)]=0.0
+        else: # miehet
+            emp_ratio[self.map_age(20):self.map_age(25)]=0.137
+            emp_ratio[self.map_age(25):self.map_age(30)]=0.088
+            emp_ratio[self.map_age(30):self.map_age(35)]=0.065
+            emp_ratio[self.map_age(35):self.map_age(40)]=0.056
+            emp_ratio[self.map_age(40):self.map_age(45)]=0.047
+            emp_ratio[self.map_age(45):self.map_age(50)]=0.045
+            emp_ratio[self.map_age(50):self.map_age(55)]=0.059
+            emp_ratio[self.map_age(55):self.map_age(60)]=0.069
+            emp_ratio[self.map_age(60):self.map_age(65)]=0.093
+            emp_ratio[self.map_age(65):self.map_age(70)]=0.0
         return emp_ratio
 
     def save_sim(self,filename):
@@ -427,6 +526,7 @@ class EpisodeStats():
         dset = f.create_dataset('salaries_emp', data=self.salaries_emp, dtype=ftype)
         dset = f.create_dataset('actions', data=self.actions, dtype=ftype)
         dset = f.create_dataset('alive', data=self.alive, dtype=ftype)
+        dset = f.create_dataset('galive', data=self.galive, dtype=ftype)
         dset = f.create_dataset('siirtyneet', data=self.siirtyneet, dtype=ftype)
         dset = f.create_dataset('pysyneet', data=self.pysyneet, dtype=ftype)
         dset = f.create_dataset('salaries', data=self.salaries, dtype=ftype)
@@ -466,6 +566,7 @@ class EpisodeStats():
         self.salaries_emp=f.get('salaries_emp').value
         self.actions=f.get('actions').value
         self.alive=f.get('alive').value
+        self.galive=f.get('galive').value
         self.siirtyneet=f.get('siirtyneet').value
         self.pysyneet=f.get('pysyneet').value
         self.salaries=f.get('salaries').value
