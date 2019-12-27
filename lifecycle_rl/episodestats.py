@@ -440,79 +440,125 @@ class EpisodeStats():
     def emp_stats(self,g=0):
         emp_ratio=np.zeros(self.n_time)
         if g==0: # kaikki
-            emp_ratio[self.map_age(20):self.map_age(25)]=0.595
-            emp_ratio[self.map_age(25):self.map_age(30)]=0.747
-            emp_ratio[self.map_age(30):self.map_age(35)]=0.789
-            emp_ratio[self.map_age(35):self.map_age(40)]=0.836
-            emp_ratio[self.map_age(40):self.map_age(45)]=0.867
-            emp_ratio[self.map_age(45):self.map_age(50)]=0.857
-            emp_ratio[self.map_age(50):self.map_age(55)]=0.853
-            emp_ratio[self.map_age(55):self.map_age(60)]=0.791
-            emp_ratio[self.map_age(60):self.map_age(65)]=0.517
-            emp_ratio[self.map_age(65):self.map_age(70)]=0.141
+            emp=np.array([0.461,0.545,0.567,0.599,0.645,0.678,0.706,0.728,0.740,0.752,0.758,0.769,0.776,0.781,0.787,0.795,0.801,0.807,0.809,0.820,0.820,0.829,0.831,0.833,0.832,0.828,0.827,0.824,0.822,0.817,0.815,0.813,0.807,0.802,0.796,0.788,0.772,0.763,0.752,0.728,0.686,0.630,0.568,0.382,0.217,0.142,0.106,0.086,0.011,0.003,0.002])
+            #emp_ratio[self.map_age(20):self.map_age(25)]=0.595
+            #emp_ratio[self.map_age(25):self.map_age(30)]=0.747
+            #emp_ratio[self.map_age(30):self.map_age(35)]=0.789
+            #emp_ratio[self.map_age(35):self.map_age(40)]=0.836
+            #emp_ratio[self.map_age(40):self.map_age(45)]=0.867
+            #emp_ratio[self.map_age(45):self.map_age(50)]=0.857
+            #emp_ratio[self.map_age(50):self.map_age(55)]=0.853
+            #emp_ratio[self.map_age(55):self.map_age(60)]=0.791
+            #emp_ratio[self.map_age(60):self.map_age(65)]=0.517
+            #emp_ratio[self.map_age(65):self.map_age(70)]=0.141
             #emp_ratio[70:74]=0.073
         elif g==1: # naiset
-            emp_ratio[self.map_age(20):self.map_age(25)]=0.608
-            emp_ratio[self.map_age(25):self.map_age(30)]=0.703
-            emp_ratio[self.map_age(30):self.map_age(35)]=0.719
-            emp_ratio[self.map_age(35):self.map_age(40)]=0.789
-            emp_ratio[self.map_age(40):self.map_age(45)]=0.856
-            emp_ratio[self.map_age(45):self.map_age(50)]=0.844
-            emp_ratio[self.map_age(50):self.map_age(55)]=0.861
-            emp_ratio[self.map_age(55):self.map_age(60)]=0.708
-            emp_ratio[self.map_age(60):self.map_age(65)]=0.525
-            emp_ratio[self.map_age(65):self.map_age(70)]=0.107
+            emp_ratio=np.array([ 0.554,0.567,0.584,0.621,0.666,0.685,0.702,0.723,0.727,0.734,0.741,0.749,0.753,0.762,0.768,0.777,0.788,0.793,0.798,0.813,0.816,0.827,0.832,0.834,0.835,0.835,0.833,0.836,0.833,0.831,0.828,0.827,0.824,0.821,0.815,0.812,0.798,0.791,0.779,0.758,0.715,0.664,0.596,0.400,0.220,0.136,0.098,0.079,0.011,0.004,0.002 ])
+            #emp_ratio[self.map_age(20):self.map_age(25)]=0.608
+            #emp_ratio[self.map_age(25):self.map_age(30)]=0.703
+            #emp_ratio[self.map_age(30):self.map_age(35)]=0.719
+            #emp_ratio[self.map_age(35):self.map_age(40)]=0.789
+            #emp_ratio[self.map_age(40):self.map_age(45)]=0.856
+            #emp_ratio[self.map_age(45):self.map_age(50)]=0.844
+            #emp_ratio[self.map_age(50):self.map_age(55)]=0.861
+            #emp_ratio[self.map_age(55):self.map_age(60)]=0.708
+            #emp_ratio[self.map_age(60):self.map_age(65)]=0.525
+            #emp_ratio[self.map_age(65):self.map_age(70)]=0.107
             #emp_ratio[70:74]=0.073
         else: # miehet
-            emp_ratio[self.map_age(20):self.map_age(25)]=0.583
-            emp_ratio[self.map_age(25):self.map_age(30)]=0.789
-            emp_ratio[self.map_age(30):self.map_age(35)]=0.857
-            emp_ratio[self.map_age(35):self.map_age(40)]=0.879
-            emp_ratio[self.map_age(40):self.map_age(45)]=0.878
-            emp_ratio[self.map_age(45):self.map_age(50)]=0.870
-            emp_ratio[self.map_age(50):self.map_age(55)]=0.846
-            emp_ratio[self.map_age(55):self.map_age(60)]=0.774
-            emp_ratio[self.map_age(60):self.map_age(65)]=0.509
-            emp_ratio[self.map_age(65):self.map_age(70)]=0.177
+            emp_ratio=np.array([ 0.374,0.524,0.550,0.579,0.626,0.671,0.710,0.733,0.752,0.769,0.774,0.788,0.798,0.800,0.805,0.812,0.814,0.820,0.819,0.826,0.824,0.831,0.831,0.831,0.828,0.821,0.822,0.813,0.811,0.803,0.803,0.798,0.790,0.783,0.776,0.764,0.746,0.735,0.723,0.696,0.656,0.596,0.539,0.362,0.214,0.148,0.115,0.094,0.012,0.002,0.002 ])
+            #emp_ratio[self.map_age(20):self.map_age(25)]=0.583
+            #emp_ratio[self.map_age(25):self.map_age(30)]=0.789
+            #emp_ratio[self.map_age(30):self.map_age(35)]=0.857
+            #emp_ratio[self.map_age(35):self.map_age(40)]=0.879
+            #emp_ratio[self.map_age(40):self.map_age(45)]=0.878
+            #emp_ratio[self.map_age(45):self.map_age(50)]=0.870
+            #emp_ratio[self.map_age(50):self.map_age(55)]=0.846
+            #emp_ratio[self.map_age(55):self.map_age(60)]=0.774
+            #emp_ratio[self.map_age(60):self.map_age(65)]=0.509
+            #emp_ratio[self.map_age(65):self.map_age(70)]=0.177
             #emp_ratio[70:74]=0.073
 
         return emp_ratio
         
+    def student_stats(self,g=0):
+        if g==0: # kaikki
+            emp_ratio=np.array([0.261,0.279,0.272,0.242,0.195,0.155,0.123,0.098,0.082,0.070,0.062,0.054,0.048,0.045,0.041,0.039,0.035,0.033,0.031,0.027,0.025,0.024,0.022,0.019,0.018,0.017,0.017,0.016,0.015,0.014,0.013,0.011,0.010,0.009,0.009,0.008,0.008,0.006,0.005,0.004,0.003,0.003,0.002,0.002,0.002,0.002,0.002,0.001,0.001,0.001,0.001])
+        elif g==1: # naiset
+            emp_ratio=np.array([0.283,0.290,0.271,0.231,0.184,0.151,0.124,0.100,0.089,0.079,0.069,0.062,0.058,0.055,0.052,0.050,0.044,0.040,0.038,0.034,0.031,0.029,0.027,0.024,0.023,0.021,0.021,0.019,0.017,0.016,0.015,0.012,0.011,0.011,0.011,0.009,0.008,0.007,0.005,0.005,0.003,0.002,0.002,0.002,0.002,0.002,0.002,0.001,0.001,0.001,0.001 ])
+        else: # miehet
+            emp_ratio=np.array([0.240,0.269,0.273,0.252,0.207,0.159,0.122,0.096,0.076,0.062,0.056,0.047,0.037,0.035,0.031,0.029,0.027,0.026,0.023,0.021,0.019,0.019,0.017,0.015,0.015,0.014,0.013,0.013,0.013,0.011,0.010,0.010,0.009,0.007,0.008,0.007,0.007,0.006,0.005,0.004,0.003,0.003,0.002,0.002,0.002,0.002,0.001,0.001,0.001,0.002,0.001 ])
+
+        return emp_ratio        
+        
+    def army_stats(self,g=0):
+        if g==0: # kaikki
+            emp_ratio=np.array([0.048,0.009,0.004,0.002,0.001,0.001,0.001,0.001,0.000,0.000,0.000,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0   ])
+        elif g==1: # naiset
+            emp_ratio=np.array([0.004,0.002,0.001,0.001,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0   ])
+        else: # miehet
+            emp_ratio=np.array([0.089,0.015,0.006,0.004,0.002,0.002,0.001,0.001,0.001,0.001,0.000,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0   ])
+
+        return emp_ratio        
+        
+    def outsider_stats(self,g=0):
+        if g==0: # kaikki
+            emp_ratio=np.array([ 0.115,0.070,0.065,0.066,0.066,0.069,0.073,0.075,0.077,0.079,0.079,0.079,0.076,0.075,0.072,0.067,0.065,0.063,0.062,0.057,0.055,0.050,0.048,0.048,0.047,0.046,0.045,0.044,0.042,0.044,0.042,0.043,0.042,0.043,0.043,0.044,0.045,0.045,0.045,0.044,0.044,0.040,0.038,0.022,0.010,0.007,0.004,0.004,0.004,0.004,0.004 ])
+        elif g==1: # naiset
+            emp_ratio=np.array([ 0.077,0.066,0.068,0.072,0.074,0.082,0.089,0.092,0.098,0.099,0.101,0.098,0.098,0.093,0.088,0.082,0.076,0.074,0.071,0.065,0.061,0.053,0.049,0.049,0.046,0.045,0.044,0.041,0.042,0.041,0.040,0.039,0.040,0.040,0.041,0.041,0.042,0.042,0.042,0.043,0.044,0.041,0.039,0.023,0.012,0.007,0.005,0.004,0.004,0.004,0.004 ])
+        else: # miehet
+            emp_ratio=np.array([ 0.151,0.074,0.063,0.060,0.057,0.057,0.057,0.059,0.058,0.059,0.059,0.061,0.056,0.057,0.058,0.053,0.054,0.052,0.053,0.051,0.050,0.046,0.047,0.046,0.047,0.046,0.047,0.046,0.042,0.046,0.044,0.046,0.045,0.047,0.044,0.046,0.047,0.048,0.048,0.045,0.044,0.039,0.037,0.021,0.009,0.007,0.004,0.004,0.005,0.003,0.004 ])
+
+        return emp_ratio        
+        
+    def pensioner_stats(self,g=0):
+        if g==0: # kaikki
+            emp_ratio=np.array([ 0.011,0.014,0.016,0.016,0.018,0.019,0.019,0.021,0.020,0.019,0.020,0.021,0.022,0.022,0.024,0.024,0.025,0.025,0.026,0.026,0.029,0.029,0.030,0.031,0.034,0.037,0.039,0.042,0.045,0.047,0.052,0.056,0.060,0.065,0.070,0.076,0.088,0.098,0.110,0.128,0.159,0.196,0.277,0.533,0.741,0.849,0.888,0.908,0.983,0.992,0.993 ])
+        elif g==1: # naiset
+            emp_ratio=np.array([ 0.010,0.013,0.014,0.016,0.016,0.017,0.018,0.018,0.018,0.018,0.017,0.020,0.020,0.020,0.022,0.021,0.023,0.022,0.023,0.024,0.025,0.026,0.027,0.029,0.031,0.034,0.036,0.038,0.041,0.044,0.047,0.052,0.055,0.058,0.062,0.066,0.077,0.085,0.097,0.111,0.142,0.177,0.258,0.518,0.735,0.855,0.896,0.916,0.983,0.991,0.992 ])
+        else: # miehet
+            emp_ratio=np.array([ 0.012,0.016,0.018,0.017,0.019,0.020,0.021,0.023,0.022,0.021,0.022,0.021,0.024,0.024,0.026,0.026,0.026,0.028,0.028,0.027,0.032,0.032,0.033,0.033,0.036,0.041,0.042,0.045,0.049,0.051,0.056,0.060,0.065,0.072,0.078,0.086,0.099,0.112,0.123,0.144,0.178,0.216,0.297,0.549,0.748,0.843,0.880,0.901,0.982,0.993,0.993 ])
+
+        return emp_ratio        
+        
     def unemp_stats(self,g=0):
         emp_ratio=np.zeros(self.n_time)
         if g==0:
-            emp_ratio[self.map_age(20):self.map_age(25)]=0.134
-            emp_ratio[self.map_age(25):self.map_age(30)]=0.084
-            emp_ratio[self.map_age(30):self.map_age(35)]=0.072
-            emp_ratio[self.map_age(35):self.map_age(40)]=0.056
-            emp_ratio[self.map_age(40):self.map_age(45)]=0.046
-            emp_ratio[self.map_age(45):self.map_age(50)]=0.050
-            emp_ratio[self.map_age(50):self.map_age(55)]=0.056
-            emp_ratio[self.map_age(55):self.map_age(60)]=0.060
-            emp_ratio[self.map_age(60):self.map_age(65)]=0.082
-            emp_ratio[self.map_age(65):self.map_age(70)]=0
+            emp_ratio=np.array([0.104,0.083,0.077,0.075,0.075,0.078,0.078,0.078,0.080,0.080,0.081,0.077,0.079,0.078,0.076,0.075,0.074,0.072,0.074,0.070,0.071,0.068,0.069,0.069,0.069,0.072,0.072,0.074,0.076,0.078,0.078,0.078,0.081,0.081,0.082,0.084,0.087,0.087,0.089,0.097,0.108,0.131,0.115,0.062,0.030,0,0,0,0,0,0])
+            #emp_ratio[self.map_age(20):self.map_age(25)]=0.134
+            #emp_ratio[self.map_age(25):self.map_age(30)]=0.084
+            #emp_ratio[self.map_age(30):self.map_age(35)]=0.072
+            #emp_ratio[self.map_age(35):self.map_age(40)]=0.056
+            #emp_ratio[self.map_age(40):self.map_age(45)]=0.046
+            #emp_ratio[self.map_age(45):self.map_age(50)]=0.050
+            #emp_ratio[self.map_age(50):self.map_age(55)]=0.056
+            #emp_ratio[self.map_age(55):self.map_age(60)]=0.060
+            #emp_ratio[self.map_age(60):self.map_age(65)]=0.082
+            #emp_ratio[self.map_age(65):self.map_age(70)]=0
         elif g==1: # naiset
-            emp_ratio[self.map_age(20):self.map_age(25)]=0.130
-            emp_ratio[self.map_age(25):self.map_age(30)]=0.079
-            emp_ratio[self.map_age(30):self.map_age(35)]=0.079
-            emp_ratio[self.map_age(35):self.map_age(40)]=0.057
-            emp_ratio[self.map_age(40):self.map_age(45)]=0.045
-            emp_ratio[self.map_age(45):self.map_age(50)]=0.056
-            emp_ratio[self.map_age(50):self.map_age(55)]=0.052
-            emp_ratio[self.map_age(55):self.map_age(60)]=0.052
-            emp_ratio[self.map_age(60):self.map_age(65)]=0.072
-            emp_ratio[self.map_age(65):self.map_age(70)]=0.0
+            emp_ratio=np.array([ 0.073,0.063,0.062,0.060,0.060,0.065,0.066,0.066,0.069,0.070,0.072,0.071,0.071,0.070,0.071,0.070,0.069,0.070,0.070,0.065,0.066,0.064,0.065,0.064,0.065,0.065,0.066,0.066,0.068,0.067,0.070,0.070,0.069,0.071,0.071,0.072,0.074,0.076,0.076,0.083,0.097,0.116,0.105,0.057,0.031,0  ,0  ,0  ,0  ,0  ,0   ])
+            #emp_ratio[self.map_age(20):self.map_age(25)]=0.130
+            #emp_ratio[self.map_age(25):self.map_age(30)]=0.079
+            #emp_ratio[self.map_age(30):self.map_age(35)]=0.079
+            #emp_ratio[self.map_age(35):self.map_age(40)]=0.057
+            #emp_ratio[self.map_age(40):self.map_age(45)]=0.045
+            #emp_ratio[self.map_age(45):self.map_age(50)]=0.056
+            #emp_ratio[self.map_age(50):self.map_age(55)]=0.052
+            #emp_ratio[self.map_age(55):self.map_age(60)]=0.052
+            #emp_ratio[self.map_age(60):self.map_age(65)]=0.072
+            #emp_ratio[self.map_age(65):self.map_age(70)]=0.0
         else: # miehet
-            emp_ratio[self.map_age(20):self.map_age(25)]=0.137
-            emp_ratio[self.map_age(25):self.map_age(30)]=0.088
-            emp_ratio[self.map_age(30):self.map_age(35)]=0.065
-            emp_ratio[self.map_age(35):self.map_age(40)]=0.056
-            emp_ratio[self.map_age(40):self.map_age(45)]=0.047
-            emp_ratio[self.map_age(45):self.map_age(50)]=0.045
-            emp_ratio[self.map_age(50):self.map_age(55)]=0.059
-            emp_ratio[self.map_age(55):self.map_age(60)]=0.069
-            emp_ratio[self.map_age(60):self.map_age(65)]=0.093
-            emp_ratio[self.map_age(65):self.map_age(70)]=0.0
+            emp_ratio=np.array([ 0.133,0.102,0.091,0.089,0.089,0.091,0.089,0.089,0.091,0.089,0.089,0.083,0.085,0.085,0.080,0.081,0.080,0.075,0.077,0.075,0.074,0.072,0.073,0.074,0.074,0.078,0.076,0.083,0.085,0.089,0.087,0.086,0.092,0.091,0.094,0.096,0.101,0.099,0.102,0.110,0.120,0.146,0.125,0.066,0.028,0  ,0  ,0  ,0  ,0  ,0   ])
+            #emp_ratio[self.map_age(20):self.map_age(25)]=0.137
+            #emp_ratio[self.map_age(25):self.map_age(30)]=0.088
+            #emp_ratio[self.map_age(30):self.map_age(35)]=0.065
+            #emp_ratio[self.map_age(35):self.map_age(40)]=0.056
+            #emp_ratio[self.map_age(40):self.map_age(45)]=0.047
+            #emp_ratio[self.map_age(45):self.map_age(50)]=0.045
+            #emp_ratio[self.map_age(50):self.map_age(55)]=0.059
+            #emp_ratio[self.map_age(55):self.map_age(60)]=0.069
+            #emp_ratio[self.map_age(60):self.map_age(65)]=0.093
+            #emp_ratio[self.map_age(65):self.map_age(70)]=0.0
         return emp_ratio
 
     def save_sim(self,filename):
