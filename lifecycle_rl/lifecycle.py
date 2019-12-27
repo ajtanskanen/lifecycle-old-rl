@@ -459,7 +459,7 @@ class Lifecycle():
         f.close()
         return val
 
-    def simulate(self,debug=False,rlmodel=None,plot=True,load=None,pop=None,
+    def simulate(self,debug=False,rlmodel='acktr',plot=True,load=None,pop=None,
                  max_grad_norm=0.5,learning_rate=0.25,
                  deterministic=False,save='results/testsimulate'):
 
@@ -471,6 +471,8 @@ class Lifecycle():
 
         if rlmodel is not None:
             self.rlmodel=rlmodel
+            
+        print(rlmodel)
 
         self.episodestats.reset(self.timestep,self.n_time,self.n_employment,self.n_pop,
                                 self.env,self.minimal,self.min_age,self.max_age,self.min_retirementage)
@@ -501,7 +503,7 @@ class Lifecycle():
             model = A2C.load(load, env=env, verbose=1,gamma=self.gamma, policy_kwargs=policy_kwargs)
         elif self.rlmodel=='acer':
             model = ACER.load(load, env=env, verbose=1,gamma=self.gamma, policy_kwargs=policy_kwargs)
-        elif self.rlmodel=='acktr' or 'small_acktr' or 'lnacktr' or 'small_lnacktr':
+        elif self.rlmodel=='acktr' or self.rlmodel=='small_acktr' or self.rlmodel=='lnacktr' or self.rlmodel=='small_lnacktr':
             model = ACKTR.load(load, env=env, verbose=1,gamma=self.gamma, policy_kwargs=policy_kwargs)
         elif self.rlmodel=='trpo':
             model = TRPO.load(load, env=env, verbose=1,gamma=self.gamma, policy_kwargs=policy_kwargs)
