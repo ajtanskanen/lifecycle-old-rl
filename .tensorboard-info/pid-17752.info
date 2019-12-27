@@ -1,0 +1,10 @@
+{
+    "cache_key": "eyJhcmd1bWVudHMiOlsiLS1sb2dkaXIiLCJ0bXAvdGVuYi8iXSwiY29uZmlndXJlX2t3YXJncyI6e30sIndvcmtpbmdfZGlyZWN0b3J5IjoiL1ZvbHVtZXMvVHJhbnNjZW5kL0dpdEh1Yi9saWZlY3ljbGUtcmwifQ==",
+    "db": "",
+    "logdir": "tmp/tenb/",
+    "path_prefix": "",
+    "pid": 17752,
+    "port": 6006,
+    "start_time": 1577002920,
+    "version": "1.15.0"
+}
