@@ -692,8 +692,8 @@ class EpisodeStats():
             osatyo_osuus=0
         else:
             # työllisiksi lasketaan kokoaikatyössä olevat, osa-aikaiset, ve+työ, ve+osatyö 
-            # ja isyysvapaalla olevat (vapaa kestää alle 3kk)
-            tyoll_osuus=(emp[:,1]+emp[:,6]+emp[:,8]+emp[:,9]+emp[:,10])/np.sum(emp,1)
+            # isyysvapaalla olevat jätetty pois, vaikka vapaa kestää alle 3kk
+            tyoll_osuus=(emp[:,1]+emp[:,8]+emp[:,9]+emp[:,10])/np.sum(emp,1)
             tyot_osuus=(emp[:,0]+emp[:,4])/np.sum(emp,1)
             htv=(emp[:,1]+emp[:,8]+0.5*emp[:,9]+0.5*emp[:,10])/np.sum(emp,1)
             kokotyo_osuus=(emp[:,1]+emp[:,8])/np.sum(emp,1)
