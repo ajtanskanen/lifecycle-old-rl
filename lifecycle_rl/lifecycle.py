@@ -45,7 +45,7 @@ class Lifecycle():
         self.min_age = 20
         self.max_age = 70
         self.min_retirementage=63.5
-        self.max_retirementage=68.5
+        self.max_retirementage=68
         self.n_pop = 1000
         self.callback_minsteps = 1_000
 
@@ -140,9 +140,9 @@ class Lifecycle():
                 'plotdebug': self.plotdebug}
             self.n_acts = 4
             if self.mortality:
-                self.n_employment = 14
+                self.n_employment = 15
             else:
-                self.n_employment = 13
+                self.n_employment = 14
 
         # Create log dir & results dirs
         self.log_dir = "tmp/" # +str(env_id)
@@ -185,7 +185,7 @@ class Lifecycle():
             policy_kwargs = dict(act_fun=tf.nn.relu, net_arch=[512, 512, 256]) # 256, 256?
             n_cpu = 12 # 20
         elif rlmodel=='small_acktr' or rlmodel=='small_lnacktr':
-            policy_kwargs = dict(act_fun=tf.nn.relu, net_arch=[512, 512]) # 256, 256?
+            policy_kwargs = dict(act_fun=tf.nn.relu, net_arch=[256, 256, 128]) # 256, 256?
             n_cpu = 12
         elif rlmodel=='large_acktr':
             policy_kwargs = dict(act_fun=tf.nn.relu, net_arch=[256, 256, 64, 16]) # 256, 256?
@@ -208,7 +208,6 @@ class Lifecycle():
 
     def setup_rlmodel(self,rlmodel,loadname,env,batch,policy_kwargs,learning_rate,
                       max_grad_norm,cont,tensorboard=True,verbose=1,n_cpu=1):
-        #print('loadname=',loadname)
 
         batch=max(1,int(np.ceil(batch/n_cpu)))
         
@@ -472,8 +471,6 @@ class Lifecycle():
         if rlmodel is not None:
             self.rlmodel=rlmodel
             
-        print(rlmodel)
-
         self.episodestats.reset(self.timestep,self.n_time,self.n_employment,self.n_pop,
                                 self.env,self.minimal,self.min_age,self.max_age,self.min_retirementage)
 
