@@ -141,10 +141,11 @@ class EpisodeStats():
             osatyo=emp[:,10]
             outsider=emp[:,11]
             student=emp[:,12]
+            tyomarkkinatuki=emp[:,13]
             tyollisyysaste=100*(employed+osatyo+veosatyo+vetyo)/alive[:,0]
             osatyoaste=100*(osatyo+veosatyo)/(employed+osatyo+veosatyo+vetyo)
-            tyottomyysaste=100*(unemployed+piped)/(unemployed+employed+piped+osatyo+veosatyo+vetyo)
-            ka_tyottomyysaste=100*np.sum(unemployed+piped)/np.sum(unemployed+employed+piped+osatyo+veosatyo+vetyo)
+            tyottomyysaste=100*(unemployed+piped+tyomarkkinatuki)/(tyomarkkinatuki+unemployed+employed+piped+osatyo+veosatyo+vetyo)
+            ka_tyottomyysaste=100*np.sum(unemployed+tyomarkkinatuki+piped)/np.sum(tyomarkkinatuki+unemployed+employed+piped+osatyo+veosatyo+vetyo)
         else:
             tyollisyysaste=100*(employed)/alive[:,0]
             osatyoaste=np.zeros(employed.shape)
@@ -152,6 +153,28 @@ class EpisodeStats():
             ka_tyottomyysaste=100*np.sum(unemployed)/np.sum(unemployed+employed)
 
         return tyollisyysaste,osatyoaste,tyottomyysaste,ka_tyottomyysaste
+
+    def plot_outsider(self):
+        x=np.linspace(self.min_age,self.max_age,self.n_time)
+        fig,ax=plt.subplots()
+        ax.plot(x,100*(self.empstate[:,11]+self.empstate[:,5]+self.empstate[:,6]+self.empstate[:,7])/self.alive[:,0],label='työvoiman ulkopuolella, ei opiskelija, vanh.vapaat')
+        emp_statsratio=100*self.outsider_stats()
+        ax.plot(x,emp_statsratio,label='havainto')
+        ax.set_xlabel('Ikä [v]')
+        ax.set_ylabel('Osuus tilassa [%]')
+        ax.legend()
+        plt.show()
+
+    def plot_student(self):
+        x=np.linspace(self.min_age,self.max_age,self.n_time)
+        fig,ax=plt.subplots()
+        ax.plot(x,100*self.empstate[:,12]/self.alive[:,0],label='opiskelijat')
+        emp_statsratio=100*self.student_stats()
+        ax.plot(x,emp_statsratio,label='havainto')
+        ax.set_xlabel('Ikä [v]')
+        ax.set_ylabel('Osuus tilassa [%]')
+        ax.legend()
+        plt.show()
 
     def plot_emp(self):
 
@@ -194,7 +217,8 @@ class EpisodeStats():
 
         fig,ax=plt.subplots()
         ax.set_xlabel('Ikä [v]')
-        ax.set_ylabel('Työttömyysaste (ka '+str(ka_tyottomyysaste)+')')
+        ax.set_ylabel('Työttömyysaste')
+        print('keskimääräine työttömyysaste '+str(ka_tyottomyysaste))
         ax.plot(x,unemp_statsratio,label='havainto')
         ax.plot(x,tyottomyysaste)
         plt.show()
@@ -302,6 +326,7 @@ class EpisodeStats():
             ura_osatyo=statistic[:,10]
             ura_outsider=statistic[:,11]
             ura_student=statistic[:,12]
+            ura_tyomarkkinatuki=statistic[:,13]
 
         if no_ve:
             ura_ret=0*ura_ret
@@ -316,14 +341,14 @@ class EpisodeStats():
                         labels=('äitiysvapaa','isyysvapaa','khtuki'), colors=pal)
             elif unemp:
                 if not self.minimal:
-                    ax.stackplot(x,ura_unemp,ura_pipe,ura_student,ura_outsider,
-                        labels=('tyött','putki','opiskelija','ulkona'), colors=pal)
+                    ax.stackplot(x,ura_unemp,ura_pipe,ura_student,ura_outsider,ura_tyomarkkinatuki,
+                        labels=('tyött','putki','opiskelija','ulkona','tm-tuki'), colors=pal)
                 else:
                     ax.stackplot(x,ura_unemp,labels=('tyött'), colors=pal)
             else:
                 if not self.minimal:
-                    ax.stackplot(x,ura_emp,ura_osatyo,ura_vetyo,ura_veosatyo,ura_unemp,ura_pipe,ura_disab,ura_mother,ura_dad,ura_kht,ura_ret,ura_student,ura_outsider,
-                        labels=('työssä','osatyö','ve+työ','ve+osatyö','työtön','työttömyysputki','tk','äitiysvapaa','isyysvapaa','khtuki','vanhuuseläke','opiskelija','ulkona'), 
+                    ax.stackplot(x,ura_emp,ura_osatyo,ura_vetyo,ura_veosatyo,ura_unemp,ura_tyomarkkinatuki,ura_pipe,ura_disab,ura_mother,ura_dad,ura_kht,ura_ret,ura_student,ura_outsider,
+                        labels=('työssä','osatyö','ve+työ','ve+osatyö','työtön','tm-tuki','työttömyysputki','tk','äitiysvapaa','isyysvapaa','khtuki','vanhuuseläke','opiskelija','ulkona'), 
                         colors=pal)
                 else:
                     ax.stackplot(x,ura_emp,ura_unemp,ura_ret,
@@ -346,6 +371,7 @@ class EpisodeStats():
             elif unemp:
                 ax.plot(x,ura_unemp,label='tyött')
                 if not self.minimal:
+                    ax.plot(x,ura_tyomarkkinatuki,label='tm-tuki')
                     ax.plot(x,ura_student,label='student')
                     ax.plot(x,ura_outsider,label='outsider')
                     ax.plot(x,ura_pipe,label='putki')
@@ -356,6 +382,7 @@ class EpisodeStats():
                 if not self.minimal:
                     ax.plot(x,ura_disab,label='tk')
                     ax.plot(x,ura_pipe,label='putki')
+                    ax.plot(x,ura_tyomarkkinatuki,label='tm-tuki')
                     ax.plot(x,ura_mother,label='äitiysvapaa')
                     ax.plot(x,ura_dad,label='isyysvapaa')
                     ax.plot(x,ura_kht,label='khtuki')
@@ -419,6 +446,8 @@ class EpisodeStats():
         if not self.minimal:
             self.plot_group_emp()
         self.plot_sal()
+        self.plot_outsider()
+        self.plot_student()
         self.plot_moved()
         self.plot_ave_stay()
         self.plot_reward()
@@ -448,43 +477,10 @@ class EpisodeStats():
     def emp_stats(self,g=0):
         if g==0: # kaikki
             emp=np.array([0.461,0.545,0.567,0.599,0.645,0.678,0.706,0.728,0.740,0.752,0.758,0.769,0.776,0.781,0.787,0.795,0.801,0.807,0.809,0.820,0.820,0.829,0.831,0.833,0.832,0.828,0.827,0.824,0.822,0.817,0.815,0.813,0.807,0.802,0.796,0.788,0.772,0.763,0.752,0.728,0.686,0.630,0.568,0.382,0.217,0.142,0.106,0.086,0.011,0.003,0.002])
-            #emp_ratio[self.map_age(20):self.map_age(25)]=0.595
-            #emp_ratio[self.map_age(25):self.map_age(30)]=0.747
-            #emp_ratio[self.map_age(30):self.map_age(35)]=0.789
-            #emp_ratio[self.map_age(35):self.map_age(40)]=0.836
-            #emp_ratio[self.map_age(40):self.map_age(45)]=0.867
-            #emp_ratio[self.map_age(45):self.map_age(50)]=0.857
-            #emp_ratio[self.map_age(50):self.map_age(55)]=0.853
-            #emp_ratio[self.map_age(55):self.map_age(60)]=0.791
-            #emp_ratio[self.map_age(60):self.map_age(65)]=0.517
-            #emp_ratio[self.map_age(65):self.map_age(70)]=0.141
-            #emp_ratio[70:74]=0.073
         elif g==1: # naiset
             emp=np.array([ 0.554,0.567,0.584,0.621,0.666,0.685,0.702,0.723,0.727,0.734,0.741,0.749,0.753,0.762,0.768,0.777,0.788,0.793,0.798,0.813,0.816,0.827,0.832,0.834,0.835,0.835,0.833,0.836,0.833,0.831,0.828,0.827,0.824,0.821,0.815,0.812,0.798,0.791,0.779,0.758,0.715,0.664,0.596,0.400,0.220,0.136,0.098,0.079,0.011,0.004,0.002 ])
-            #emp_ratio[self.map_age(20):self.map_age(25)]=0.608
-            #emp_ratio[self.map_age(25):self.map_age(30)]=0.703
-            #emp_ratio[self.map_age(30):self.map_age(35)]=0.719
-            #emp_ratio[self.map_age(35):self.map_age(40)]=0.789
-            #emp_ratio[self.map_age(40):self.map_age(45)]=0.856
-            #emp_ratio[self.map_age(45):self.map_age(50)]=0.844
-            #emp_ratio[self.map_age(50):self.map_age(55)]=0.861
-            #emp_ratio[self.map_age(55):self.map_age(60)]=0.708
-            #emp_ratio[self.map_age(60):self.map_age(65)]=0.525
-            #emp_ratio[self.map_age(65):self.map_age(70)]=0.107
-            #emp_ratio[70:74]=0.073
         else: # miehet
             emp=np.array([ 0.374,0.524,0.550,0.579,0.626,0.671,0.710,0.733,0.752,0.769,0.774,0.788,0.798,0.800,0.805,0.812,0.814,0.820,0.819,0.826,0.824,0.831,0.831,0.831,0.828,0.821,0.822,0.813,0.811,0.803,0.803,0.798,0.790,0.783,0.776,0.764,0.746,0.735,0.723,0.696,0.656,0.596,0.539,0.362,0.214,0.148,0.115,0.094,0.012,0.002,0.002 ])
-            #emp_ratio[self.map_age(20):self.map_age(25)]=0.583
-            #emp_ratio[self.map_age(25):self.map_age(30)]=0.789
-            #emp_ratio[self.map_age(30):self.map_age(35)]=0.857
-            #emp_ratio[self.map_age(35):self.map_age(40)]=0.879
-            #emp_ratio[self.map_age(40):self.map_age(45)]=0.878
-            #emp_ratio[self.map_age(45):self.map_age(50)]=0.870
-            #emp_ratio[self.map_age(50):self.map_age(55)]=0.846
-            #emp_ratio[self.map_age(55):self.map_age(60)]=0.774
-            #emp_ratio[self.map_age(60):self.map_age(65)]=0.509
-            #emp_ratio[self.map_age(65):self.map_age(70)]=0.177
-            #emp_ratio[70:74]=0.073
 
         return self.map_ratios(emp)
         
@@ -532,40 +528,10 @@ class EpisodeStats():
         emp_ratio=np.zeros(self.n_time)
         if g==0:
             emp_ratio=np.array([0.104,0.083,0.077,0.075,0.075,0.078,0.078,0.078,0.080,0.080,0.081,0.077,0.079,0.078,0.076,0.075,0.074,0.072,0.074,0.070,0.071,0.068,0.069,0.069,0.069,0.072,0.072,0.074,0.076,0.078,0.078,0.078,0.081,0.081,0.082,0.084,0.087,0.087,0.089,0.097,0.108,0.131,0.115,0.062,0.030,0,0,0,0,0,0])
-            #emp_ratio[self.map_age(20):self.map_age(25)]=0.134
-            #emp_ratio[self.map_age(25):self.map_age(30)]=0.084
-            #emp_ratio[self.map_age(30):self.map_age(35)]=0.072
-            #emp_ratio[self.map_age(35):self.map_age(40)]=0.056
-            #emp_ratio[self.map_age(40):self.map_age(45)]=0.046
-            #emp_ratio[self.map_age(45):self.map_age(50)]=0.050
-            #emp_ratio[self.map_age(50):self.map_age(55)]=0.056
-            #emp_ratio[self.map_age(55):self.map_age(60)]=0.060
-            #emp_ratio[self.map_age(60):self.map_age(65)]=0.082
-            #emp_ratio[self.map_age(65):self.map_age(70)]=0
         elif g==1: # naiset
             emp_ratio=np.array([ 0.073,0.063,0.062,0.060,0.060,0.065,0.066,0.066,0.069,0.070,0.072,0.071,0.071,0.070,0.071,0.070,0.069,0.070,0.070,0.065,0.066,0.064,0.065,0.064,0.065,0.065,0.066,0.066,0.068,0.067,0.070,0.070,0.069,0.071,0.071,0.072,0.074,0.076,0.076,0.083,0.097,0.116,0.105,0.057,0.031,0  ,0  ,0  ,0  ,0  ,0   ])
-            #emp_ratio[self.map_age(20):self.map_age(25)]=0.130
-            #emp_ratio[self.map_age(25):self.map_age(30)]=0.079
-            #emp_ratio[self.map_age(30):self.map_age(35)]=0.079
-            #emp_ratio[self.map_age(35):self.map_age(40)]=0.057
-            #emp_ratio[self.map_age(40):self.map_age(45)]=0.045
-            #emp_ratio[self.map_age(45):self.map_age(50)]=0.056
-            #emp_ratio[self.map_age(50):self.map_age(55)]=0.052
-            #emp_ratio[self.map_age(55):self.map_age(60)]=0.052
-            #emp_ratio[self.map_age(60):self.map_age(65)]=0.072
-            #emp_ratio[self.map_age(65):self.map_age(70)]=0.0
         else: # miehet
             emp_ratio=np.array([ 0.133,0.102,0.091,0.089,0.089,0.091,0.089,0.089,0.091,0.089,0.089,0.083,0.085,0.085,0.080,0.081,0.080,0.075,0.077,0.075,0.074,0.072,0.073,0.074,0.074,0.078,0.076,0.083,0.085,0.089,0.087,0.086,0.092,0.091,0.094,0.096,0.101,0.099,0.102,0.110,0.120,0.146,0.125,0.066,0.028,0  ,0  ,0  ,0  ,0  ,0   ])
-            #emp_ratio[self.map_age(20):self.map_age(25)]=0.137
-            #emp_ratio[self.map_age(25):self.map_age(30)]=0.088
-            #emp_ratio[self.map_age(30):self.map_age(35)]=0.065
-            #emp_ratio[self.map_age(35):self.map_age(40)]=0.056
-            #emp_ratio[self.map_age(40):self.map_age(45)]=0.047
-            #emp_ratio[self.map_age(45):self.map_age(50)]=0.045
-            #emp_ratio[self.map_age(50):self.map_age(55)]=0.059
-            #emp_ratio[self.map_age(55):self.map_age(60)]=0.069
-            #emp_ratio[self.map_age(60):self.map_age(65)]=0.093
-            #emp_ratio[self.map_age(65):self.map_age(70)]=0.0
         return self.map_ratios(emp_ratio)
 
     def save_sim(self,filename):
@@ -773,15 +739,11 @@ class SimStats(EpisodeStats):
         best_emp=0
         t_aste[0]=tyollaste_base
 
-        print(tyollaste_base)
-
         if plot:
             fig,ax=plt.subplots()
             ax.set_xlabel('työllisyysaste')
             ax.set_ylabel('lkm')
             x=np.linspace(self.min_age,self.max_age,self.n_time)
-            #print(x.shape,tyoll_base.shape,self.empstate.shape)
-            print(self.min_age,self.max_age,x.shape)
             ax.plot(x,100*tyolliset_base)
 
         for i in range(1,n): 
@@ -814,7 +776,6 @@ class SimStats(EpisodeStats):
         std_emp=np.std(emps,axis=0)
         median_emp=np.median(emps,axis=0)
 
-        #print(agg_htv,agg_tyoll)
         self.save_simstats(save,diff_htv,diff_tyoll,agg_htv,agg_tyoll,agg_rew,\
                             mean_emp,std_emp,median_emp,emps,best_rew,best_emp)
                     
@@ -825,7 +786,6 @@ class SimStats(EpisodeStats):
         print('best_emp',best_emp)
 
     def plot_simstats(self,filename):
-        #print('load',filename)
         diff_htv,diff_tyoll,agg_htv,agg_tyoll,agg_rew,mean_emp,std_emp,median_emp,emps,\
             best_rew,best_emp=self.load_simstats(filename)
 
@@ -932,8 +892,6 @@ class SimStats(EpisodeStats):
         return m_best,m_emp,m_meadian,s_emp
 
     def compare_simstats(self,filename1,filename2):
-        #print('load',filename)
-
         if self.minimal:
             print('Vaikutus työllisyysasteen keskiarvo {} htv mediaan {} htv'.format(mean_htv,median_htv))
         else:
