@@ -175,6 +175,36 @@ class EpisodeStats():
         ax.set_ylabel('Osuus tilassa [%]')
         ax.legend()
         plt.show()
+        
+    def plot_group_student(self):
+        fig,ax=plt.subplots()
+        for gender in range(2):
+            if gender==0:
+                leg='Opiskelijat Miehet'
+                gempstate=np.sum(self.gempstate[:,12,0:3],axis=2)
+                alive=np.zeros((self.galive.shape[0],1))
+                alive[:,0]=np.sum(self.galive[:,0:3],1)
+            else:
+                gempstate=np.sum(self.gempstate[:,12,3:6],axis=2)
+                alive=np.zeros((self.galive.shape[0],1))
+                alive[:,0]=np.sum(self.galive[:,3:6],1)
+                leg='Opiskelijat Naiset'
+        
+            tyollisyysaste,osatyoaste,tyottomyysaste,ka_tyottomyysaste=self.comp_empratios(gempstate,alive)
+        
+            x=np.linspace(self.min_age,self.max_age,self.n_time)
+            ax.plot(x,tyollisyysaste,label='työllisyysaste {}'.format(leg))
+            #ax.plot(x,tyottomyysaste,label='työttömyys {}'.format(leg))
+            
+        emp_statsratio=100*self.student_stats(g=1)
+        ax.plot(x,emp_statsratio,label='havainto, naiset')
+        emp_statsratio=100*self.student_stats(g=2)
+        ax.plot(x,emp_statsratio,label='havainto, miehet')
+        ax.set_xlabel('Ikä [v]')
+        ax.set_ylabel('Osuus tilassa [%]')
+        ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
+        plt.show()
+        
 
     def plot_emp(self):
 
@@ -448,6 +478,7 @@ class EpisodeStats():
         self.plot_sal()
         self.plot_outsider()
         self.plot_student()
+        self.plot_group_student()
         self.plot_moved()
         self.plot_ave_stay()
         self.plot_reward()
