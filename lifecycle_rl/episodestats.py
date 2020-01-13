@@ -158,6 +158,12 @@ class EpisodeStats():
         ax.set_ylabel('freq')
         ax.hist(unemp_distrib)
         plt.show()
+        fig,ax=plt.subplots()
+        ax.set_xlabel('työttömyyden pituus [v]')
+        ax.set_ylabel('freq')
+        ax.hist(unemp_distrib)
+        ax.set_yscale('log')
+        plt.show()
 
     def comp_empratios(self,emp,alive):
         employed=emp[:,1]
@@ -215,19 +221,22 @@ class EpisodeStats():
         for gender in range(2):
             if gender==0:
                 leg='Opiskelijat Miehet'
-                gempstate=np.sum(self.gempstate[:,12,0:3],axis=2)
+                opiskelijat=np.sum(self.gempstate[:,12,0:3],axis=1)
                 alive=np.zeros((self.galive.shape[0],1))
                 alive[:,0]=np.sum(self.galive[:,0:3],1)
+                osuus=opiskelijat/alive
             else:
-                gempstate=np.sum(self.gempstate[:,12,3:6],axis=2)
+                leg='Opiskelijat Naiset'
+                opiskelijat=np.sum(self.gempstate[:,12,3:6],axis=1)
                 alive=np.zeros((self.galive.shape[0],1))
                 alive[:,0]=np.sum(self.galive[:,3:6],1)
-                leg='Opiskelijat Naiset'
+                osuus=opiskelijat/alive
+                print(opiskelijat,osuus)
         
-            tyollisyysaste,osatyoaste,tyottomyysaste,ka_tyottomyysaste=self.comp_empratios(gempstate,alive)
+            #tyollisyysaste,osatyoaste,tyottomyysaste,ka_tyottomyysaste=self.comp_empratios(gempstate,alive)
         
             x=np.linspace(self.min_age,self.max_age,self.n_time)
-            ax.plot(x,tyollisyysaste,label='työllisyysaste {}'.format(leg))
+            ax.plot(x,osuus,label=leg)
             #ax.plot(x,tyottomyysaste,label='työttömyys {}'.format(leg))
             
         emp_statsratio=100*self.student_stats(g=1)
