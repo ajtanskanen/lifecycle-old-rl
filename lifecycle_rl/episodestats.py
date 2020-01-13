@@ -42,6 +42,7 @@ class EpisodeStats():
         self.rewstate=np.zeros((self.n_time,n_emps))
         self.salaries_emp=np.zeros((self.n_time,n_emps))
         self.actions=np.zeros((self.n_time,self.n_pop))
+        self.popempstate=np.zeros((self.n_time,self.n_pop))
         self.siirtyneet=np.zeros((self.n_time,n_emps))
         self.pysyneet=np.zeros((self.n_time,n_emps))
         self.salaries=np.zeros((self.n_time,self.n_pop))
@@ -60,8 +61,8 @@ class EpisodeStats():
             newemp,_,newsal,a2,tis=self.env.state_decode(newstate)
             g=0
         else:
-            emp,_,_,_,a,_,_,_,_,_,_=self.env.state_decode(state) # current employment state
-            newemp,g,newpen,newsal,a2,tis,paidpens,pink,toe,ura,oof=self.env.state_decode(newstate)
+            emp,_,_,_,a,_,_,_,_,_,_,_=self.env.state_decode(state) # current employment state
+            newemp,g,newpen,newsal,a2,tis,paidpens,pink,toe,ura,oof,bu=self.env.state_decode(newstate)
     
         t=int(np.round((a2-self.min_age)*self.inv_timestep))
         
@@ -72,6 +73,7 @@ class EpisodeStats():
             self.alive[t]+=1
             self.rewstate[t,newemp]+=r
             self.actions[t,n]=act
+            self.popempstate[t,n]=newemp
             self.salaries[t,n]=newsal
             self.salaries_emp[t,newemp]+=newsal
             self.salaries_emp[t,newemp]+=newsal
@@ -123,6 +125,38 @@ class EpisodeStats():
         ax.plot(x,meansal)
         ax.plot(x,meansal+stdsal)
         ax.plot(x,meansal-stdsal)
+        plt.show()
+        
+    def comp_empdistribs(self):
+        unemp_distrib=[]
+        emp_distrib=[]
+        
+        for k in range(self.n_pop):
+            prev_state=self.popempstate[0,k]
+            prev_trans=0
+            for t in range(1,self.n_time):
+                if self.popempstate[t,k]!=prev_state:
+                    if prev_state in set([0,4,13]):
+                        unemp_distrib.append((t-prev_trans)*self.timestep)
+                        prev_state=self.popempstate[t,k]
+                        prev_trans=t
+                    elif prev_state in set([1,10]):
+                        emp_distrib.append((t-prev_trans)*self.timestep)
+                        prev_state=self.popempstate[t,k]
+                        prev_trans=t
+                    
+        return unemp_distrib,emp_distrib
+        
+    def plot_empdistribs(self,unemp_distrib,emp_distrib):
+        fig,ax=plt.subplots()
+        ax.set_xlabel('työsuhteen pituus [v]')
+        ax.set_ylabel('freq')
+        ax.hist(emp_distrib)
+        plt.show()
+        fig,ax=plt.subplots()
+        ax.set_xlabel('työttömyyden pituus [v]')
+        ax.set_ylabel('freq')
+        ax.hist(unemp_distrib)
         plt.show()
 
     def comp_empratios(self,emp,alive):
@@ -446,6 +480,8 @@ class EpisodeStats():
         if not self.minimal:
             self.plot_group_emp()
         self.plot_sal()
+        unemp_distrib,emp_distrib=self.comp_empdistribs()
+        self.plot_empdistribs(unemp_distrib,emp_distrib)
         self.plot_outsider()
         self.plot_student()
         self.plot_moved()
@@ -556,6 +592,7 @@ class EpisodeStats():
         dset = f.create_dataset('stat_pension', data=self.stat_pension, dtype=ftype)
         dset = f.create_dataset('stat_paidpension', data=self.stat_paidpension, dtype=ftype)
         dset = f.create_dataset('stat_unemp_len', data=self.stat_unemp_len, dtype=ftype)
+        dset = f.create_dataset('popempstate', data=self.popempstate, dtype=ftype)
         f.close()
 
     def save_to_hdf(self,filename,nimi,arr,dtype):
@@ -572,7 +609,7 @@ class EpisodeStats():
     def load_sim(self,filename,n_pop=None):
         f = h5py.File(filename, 'r')
         if 'n_pop' in f:
-            self.n_pop=f.get('n_pop').value
+            self.n_pop=int(f.get('n_pop').value)
         else:
             self.n_pop=1_000
         if n_pop is not None:
@@ -596,6 +633,7 @@ class EpisodeStats():
         self.stat_pension=f.get('stat_pension').value
         self.stat_paidpension=f.get('stat_paidpension').value
         self.stat_unemp_len=f.get('stat_unemp_len').value
+        self.popempstate=f.get('popempstate').value
         f.close()
 
     def render(self,load=None):
@@ -668,7 +706,7 @@ class EpisodeStats():
         return tyoll_osuus,htv,tyot_osuus,kokotyo_osuus,osatyo_osuus
     
         
-    def comp_tyollisyys_stats(self,emp,scale_time=True,start=30,end=63):
+    def comp_tyollisyys_stats(self,emp,scale_time=True,start=30,end=63.5):
         demog=np.array([61663,63354,65939,68253,68543,71222,70675,71691,70202,70535, # 20-29 y
                         67315,68282,70431,72402,73839,73065,70040,69501,68857,69035, # 30-39 y
                         69661,69965,68429,65261,59498,61433,63308,65305,66580,71263, # 40-49 y
@@ -741,8 +779,8 @@ class SimStats(EpisodeStats):
 
         if plot:
             fig,ax=plt.subplots()
-            ax.set_xlabel('työllisyysaste')
-            ax.set_ylabel('lkm')
+            ax.set_xlabel('Ikä [v]')
+            ax.set_ylabel('Työllisyysaste [%]')
             x=np.linspace(self.min_age,self.max_age,self.n_time)
             ax.plot(x,100*tyolliset_base)
 
@@ -794,6 +832,7 @@ class SimStats(EpisodeStats):
         mean_tyoll=np.mean(agg_tyoll)
         median_tyoll=np.median(agg_tyoll)
         std_htv=np.std(agg_htv)
+        std_tyoll=np.std(agg_tyoll)
         diff_htv=agg_htv-mean_htv
         diff_tyoll=agg_tyoll-median_tyoll
 
@@ -809,9 +848,9 @@ class SimStats(EpisodeStats):
             m_best=emps[best_emp,:,1]+emps[best_emp,:,10]+emps[best_emp,:,8]+emps[best_emp,:,9]
 
         if self.minimal:
-            print('Vaikutus työllisyyteen keskiarvo {} htv mediaan {} htv'.format(mean_htv,median_htv))
+            print('Vaikutus työllisyyteen keskiarvo {:.0f} htv mediaan {:.0f} htv std {:.0f} htv'.format(mean_htv,median_htv,std_htv))
         else:
-            print('Vaikutus työllisyyteen keskiarvo {} htv, mediaani {} htv\n                        keskiarvo {} työllistä, mediaani {} työllistä'.format(mean_htv,median_htv,mean_tyoll,median_tyoll))
+            print('Vaikutus työllisyyteen keskiarvo {:.0f} htv, mediaani {:.0f} htv std {:.0f} htv\n   keskiarvo {:.0f} työllistä, mediaani {:.0f} työllistä, std {:.0f} työllistä'.format(mean_htv,median_htv,std_htv,mean_tyoll,median_tyoll,std_tyoll))
 
         fig,ax=plt.subplots()
         ax.set_xlabel('poikkeama työllisyydessä [htv]')
