@@ -163,8 +163,7 @@ class Lifecycle():
         print('Parameters of lifecycle:\ntimestep {}\ngamma {} ({} per anno)\nmin_age {}\nmax_age {}\nmin_retirementage {}'.format(self.timestep,self.gamma,self.gamma**(1.0/self.timestep),self.min_age,self.max_age,self.min_retirementage))
         print('max_retirementage {}\nansiopvraha_kesto300 {}\nansiopvraha_kesto400 {}\nansiopvraha_toe {}'.format(self.max_retirementage,self.ansiopvraha_kesto300,self.ansiopvraha_kesto400,self.ansiopvraha_toe))
         print('perustulo {}\nkarenssi_kesto {}\nmortality {}\nrandomness {}'.format(self.perustulo,self.karenssi_kesto,self.mortality,self.randomness))
-        print('include_putki {}\ninclude_pinkslip {}\nstep {}\n'.format(self.include_putki,self.include_pinkslip,self.timestep))
-
+        print('include_putki {}\ninclude_pinkslip {}\n'.format(self.include_putki,self.include_pinkslip))
 
     def map_age(self,age,start_zero=False):
         if start_zero:
