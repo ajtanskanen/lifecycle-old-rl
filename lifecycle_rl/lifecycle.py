@@ -712,7 +712,7 @@ class Lifecycle():
                save='saved/distrib_base_',debug=False,simut='simut',results='results/distrib_',
                deterministic=True,train=True,predict=True,batch1=1,batch2=100,cont=False,
                start_from=None,plot=False,twostage=False,callback_minsteps=None,
-               stats_results='results/distrib_stats'):
+               stats_results='results/distrib_stats',startn=None):
    
         '''
         run_verify
@@ -721,13 +721,17 @@ class Lifecycle():
         plot results if needed
         '''
    
+        if startn is None:
+            startn=0
+    
         self.n_pop=pop
 
         results1=results+'_v'
         # repeat simulation n times
-        for num in range(n):
+        for num in range(startn,n):
             bestname2=save+'_v'+str(100+num)
             results2=results1+'_'+str(100+num)
+            print('computing {}'.format(num))
         
             self.run_results(steps1=steps1,steps2=steps2,pop=pop,rlmodel=rlmodel,
                twostage=twostage,save=bestname2,debug=debug,simut=simut,results=results2,
@@ -747,3 +751,14 @@ class Lifecycle():
         # gather results ...
         if plot:
             print('plot')
+            
+    def compare_distrib(self,load=None,n=1,stats_results='results/distrib_stats',plot=False):
+        if load is None:
+            return
+            
+        self.episodestats.run_simstats(load,stats_results,n)
+        self.episodestats.plot_simstats(stats_results)
+
+        # gather results ...
+        if plot:
+            print('plot')            
