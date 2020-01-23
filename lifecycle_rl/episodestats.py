@@ -184,6 +184,13 @@ class EpisodeStats():
         ax.bar(x[:-1],scaled)
         ax.set_yscale('log')
         plt.show()        
+        
+        fig,ax=plt.subplots()
+        ax.set_xlabel('työttömyyden pituus [v]')
+        ax.set_ylabel('scaled freq')
+        ax.bar(x[1:-1],np.diff(scaled))
+        ax.set_yscale('log')
+        plt.show()        
 
     def comp_empratios(self,emp,alive):
         employed=emp[:,1]
@@ -441,7 +448,7 @@ class EpisodeStats():
                 if not self.minimal:
                     urasum=np.nansum(statistic[:,[0,4,13]],axis=1)/100
                     ax.stackplot(x,ura_unemp/urasum,ura_pipe/urasum,ura_tyomarkkinatuki/urasum,
-                        labels=('ansiosidonnainen','putki','tm-tuki'), colors=pal)
+                        labels=('ansiosidonnainen','putki4','tm-tuki'), colors=pal)
                 else:
                     ax.stackplot(x,ura_unemp,labels=('tyött'), colors=pal)
             else:
