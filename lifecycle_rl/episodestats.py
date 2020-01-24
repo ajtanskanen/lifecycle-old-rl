@@ -185,10 +185,14 @@ class EpisodeStats():
         ax.set_yscale('log')
         plt.show()        
         
+        max_time=2.5
+        nn_time = int(np.round((max_time-1)*self.inv_timestep))+2
+        x=np.linspace(0,max_time,nn_time)
+        scaled,x2=np.histogram(unemp_distrib,x)
         fig,ax=plt.subplots()
         ax.set_xlabel('työttömyyden pituus [v]')
         ax.set_ylabel('scaled freq')
-        ax.bar(x[1:-1],np.diff(scaled))
+        ax.bar(x[:-1],scaled) #np.diff(scaled))
         ax.set_yscale('log')
         plt.show()        
 
