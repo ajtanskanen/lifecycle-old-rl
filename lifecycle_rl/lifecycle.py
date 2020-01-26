@@ -185,7 +185,7 @@ class Lifecycle():
             n_cpu = 12 # 20
         elif rlmodel=='small_acktr' or rlmodel=='small_lnacktr':
             policy_kwargs = dict(act_fun=tf.nn.relu, net_arch=[256, 256, 128]) # 256, 256?
-            n_cpu = 12
+            n_cpu = 8
         elif rlmodel=='large_acktr':
             policy_kwargs = dict(act_fun=tf.nn.relu, net_arch=[256, 256, 64, 16]) # 256, 256?
             n_cpu = 12
