@@ -52,7 +52,7 @@ class Lifecycle():
         # apumuuttujia
         self.n_age = self.max_age-self.min_age+1
         self.n_time = int(np.round((self.n_age-1)*self.inv_timestep))+2
-        self.gamma = 0.92**timestep # skaalataan vuositasolle!
+        self.gamma = 0.92
 
         self.karenssi_kesto=0.25
 
@@ -160,7 +160,7 @@ class Lifecycle():
         '''
         Tulosta laskennan parametrit
         '''
-        print('Parameters of lifecycle:\ntimestep {}\ngamma {} ({} per anno)\nmin_age {}\nmax_age {}\nmin_retirementage {}'.format(self.timestep,self.gamma,self.gamma**(1.0/self.timestep),self.min_age,self.max_age,self.min_retirementage))
+        print('Parameters of lifecycle:\ntimestep {}\ngamma {} per anno\nmin_age {}\nmax_age {}\nmin_retirementage {}'.format(self.timestep,self.gamma,self.min_age,self.max_age,self.min_retirementage))
         print('max_retirementage {}\nansiopvraha_kesto300 {}\nansiopvraha_kesto400 {}\nansiopvraha_toe {}'.format(self.max_retirementage,self.ansiopvraha_kesto300,self.ansiopvraha_kesto400,self.ansiopvraha_toe))
         print('perustulo {}\nkarenssi_kesto {}\nmortality {}\nrandomness {}'.format(self.perustulo,self.karenssi_kesto,self.mortality,self.randomness))
         print('include_putki {}\ninclude_pinkslip {}\n'.format(self.include_putki,self.include_pinkslip))

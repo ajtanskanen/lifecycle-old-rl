@@ -155,7 +155,7 @@ class EpisodeStats():
         ratio=np.array([1,0.287024901703801,0.115508955875928,0.0681083442551332,0.0339886413280909,0.0339886413280909,0.0114460463084316,0.0114460463084316,0.0114460463084316,0.00419397116644823,0.00419397116644823,0.00419397116644823,0.00419397116644823,0.00419397116644823,0.00419397116644823,0.00419397116644823,0.00419397116644823,0.00166011358671909,0.00166011358671909,0.00166011358671909,0.00166011358671909,0.00166011358671909,0.00166011358671909,0.00166011358671909,0.00166011358671909,0.00104849279161206,0.00104849279161206,0.00104849279161206,0.00104849279161206,0.00104849279161206,0.00104849279161206,0.00104849279161206,0.00104849279161206])
         
         return ratio
-        
+
     def plot_empdistribs(self,unemp_distrib,emp_distrib):
         fig,ax=plt.subplots()
         ax.set_xlabel('työsuhteen pituus [v]')
@@ -275,6 +275,33 @@ class EpisodeStats():
         ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
         plt.show()
         
+    def plot_group_disab(self):
+        fig,ax=plt.subplots()
+        for gender in range(2):
+            if gender==0:
+                leg='TK Miehet'
+                opiskelijat=np.sum(self.gempstate[:,3,0:3],axis=1)
+                alive=np.zeros((self.galive.shape[0],1))
+                alive[:,0]=np.sum(self.galive[:,0:3],1)
+            else:
+                leg='TK Naiset'
+                opiskelijat=np.sum(self.gempstate[:,3,3:6],axis=1)
+                alive=np.zeros((self.galive.shape[0],1))
+                alive[:,0]=np.sum(self.galive[:,3:6],1)
+        
+            opiskelijat=np.reshape(opiskelijat,(self.galive.shape[0],1))
+            osuus=100*opiskelijat/alive
+            x=np.linspace(self.min_age,self.max_age,self.n_time)
+            ax.plot(x,osuus,label=leg)
+            
+        emp_statsratio=100*self.disab_stat(g=1)
+        ax.plot(x,emp_statsratio,label='havainto, naiset')
+        emp_statsratio=100*self.disab_stat(g=2)
+        ax.plot(x,emp_statsratio,label='havainto, miehet')
+        ax.set_xlabel('Ikä [v]')
+        ax.set_ylabel('Osuus tilassa [%]')
+        ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
+        plt.show()
 
     def plot_emp(self):
 
@@ -567,6 +594,7 @@ class EpisodeStats():
         self.plot_outsider()
         self.plot_student()
         self.plot_group_student()
+        self.plot_group_disab()
         self.plot_moved()
         self.plot_ave_stay()
         self.plot_reward()
@@ -603,6 +631,15 @@ class EpisodeStats():
             emp=np.array([ 0.374,0.524,0.550,0.579,0.626,0.671,0.710,0.733,0.752,0.769,0.774,0.788,0.798,0.800,0.805,0.812,0.814,0.820,0.819,0.826,0.824,0.831,0.831,0.831,0.828,0.821,0.822,0.813,0.811,0.803,0.803,0.798,0.790,0.783,0.776,0.764,0.746,0.735,0.723,0.696,0.656,0.596,0.539,0.362,0.214,0.148,0.115,0.094,0.012,0.002,0.002 ])
 
         return self.map_ratios(emp)
+        
+        
+    def disab_stat(self,g):
+        if g==1:
+            ratio=np.array([0.014412417,0.017866162,0.019956194,0.019219484,0.022074491,0.022873602,0.024247334,0.025981477,0.025087389,0.023162522,0.025013013,0.023496079,0.025713399,0.025633996,0.028251301,0.028930719,0.028930188,0.030955287,0.031211716,0.030980726,0.035395247,0.03522291,0.035834422,0.036878386,0.040316277,0.044732619,0.046460599,0.050652725,0.054797849,0.057018324,0.0627497,0.067904263,0.072840649,0.079978222,0.083953327,0.092811744,0.106671337,0.119490669,0.129239815,0.149503982,0.179130081,0.20749958,0.22768029,0.142296259,0.135142865,0.010457403,0,0,0,0,0])
+        else:
+            ratio=np.array([0.0121151,0.0152247,0.0170189,0.0200570,0.0196213,0.0208018,0.0215082,0.0223155,0.0220908,0.0213913,0.0214263,0.0242843,0.0240043,0.0240721,0.0259648,0.0263371,0.0284309,0.0270143,0.0286249,0.0305952,0.0318945,0.0331264,0.0350743,0.0368707,0.0401613,0.0431067,0.0463718,0.0487914,0.0523801,0.0569297,0.0596571,0.0669273,0.0713361,0.0758116,0.0825295,0.0892805,0.1047429,0.1155854,0.1336167,0.1551418,0.1782882,0.2106220,0.2291799,0.1434176,0.1301574,0.0110726,0,0,0,0,0])
+            
+        return self.map_ratios(ratio)
         
     def student_stats(self,g=0):
         if g==0: # kaikki
