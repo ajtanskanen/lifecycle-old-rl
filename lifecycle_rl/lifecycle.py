@@ -34,7 +34,7 @@ class Lifecycle():
     def __init__(self,env=None,minimal=False,timestep=0.25,ansiopvraha_kesto300=None,
                     ansiopvraha_kesto400=None,karenssi_kesto=None,
                     ansiopvraha_toe=None,perustulo=None,mortality=None,
-                    randomness=None,include_putki=None,
+                    randomness=None,include_putki=None,preferencenoise=None,
                     callback_minsteps=None,pinkslip=True,plotdebug=False):
 
         '''
@@ -56,6 +56,16 @@ class Lifecycle():
 
         self.karenssi_kesto=0.25
 
+        self.plotdebug=False
+        self.include_pinkslip=True
+        self.mortality=False
+        self.perustulo=False
+        self.ansiopvraha_kesto300=None
+        self.ansiopvraha_kesto400=None
+        self.include_putki=None
+        self.ansiopvraha_toe=None
+        self.environment='unemployment-v0'
+
         if callback_minsteps is not None:
             self.callback_minsteps=callback_minsteps
 
@@ -64,49 +74,34 @@ class Lifecycle():
 
         if plotdebug is not None:
             self.plotdebug=plotdebug
-        else:
-            self.plotdebug=False
 
         if pinkslip is not None:
             self.include_pinkslip=pinkslip
-        else:
-            self.include_pinkslip=True
             
         if mortality is not None:
             self.mortality=mortality
-        else:
-            self.mortality=False
 
         self.randomness=randomness
 
         if ansiopvraha_kesto300 is not None:
             self.ansiopvraha_kesto300=ansiopvraha_kesto300
-        else:
-            self.ansiopvraha_kesto300=None
 
         if include_putki is not None:
             self.include_putki=include_putki
-        else:
-            self.include_putki=None
 
         if ansiopvraha_kesto400 is not None:
             self.ansiopvraha_kesto400=ansiopvraha_kesto400
-        else:
-            self.ansiopvraha_kesto400=None
 
         if ansiopvraha_toe is not None:
             self.ansiopvraha_toe=ansiopvraha_toe
-        else:
-            self.ansiopvraha_toe=None
 
         if perustulo is not None:
             self.perustulo=perustulo
-        else:
-            self.perustulo=False
+            
+        if preferencenoise is not None:
+            self.include_preferencenoise=preferencenoise
 
-        if env is None:
-            self.environment='unemployment-v0'
-        else:
+        if env is not None:
             self.environment=env
 
         # alustetaan gym-environment
@@ -137,7 +132,7 @@ class Lifecycle():
                 'perustulos': self.perustulo, 'karenssi_kesto': self.karenssi_kesto,
                 'mortality': self.mortality, 'randomness': self.randomness,
                 'include_putki': self.include_putki,
-                'plotdebug': self.plotdebug}
+                'plotdebug': self.plotdebug, 'include_preferencenoise': self.include_preferencenoise}
             self.n_acts = 4
             if self.mortality:
                 self.n_employment = 15
