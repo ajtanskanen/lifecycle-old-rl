@@ -168,6 +168,8 @@ class EpisodeStats():
         #ax.set_ylabel('freq')
         #ax.hist(unemp_distrib)
         #plt.show()
+        
+        axvcolor='r'
 
         ax.set_xlabel('työttömyyden pituus [v]')
         ax.set_ylabel('freq')
@@ -175,24 +177,28 @@ class EpisodeStats():
         ax.set_yscale('log')
         plt.show()
         max_time=10
-        nn_time = int(np.round((max_time-1)*self.inv_timestep))+2
+        nn_time = int(np.round((max_time)*self.inv_timestep))+1
         x=np.linspace(0,max_time,nn_time)
         scaled,x2=np.histogram(unemp_distrib,x)
         fig,ax=plt.subplots()
+        plt.axvline(x=300/(12*21.5),color=axvcolor)
+        plt.axvline(x=400/(12*21.5),color=axvcolor)
         ax.set_xlabel('työttömyyden pituus [v]')
         ax.set_ylabel('scaled freq')
         ax.bar(x[:-1],scaled)
         ax.set_yscale('log')
         plt.show()        
         
-        max_time=2.5
-        nn_time = int(np.round((max_time-1)*self.inv_timestep))+2
+        max_time=4
+        nn_time = int(np.round((max_time)*self.inv_timestep))+1
         x=np.linspace(0,max_time,nn_time)
         scaled,x2=np.histogram(unemp_distrib,x)
         fig,ax=plt.subplots()
         ax.set_xlabel('työttömyyden pituus [v]')
         ax.set_ylabel('scaled freq')
-        ax.bar(x[:-1],scaled) #np.diff(scaled))
+        plt.axvline(x=300/(12*21.5),color=axvcolor)
+        plt.axvline(x=400/(12*21.5),color=axvcolor)
+        ax.bar(x[:-1],scaled)
         ax.set_yscale('log')
         plt.show()        
 
@@ -478,8 +484,11 @@ class EpisodeStats():
             elif onlyunemp:
                 if not self.minimal:
                     urasum=np.nansum(statistic[:,[0,4,13]],axis=1)/100
+                    osuus=(1.0-np.array([0.84,0.68,0.62,0.58,0.57,0.55,0.53,0.50,0.29]))*100
+                    xx=np.array([22.5,27.5,32.5,37.5,42.5,47.5,52.5,57.5,62.5])
                     ax.stackplot(x,ura_unemp/urasum,ura_pipe/urasum,ura_tyomarkkinatuki/urasum,
                         labels=('ansiosidonnainen','putki4','tm-tuki'), colors=pal)
+                    ax.plot(xx,osuus,color='k')
                 else:
                     ax.stackplot(x,ura_unemp,labels=('tyött'), colors=pal)
             else:
