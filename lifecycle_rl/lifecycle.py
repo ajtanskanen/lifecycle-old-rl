@@ -65,6 +65,7 @@ class Lifecycle():
         self.include_putki=None
         self.ansiopvraha_toe=None
         self.environment='unemployment-v0'
+        self.include_preferencenoise=False
 
         if callback_minsteps is not None:
             self.callback_minsteps=callback_minsteps
