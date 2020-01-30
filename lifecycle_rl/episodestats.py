@@ -63,7 +63,7 @@ class EpisodeStats():
             g=0
         else:
             emp,_,_,_,a,_,_,_,_,_,_,_,_,_=self.env.state_decode(state) # current employment state
-            newemp,g,newpen,newsal,a2,tis,paidpens,pink,toe,ura,oof,bu,wr,pref=self.env.state_decode(newstate)
+            newemp,g,newpen,newsal,a2,tis,paidpens,pink,toe,ura,oof,bu,wr,pr=self.env.state_decode(newstate)
     
         t=int(np.round((a2-self.min_age)*self.inv_timestep))
         
@@ -128,16 +128,23 @@ class EpisodeStats():
         ax.plot(x,meansal-stdsal)
         plt.show()
         
-    def comp_empdistribs(self):
+    def comp_empdistribs(self,pipe=True,tmtuki=False):
         unemp_distrib=[]
         emp_distrib=[]
+        if pipe:
+            unempset=[0,4,13]
+        else:
+            unempset=[0,13]
+            
+        if tmtuki:
+            unempset=[13]
         
         for k in range(self.n_pop):
             prev_state=self.popempstate[0,k]
             prev_trans=0
             for t in range(1,self.n_time):
                 if self.popempstate[t,k]!=prev_state:
-                    if prev_state in set([0,4,13]) and self.popempstate[t,k] not in set([0,4,13 ]):
+                    if prev_state in set(unempset) and self.popempstate[t,k] not in set(unempset):
                         unemp_distrib.append((t-prev_trans)*self.timestep)
                         prev_state=self.popempstate[t,k]
                         prev_trans=t
@@ -183,6 +190,7 @@ class EpisodeStats():
         fig,ax=plt.subplots()
         plt.axvline(x=300/(12*21.5),color=axvcolor)
         plt.axvline(x=400/(12*21.5),color=axvcolor)
+        plt.axvline(x=500/(12*21.5),color=axvcolor)
         ax.set_xlabel('työttömyyden pituus [v]')
         ax.set_ylabel('scaled freq')
         ax.bar(x[:-1],scaled)
@@ -198,6 +206,7 @@ class EpisodeStats():
         ax.set_ylabel('scaled freq')
         plt.axvline(x=300/(12*21.5),color=axvcolor)
         plt.axvline(x=400/(12*21.5),color=axvcolor)
+        plt.axvline(x=500/(12*21.5),color=axvcolor)
         ax.bar(x[:-1],scaled)
         ax.set_yscale('log')
         plt.show()        
@@ -600,6 +609,10 @@ class EpisodeStats():
         self.plot_sal()
         unemp_distrib,emp_distrib=self.comp_empdistribs()
         self.plot_empdistribs(unemp_distrib,emp_distrib)
+        #unemp_distrib,emp_distrib=self.comp_empdistribs(pipe=False)
+        #self.plot_empdistribs(unemp_distrib,emp_distrib)
+        #unemp_distrib,emp_distrib=self.comp_empdistribs(tmtuki=True)
+        #self.plot_empdistribs(unemp_distrib,emp_distrib)
         self.plot_outsider()
         self.plot_student()
         self.plot_group_student()
