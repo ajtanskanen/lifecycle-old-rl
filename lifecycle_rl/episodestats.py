@@ -128,7 +128,7 @@ class EpisodeStats():
         ax.plot(x,meansal-stdsal)
         plt.show()
         
-    def comp_empdistribs(self,pipe=True,tmtuki=False):
+    def comp_empdistribs(self,pipe=True,tmtuki=False,laaja=False):
         unemp_distrib=[]
         emp_distrib=[]
         if pipe:
@@ -138,6 +138,9 @@ class EpisodeStats():
             
         if tmtuki:
             unempset=[13]
+            
+        if laaja:
+            unempset=[0,4,11,13]
         
         for k in range(self.n_pop):
             prev_state=self.popempstate[0,k]
@@ -211,7 +214,7 @@ class EpisodeStats():
         ax.set_yscale('log')
         plt.show()        
 
-    def comp_empratios(self,emp,alive):
+    def comp_empratios(self,emp,alive,unempratio=True):
         employed=emp[:,1]
         retired=emp[:,2]
         unemployed=emp[:,0]
@@ -230,13 +233,21 @@ class EpisodeStats():
             tyomarkkinatuki=emp[:,13]
             tyollisyysaste=100*(employed+osatyo+veosatyo+vetyo)/alive[:,0]
             osatyoaste=100*(osatyo+veosatyo)/(employed+osatyo+veosatyo+vetyo)
-            tyottomyysaste=100*(unemployed+piped+tyomarkkinatuki)/(tyomarkkinatuki+unemployed+employed+piped+osatyo+veosatyo+vetyo)
-            ka_tyottomyysaste=100*np.sum(unemployed+tyomarkkinatuki+piped)/np.sum(tyomarkkinatuki+unemployed+employed+piped+osatyo+veosatyo+vetyo)
+            if unempratio:
+                tyottomyysaste=100*(unemployed+piped+tyomarkkinatuki)/(tyomarkkinatuki+unemployed+employed+piped+osatyo+veosatyo+vetyo)
+                ka_tyottomyysaste=100*np.sum(unemployed+tyomarkkinatuki+piped)/np.sum(tyomarkkinatuki+unemployed+employed+piped+osatyo+veosatyo+vetyo)
+            else:
+                tyottomyysaste=100*(unemployed+piped+tyomarkkinatuki)/alive[:,0]
+                ka_tyottomyysaste=100*np.sum(unemployed+tyomarkkinatuki+piped)/np.sum(alive[:,0])
         else:
             tyollisyysaste=100*(employed)/alive[:,0]
             osatyoaste=np.zeros(employed.shape)
-            tyottomyysaste=100*(unemployed)/(unemployed+employed)
-            ka_tyottomyysaste=100*np.sum(unemployed)/np.sum(unemployed+employed)
+            if unempratio:
+                tyottomyysaste=100*(unemployed)/(unemployed+employed)
+                ka_tyottomyysaste=100*np.sum(unemployed)/np.sum(unemployed+employed)
+            else:
+                tyottomyysaste=100*(unemployed)/alive[:,0]
+                ka_tyottomyysaste=100*np.sum(unemployed)/np.sum(alive[:,0])
 
         return tyollisyysaste,osatyoaste,tyottomyysaste,ka_tyottomyysaste
 
@@ -320,12 +331,12 @@ class EpisodeStats():
 
     def plot_emp(self):
 
-        tyollisyysaste,osatyoaste,tyottomyysaste,ka_tyottomyysaste=self.comp_empratios(self.empstate,self.alive)
+        tyollisyysaste,osatyoaste,tyottomyysaste,ka_tyottomyysaste=self.comp_empratios(self.empstate,self.alive,unempratio=False)
 
         x=np.linspace(self.min_age,self.max_age,self.n_time)
         fig,ax=plt.subplots()
         ax.plot(x,tyollisyysaste,label='työllisyysaste')
-        ax.plot(x,tyottomyysaste,label='työttömyys')
+        ax.plot(x,tyottomyysaste,label='työttömien osuus')
         emp_statsratio=100*self.emp_stats()
         ax.plot(x,emp_statsratio,label='havainto')
         ax.set_xlabel('Ikä [v]')
@@ -351,24 +362,36 @@ class EpisodeStats():
 
         self.plot_states(empstate_ratio,ylabel='Osuus tilassa [%]',start_from=60,stack=True)
 
-    def plot_unemp(self):
-        tyollisyysaste,osatyoaste,tyottomyysaste,ka_tyottomyysaste=self.comp_empratios(self.empstate,self.alive)
-
+    def plot_unemp(self,unempratio=True):
+        '''
+        Plottaa työttömyysaste (unempratio=True) tai työttömien osuus väestöstä (False)
+        '''
         x=np.linspace(self.min_age,self.max_age,self.n_time)
-        unemp_statsratio=100*self.unemp_stats()
+        if unempratio:
+            tyollisyysaste,osatyoaste,tyottomyysaste,ka_tyottomyysaste=self.comp_empratios(self.empstate,self.alive,unempratio=True)
+            unempratio_stat=100*self.unempratio_stats()
+            labeli='keskimääräinen työttömyysaste '+str(ka_tyottomyysaste)      
+            ylabeli='Työttömyysaste [%]'
+            labeli2='työttömyysaste'
+        else:
+            tyollisyysaste,osatyoaste,tyottomyysaste,ka_tyottomyysaste=self.comp_empratios(self.empstate,self.alive,unempratio=False)
+            unempratio_stat=100*self.unemp_stats()  
+            labeli='keskimääräinen työttömien osuus väestöstä '+str(ka_tyottomyysaste)
+            ylabeli='Työttömien osuus väestöstä [%]'
+            labeli2='työttömien osuus väestöstä'
 
         fig,ax=plt.subplots()
         ax.set_xlabel('Ikä [v]')
-        ax.set_ylabel('Työttömyysaste [%]')
-        print('keskimääräinen työttömyysaste '+str(ka_tyottomyysaste))
-        ax.plot(x,unemp_statsratio,label='havainto')
+        ax.set_ylabel(ylabeli)
+        print(labeli)
+        ax.plot(x,unempratio_stat,label='havainto')
         ax.plot(x,tyottomyysaste)
         plt.show()
 
         fig,ax=plt.subplots()
         ax.set_xlabel('Ikä [v]')
-        ax.set_ylabel('Työttömyysaste [%]')
-        ax.plot(x,unemp_statsratio,label='havainto')
+        ax.set_ylabel(ylabeli)
+        ax.plot(x,unempratio_stat,label='havainto')
         pal=sns.color_palette("hls", self.n_employment)  # hls, husl, cubehelix
         ax.stackplot(x,tyottomyysaste,colors=pal)
         #ax.plot(x,tyottomyysaste)
@@ -387,17 +410,23 @@ class EpisodeStats():
                 alive[:,0]=np.sum(self.galive[:,3:6],1)
                 leg='Naiset'
         
-            tyollisyysaste,osatyoaste,tyottomyysaste,ka_tyottomyysaste=self.comp_empratios(gempstate,alive)
+            tyollisyysaste,osatyoaste,tyottomyysaste,ka_tyottomyysaste=self.comp_empratios(gempstate,alive,unempratio=unempratio)
         
-            x=np.linspace(self.min_age,self.max_age,self.n_time)
-            ax.plot(x,tyottomyysaste,label='työttömyysaste {}'.format(leg))
+            ax.plot(x,tyottomyysaste,label='{} {}'.format(labeli2,leg))
             
-        emp_statsratio=100*self.unemp_stats(g=1)
-        ax.plot(x,emp_statsratio,label='havainto, naiset')
-        emp_statsratio=100*self.unemp_stats(g=2)
-        ax.plot(x,emp_statsratio,label='havainto, miehet')
+        if unempratio:
+            ax.plot(x,100*self.unempratio_stats(g=1),label='havainto, naiset')
+            ax.plot(x,100*self.unempratio_stats(g=2),label='havainto, miehet')
+            labeli='keskimääräinen työttömyysaste '+str(ka_tyottomyysaste)      
+            ylabeli='Työttömyysaste [%]'
+        else:
+            ax.plot(x,100*self.unemp_stats(g=1),label='havainto, naiset')
+            ax.plot(x,100*self.unemp_stats(g=2),label='havainto, miehet')
+            labeli='keskimääräinen työttömien osuus väestöstä '+str(ka_tyottomyysaste)
+            ylabeli='Työttömien osuus väestöstä [%]'
+            
         ax.set_xlabel('Ikä [v]')
-        ax.set_ylabel('Osuus tilassa [%]')
+        ax.set_ylabel(ylabeli)
         ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
         plt.show()
         
@@ -492,11 +521,11 @@ class EpisodeStats():
                     ax.stackplot(x,ura_unemp,labels=('tyött'), colors=pal)
             elif onlyunemp:
                 if not self.minimal:
-                    urasum=np.nansum(statistic[:,[0,4,13]],axis=1)/100
+                    urasum=np.nansum(statistic[:,[0,4,11,13]],axis=1)/100
                     osuus=(1.0-np.array([0.84,0.68,0.62,0.58,0.57,0.55,0.53,0.50,0.29]))*100
                     xx=np.array([22.5,27.5,32.5,37.5,42.5,47.5,52.5,57.5,62.5])
-                    ax.stackplot(x,ura_unemp/urasum,ura_pipe/urasum,ura_tyomarkkinatuki/urasum,
-                        labels=('ansiosidonnainen','putki4','tm-tuki'), colors=pal)
+                    ax.stackplot(x,ura_unemp/urasum,ura_pipe/urasum,ura_outsider/urasum,ura_tyomarkkinatuki/urasum,
+                        labels=('ansiosidonnainen','lisäpäivät','työvoiman ulkopuolella','tm-tuki'), colors=pal)
                     ax.plot(xx,osuus,color='k')
                 else:
                     ax.stackplot(x,ura_unemp,labels=('tyött'), colors=pal)
@@ -603,16 +632,19 @@ class EpisodeStats():
 
     def plot_stats(self):
         self.plot_emp()
-        self.plot_unemp()
+        self.plot_unemp(unempratio=True)
+        self.plot_unemp(unempratio=False)
         if not self.minimal:
             self.plot_group_emp()
         self.plot_sal()
         unemp_distrib,emp_distrib=self.comp_empdistribs()
         self.plot_empdistribs(unemp_distrib,emp_distrib)
-        #unemp_distrib,emp_distrib=self.comp_empdistribs(pipe=False)
-        #self.plot_empdistribs(unemp_distrib,emp_distrib)
-        #unemp_distrib,emp_distrib=self.comp_empdistribs(tmtuki=True)
-        #self.plot_empdistribs(unemp_distrib,emp_distrib)
+        unemp_distrib,emp_distrib=self.comp_empdistribs(pipe=False)
+        self.plot_empdistribs(unemp_distrib,emp_distrib)
+        unemp_distrib,emp_distrib=self.comp_empdistribs(tmtuki=True)
+        self.plot_empdistribs(unemp_distrib,emp_distrib)
+        unemp_distrib,emp_distrib=self.comp_empdistribs(laaja=True)
+        self.plot_empdistribs(unemp_distrib,emp_distrib)
         self.plot_outsider()
         self.plot_student()
         self.plot_group_student()
@@ -645,6 +677,10 @@ class EpisodeStats():
         return emp_ratio
         
     def emp_stats(self,g=0):
+        '''
+        Työssä olevien osuus väestöstä
+        Lähde: Tilastokeskus
+        '''
         if g==0: # kaikki
             emp=np.array([0.461,0.545,0.567,0.599,0.645,0.678,0.706,0.728,0.740,0.752,0.758,0.769,0.776,0.781,0.787,0.795,0.801,0.807,0.809,0.820,0.820,0.829,0.831,0.833,0.832,0.828,0.827,0.824,0.822,0.817,0.815,0.813,0.807,0.802,0.796,0.788,0.772,0.763,0.752,0.728,0.686,0.630,0.568,0.382,0.217,0.142,0.106,0.086,0.011,0.003,0.002])
         elif g==1: # naiset
@@ -656,6 +692,10 @@ class EpisodeStats():
         
         
     def disab_stat(self,g):
+        '''
+        Työkyvyttömyyseläkkeellä olevien osuus väestöstä
+        Lähde: ETK
+        '''
         if g==1:
             ratio=np.array([0.014412417,0.017866162,0.019956194,0.019219484,0.022074491,0.022873602,0.024247334,0.025981477,0.025087389,0.023162522,0.025013013,0.023496079,0.025713399,0.025633996,0.028251301,0.028930719,0.028930188,0.030955287,0.031211716,0.030980726,0.035395247,0.03522291,0.035834422,0.036878386,0.040316277,0.044732619,0.046460599,0.050652725,0.054797849,0.057018324,0.0627497,0.067904263,0.072840649,0.079978222,0.083953327,0.092811744,0.106671337,0.119490669,0.129239815,0.149503982,0.179130081,0.20749958,0.22768029,0.142296259,0.135142865,0.010457403,0,0,0,0,0])
         else:
@@ -664,6 +704,10 @@ class EpisodeStats():
         return self.map_ratios(ratio)
         
     def student_stats(self,g=0):
+        '''
+        Opiskelijoiden osuus väestöstä
+        Lähde: Tilastokeskus
+        '''
         if g==0: # kaikki
             emp_ratio=np.array([0.261,0.279,0.272,0.242,0.195,0.155,0.123,0.098,0.082,0.070,0.062,0.054,0.048,0.045,0.041,0.039,0.035,0.033,0.031,0.027,0.025,0.024,0.022,0.019,0.018,0.017,0.017,0.016,0.015,0.014,0.013,0.011,0.010,0.009,0.009,0.008,0.008,0.006,0.005,0.004,0.003,0.003,0.002,0.002,0.002,0.002,0.002,0.001,0.001,0.001,0.001])
         elif g==1: # naiset
@@ -674,6 +718,10 @@ class EpisodeStats():
         return self.map_ratios(emp_ratio)
         
     def army_stats(self,g=0):
+        '''
+        Armeijassa olevien osuus väestöstä
+        Lähde: Tilastokeskus
+        '''
         if g==0: # kaikki
             emp_ratio=np.array([0.048,0.009,0.004,0.002,0.001,0.001,0.001,0.001,0.000,0.000,0.000,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0   ])
         elif g==1: # naiset
@@ -684,6 +732,10 @@ class EpisodeStats():
         return self.map_ratios(emp_ratio)
         
     def outsider_stats(self,g=0):
+        '''
+        Työelämän ulkopuolella olevien osuus väestöstä
+        Lähde: Tilastokeskus
+        '''
         if g==0: # kaikki
             emp_ratio=np.array([ 0.115,0.070,0.065,0.066,0.066,0.069,0.073,0.075,0.077,0.079,0.079,0.079,0.076,0.075,0.072,0.067,0.065,0.063,0.062,0.057,0.055,0.050,0.048,0.048,0.047,0.046,0.045,0.044,0.042,0.044,0.042,0.043,0.042,0.043,0.043,0.044,0.045,0.045,0.045,0.044,0.044,0.040,0.038,0.022,0.010,0.007,0.004,0.004,0.004,0.004,0.004 ])
         elif g==1: # naiset
@@ -694,6 +746,10 @@ class EpisodeStats():
         return self.map_ratios(emp_ratio)
         
     def pensioner_stats(self,g=0):
+        '''
+        Eläkkeellä olevien osuus väestöstä
+        Lähde: Tilastokeskus
+        '''
         if g==0: # kaikki
             emp_ratio=np.array([ 0.011,0.014,0.016,0.016,0.018,0.019,0.019,0.021,0.020,0.019,0.020,0.021,0.022,0.022,0.024,0.024,0.025,0.025,0.026,0.026,0.029,0.029,0.030,0.031,0.034,0.037,0.039,0.042,0.045,0.047,0.052,0.056,0.060,0.065,0.070,0.076,0.088,0.098,0.110,0.128,0.159,0.196,0.277,0.533,0.741,0.849,0.888,0.908,0.983,0.992,0.993 ])
         elif g==1: # naiset
@@ -704,6 +760,10 @@ class EpisodeStats():
         return self.map_ratios(emp_ratio)
         
     def unemp_stats(self,g=0):
+        '''
+        Työttömien osuus väestöstä
+        Lähde: Tilastokeskus
+        '''
         emp_ratio=np.zeros(self.n_time)
         if g==0:
             emp_ratio=np.array([0.104,0.083,0.077,0.075,0.075,0.078,0.078,0.078,0.080,0.080,0.081,0.077,0.079,0.078,0.076,0.075,0.074,0.072,0.074,0.070,0.071,0.068,0.069,0.069,0.069,0.072,0.072,0.074,0.076,0.078,0.078,0.078,0.081,0.081,0.082,0.084,0.087,0.087,0.089,0.097,0.108,0.131,0.115,0.062,0.030,0,0,0,0,0,0])
@@ -712,6 +772,16 @@ class EpisodeStats():
         else: # miehet
             emp_ratio=np.array([ 0.133,0.102,0.091,0.089,0.089,0.091,0.089,0.089,0.091,0.089,0.089,0.083,0.085,0.085,0.080,0.081,0.080,0.075,0.077,0.075,0.074,0.072,0.073,0.074,0.074,0.078,0.076,0.083,0.085,0.089,0.087,0.086,0.092,0.091,0.094,0.096,0.101,0.099,0.102,0.110,0.120,0.146,0.125,0.066,0.028,0  ,0  ,0  ,0  ,0  ,0   ])
         return self.map_ratios(emp_ratio)
+
+    def unempratio_stats(self,g=0):
+        '''
+        Työttömien osuus väestöstä
+        Lähde: Tilastokeskus
+        '''
+        emp_ratio=self.emp_stats(g=g)
+        unemp_ratio=self.unemp_stats(g=g)
+        ratio=unemp_ratio/(emp_ratio+unemp_ratio)
+        return ratio # ei mapata, on jo tehty!
 
     def save_sim(self,filename):
         f = h5py.File(filename, 'w')
