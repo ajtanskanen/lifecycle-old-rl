@@ -608,6 +608,46 @@ class EpisodeStats():
         self.plot_states(pysyneet_ratio,ylabel='Pysyneet tilassa',stack=True,
                         yminlim=0,ymaxlim=min(100,1.1*np.nanmax(np.cumsum(pysyneet_ratio,1))))
 
+    def plot_army(self):
+        x=np.linspace(self.min_age,self.max_age,self.n_time)
+        fig,ax=plt.subplots()
+        ax.plot(x,100*self.empstate[:,14]/self.alive[:,0],label='armeijassa ja siviilipalveluksessa olevat')
+        emp_statsratio=100*self.army_stats()
+        ax.plot(x,emp_statsratio,label='havainto')
+        ax.set_xlabel('Ikä [v]')
+        ax.set_ylabel('Osuus tilassa [%]')
+        ax.legend()
+        plt.show()
+
+    def plot_group_army(self):
+        fig,ax=plt.subplots()
+        for gender in range(2):
+            if gender==0:
+                leg='Armeija Miehet'
+                opiskelijat=np.sum(self.gempstate[:,14,0:3],axis=1)
+                alive=np.zeros((self.galive.shape[0],1))
+                alive[:,0]=np.sum(self.galive[:,0:3],1)
+            else:
+                leg='Armeija Naiset'
+                opiskelijat=np.sum(self.gempstate[:,14,3:6],axis=1)
+                alive=np.zeros((self.galive.shape[0],1))
+                alive[:,0]=np.sum(self.galive[:,3:6],1)
+        
+            opiskelijat=np.reshape(opiskelijat,(self.galive.shape[0],1))
+            osuus=100*opiskelijat/alive
+            x=np.linspace(self.min_age,self.max_age,self.n_time)
+            ax.plot(x,osuus,label=leg)
+            
+        emp_statsratio=100*self.army_stats(g=1)
+        ax.plot(x,emp_statsratio,label='havainto, naiset')
+        emp_statsratio=100*self.army_stats(g=2)
+        ax.plot(x,emp_statsratio,label='havainto, miehet')
+        ax.set_xlabel('Ikä [v]')
+        ax.set_ylabel('Osuus tilassa [%]')
+        ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
+        plt.show()
+        
+
     def plot_ave_stay(self):
         self.plot_ratiostates(self.time_in_state,ylabel='Ka kesto tilassa',stack=False)
         fig,ax=plt.subplots()
@@ -658,7 +698,9 @@ class EpisodeStats():
         self.plot_empdistribs(unemp_distrib,emp_distrib)
         self.plot_outsider()
         self.plot_student()
+        self.plot_army()
         self.plot_group_student()
+        self.plot_group_army()
         self.plot_group_disab()
         self.plot_moved()
         self.plot_ave_stay()
