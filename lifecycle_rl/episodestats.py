@@ -610,6 +610,17 @@ class EpisodeStats():
 
     def plot_ave_stay(self):
         self.plot_ratiostates(self.time_in_state,ylabel='Ka kesto tilassa',stack=False)
+        fig,ax=plt.subplots()
+        x=np.linspace(self.min_age,self.max_age,self.n_time)
+        plt.plot(x,self.time_in_state[:,1]/self.empstate[:,1])
+        ax.set_xlabel('Aika')
+        ax.set_ylabel('Ka kesto työssä')
+        plt.show()
+        fig,ax=plt.subplots()
+        ax.set_xlabel('Aika')
+        ax.set_ylabel('ka kesto työttömänä')
+        plt.plot(x,self.time_in_state[:,0]/self.empstate[:,0])
+        plt.show()
 
     def plot_reward(self):
         self.plot_ratiostates(self.rewstate,ylabel='Keskireward tilassa',stack=False)

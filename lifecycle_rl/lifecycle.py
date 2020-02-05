@@ -116,8 +116,8 @@ class Lifecycle():
             self.gym_kwargs={'step': self.timestep,'gamma':self.gamma,
                 'min_age': self.min_age, 'max_age': self.max_age,
                 'min_retirementage': self.min_retirementage, 'max_retirementage':self.max_retirementage}
-            self.n_employment = 3
-            self.n_acts = 3
+            #self.n_employment = 3
+            #self.n_acts = 3
         else:
             #if EK:
             #    self.environment='unemploymentEK-v1'
@@ -134,12 +134,12 @@ class Lifecycle():
                 'mortality': self.mortality, 'randomness': self.randomness,
                 'include_putki': self.include_putki,
                 'plotdebug': self.plotdebug, 'include_preferencenoise': self.include_preferencenoise}
-            self.n_acts = 4
-            if self.mortality:
-                self.n_employment = 15
-            else:
-                self.n_employment = 14
-
+            #self.n_acts = 4
+            #if self.mortality:
+            #    self.n_employment = 16
+            #else:
+            #    self.n_employment = 15
+                
         # Create log dir & results dirs
         self.log_dir = "tmp/" # +str(env_id)
         os.makedirs(self.log_dir, exist_ok=True)
@@ -149,6 +149,8 @@ class Lifecycle():
         os.makedirs("results/", exist_ok=True)
 
         self.env = gym.make(self.environment,kwargs=self.gym_kwargs)
+        self.n_employment,self.n_acts=self.env.get_n_states()
+
         self.episodestats=SimStats(self.timestep,self.n_time,self.n_employment,self.n_pop,
                                    self.env,self.minimal,self.min_age,self.max_age,self.min_retirementage)
 
@@ -638,6 +640,9 @@ class Lifecycle():
         train a model based on a protocol, and then simulate it
         plot results if needed
         '''
+        
+        if self.plotdebug:
+            debug=True
    
         self.n_pop=pop
         if callback_minsteps is not None:
