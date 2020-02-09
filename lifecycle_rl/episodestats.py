@@ -473,7 +473,8 @@ class EpisodeStats():
     def plot_ratiostates(self,statistic,ylabel='',ylimit=None, show_legend=True, parent=False,\
                          unemp=False,start_from=None,stack=False,no_ve=False):
         self.plot_states(statistic/self.empstate,ylabel=ylabel,ylimit=ylimit,no_ve=no_ve,\
-                    show_legend=show_legend,parent=parent,unemp=unemp,start_from=start_from,stack=stack)
+                    show_legend=show_legend,parent=parent,unemp=unemp,start_from=start_from,\
+                    stack=stack)
 
     def plot_states(self,statistic,ylabel='',ylimit=None,show_legend=True,parent=False,unemp=False,no_ve=False,
                     start_from=None,stack=True,save=False,filename='fig.png',yminlim=None,ymaxlim=None,onlyunemp=False):
@@ -501,6 +502,7 @@ class EpisodeStats():
             ura_outsider=statistic[:,11]
             ura_student=statistic[:,12]
             ura_tyomarkkinatuki=statistic[:,13]
+            ura_army=statistic[:,14]
 
         if no_ve:
             ura_ret=0*ura_ret
@@ -531,8 +533,8 @@ class EpisodeStats():
                     ax.stackplot(x,ura_unemp,labels=('tyött'), colors=pal)
             else:
                 if not self.minimal:
-                    ax.stackplot(x,ura_emp,ura_osatyo,ura_vetyo,ura_veosatyo,ura_unemp,ura_tyomarkkinatuki,ura_pipe,ura_disab,ura_mother,ura_dad,ura_kht,ura_ret,ura_student,ura_outsider,
-                        labels=('työssä','osatyö','ve+työ','ve+osatyö','työtön','tm-tuki','työttömyysputki','tk','äitiysvapaa','isyysvapaa','khtuki','vanhuuseläke','opiskelija','ulkona'), 
+                    ax.stackplot(x,ura_emp,ura_osatyo,ura_vetyo,ura_veosatyo,ura_unemp,ura_tyomarkkinatuki,ura_pipe,ura_disab,ura_mother,ura_dad,ura_kht,ura_ret,ura_student,ura_outsider,ura_army,
+                        labels=('työssä','osatyö','ve+työ','ve+osatyö','työtön','tm-tuki','työttömyysputki','tk','äitiysvapaa','isyysvapaa','khtuki','vanhuuseläke','opiskelija','ulkona','armeijassa'), 
                         colors=pal)
                 else:
                     ax.stackplot(x,ura_emp,ura_unemp,ura_ret,
@@ -575,6 +577,7 @@ class EpisodeStats():
                     ax.plot(x,ura_osatyo,label='osatyö')
                     ax.plot(x,ura_student,label='student')
                     ax.plot(x,ura_outsider,label='outsider')
+                    ax.plot(x,ura_army,label='armeijassa')
         ax.set_xlabel('Ikä [v]')
         ax.set_ylabel(ylabel)
         if show_legend:
@@ -679,7 +682,8 @@ class EpisodeStats():
 
     def plot_wage_reduction(self):
         self.plot_ratiostates(self.stat_wage_reduction,ylabel='wage-reduction tilassa',stack=False)
-        self.plot_ratiostates(np.log(1.0+self.stat_wage_reduction),ylabel='log 5wage-reduction tilassa',stack=False)
+        self.plot_ratiostates(self.stat_wage_reduction,ylabel='wage-reduction tilassa',stack=False,unemp=True)
+        #self.plot_ratiostates(np.log(1.0+self.stat_wage_reduction),ylabel='log 5wage-reduction tilassa',stack=False)
 
     def plot_stats(self):
         self.plot_emp()

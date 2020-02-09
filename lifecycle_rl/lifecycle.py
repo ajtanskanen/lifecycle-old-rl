@@ -211,7 +211,8 @@ class Lifecycle():
         full_tensorboard_log=True
         
         if cont:
-            learning_rate=0.25*learning_rate
+            learning_rate=0.5*learning_rate
+            #learning_rate=0.25*learning_rate
         
         scaled_learning_rate=learning_rate*np.sqrt(batch)
         print('batch {} learning rate {} scaled {}'.format(batch,learning_rate,
