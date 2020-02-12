@@ -128,16 +128,20 @@ class EpisodeStats():
         ax.plot(x,meansal-stdsal)
         plt.show()
         
-    def comp_empdistribs(self,pipe=True,tmtuki=False,laaja=False):
+    def comp_empdistribs(self,pipe=True,tmtuki=False,laaja=False,outsider=False,ansiosid=False):
         unemp_distrib=[]
         emp_distrib=[]
-        if pipe:
-            unempset=[0,4,13]
-        else:
-            unempset=[0,13]
-            
+        
         if tmtuki:
             unempset=[13]
+        elif outsider:
+            unempset=[11]  
+        elif pipe:
+            unempset=[0,4,13]
+        elif ansiosid:
+            unempset=[0]
+        else:
+            unempset=[0,13]
             
         if laaja:
             unempset=[0,4,11,13]
@@ -166,7 +170,7 @@ class EpisodeStats():
         
         return ratio
 
-    def plot_empdistribs(self,unemp_distrib,emp_distrib):
+    def plot_empdistribs(self,emp_distrib):
         fig,ax=plt.subplots()
         ax.set_xlabel('työsuhteen pituus [v]')
         ax.set_ylabel('freq')
@@ -179,13 +183,14 @@ class EpisodeStats():
         #ax.hist(unemp_distrib)
         #plt.show()
         
+    def plot_unempdistribs(self,unemp_distrib):
+        #fig,ax=plt.subplots()
         axvcolor='r'
-
-        ax.set_xlabel('työttömyyden pituus [v]')
-        ax.set_ylabel('freq')
-        ax.hist(unemp_distrib)
-        ax.set_yscale('log')
-        plt.show()
+#         ax.set_xlabel('työttömyyden pituus [v]')
+#         ax.set_ylabel('freq')
+#         ax.hist(unemp_distrib)
+#         ax.set_yscale('log')
+#         plt.show()
         max_time=10
         nn_time = int(np.round((max_time)*self.inv_timestep))+1
         x=np.linspace(0,max_time,nn_time)
@@ -199,20 +204,20 @@ class EpisodeStats():
         ax.bar(x[:-1],scaled)
         ax.set_yscale('log')
         plt.show()        
-        
-        max_time=4
-        nn_time = int(np.round((max_time)*self.inv_timestep))+1
-        x=np.linspace(0,max_time,nn_time)
-        scaled,x2=np.histogram(unemp_distrib,x)
-        fig,ax=plt.subplots()
-        ax.set_xlabel('työttömyyden pituus [v]')
-        ax.set_ylabel('scaled freq')
-        plt.axvline(x=300/(12*21.5),color=axvcolor)
-        plt.axvline(x=400/(12*21.5),color=axvcolor)
-        plt.axvline(x=500/(12*21.5),color=axvcolor)
-        ax.bar(x[:-1],scaled)
-        ax.set_yscale('log')
-        plt.show()        
+#         
+#         max_time=4
+#         nn_time = int(np.round((max_time)*self.inv_timestep))+1
+#         x=np.linspace(0,max_time,nn_time)
+#         scaled,x2=np.histogram(unemp_distrib,x)
+#         fig,ax=plt.subplots()
+#         ax.set_xlabel('työttömyyden pituus [v]')
+#         ax.set_ylabel('scaled freq')
+#         plt.axvline(x=300/(12*21.5),color=axvcolor)
+#         plt.axvline(x=400/(12*21.5),color=axvcolor)
+#         plt.axvline(x=500/(12*21.5),color=axvcolor)
+#         ax.bar(x[:-1],scaled)
+#         ax.set_yscale('log')
+#         plt.show()        
 
     def comp_empratios(self,emp,alive,unempratio=True):
         employed=emp[:,1]
@@ -254,13 +259,18 @@ class EpisodeStats():
     def plot_outsider(self):
         x=np.linspace(self.min_age,self.max_age,self.n_time)
         fig,ax=plt.subplots()
-        ax.plot(x,100*(self.empstate[:,11]+self.empstate[:,5]+self.empstate[:,6]+self.empstate[:,7])/self.alive[:,0],label='työvoiman ulkopuolella, ei opiskelija, vanh.vapaat')
+        ax.plot(x,100*(self.empstate[:,11]+self.empstate[:,5]+self.empstate[:,6]+self.empstate[:,7])/self.alive[:,0],label='työvoiman ulkopuolella, ei opiskelija, sis. vanh.vapaat')
         emp_statsratio=100*self.outsider_stats()
         ax.plot(x,emp_statsratio,label='havainto')
         ax.set_xlabel('Ikä [v]')
         ax.set_ylabel('Osuus tilassa [%]')
         ax.legend()
         plt.show()
+        
+        arvot=np.sum(self.gempstate[:,5,0:3]+self.gempstate[:,6,0:3]+self.gempstate[:,7,0:3],axis=1)/np.sum(self.galive[:,0:3],axis=1)
+        print('miehet',arvot[0::4])
+        arvot=np.sum(self.gempstate[:,5,4:6]+self.gempstate[:,6,4:6]+self.gempstate[:,7,4:6],axis=1)/np.sum(self.galive[:,4:6],axis=1)
+        print('naiset',arvot[0::4])
 
     def plot_student(self):
         x=np.linspace(self.min_age,self.max_age,self.n_time)
@@ -693,13 +703,21 @@ class EpisodeStats():
             self.plot_group_emp()
         self.plot_sal()
         unemp_distrib,emp_distrib=self.comp_empdistribs()
-        self.plot_empdistribs(unemp_distrib,emp_distrib)
+        self.plot_empdistribs(emp_distrib)
+        print('Jakauma ansiosidonnainen+tmtuki+putki')
+        self.plot_unempdistribs(unemp_distrib)
+        print('Jakauma ansiosidonnainen+tmtuki ilman putkea')
         unemp_distrib,emp_distrib=self.comp_empdistribs(pipe=False)
-        self.plot_empdistribs(unemp_distrib,emp_distrib)
+        self.plot_unempdistribs(unemp_distrib)
+        print('Jakauma tmtuki')
         unemp_distrib,emp_distrib=self.comp_empdistribs(tmtuki=True)
-        self.plot_empdistribs(unemp_distrib,emp_distrib)
+        self.plot_unempdistribs(unemp_distrib)
+        print('Jakauma työvoiman ulkopuoliset')
+        unemp_distrib,emp_distrib=self.comp_empdistribs(outsider=True)
+        self.plot_unempdistribs(unemp_distrib)
+        print('Jakauma laaja (ansiosidonnainen+tmtuki+putki+ulkopuoliset)')
         unemp_distrib,emp_distrib=self.comp_empdistribs(laaja=True)
-        self.plot_empdistribs(unemp_distrib,emp_distrib)
+        self.plot_unempdistribs(unemp_distrib)
         self.plot_outsider()
         self.plot_student()
         self.plot_army()
@@ -1055,7 +1073,7 @@ class SimStats(EpisodeStats):
             ax.set_xlabel('Ikä [v]')
             ax.set_ylabel('Työllisyysaste [%]')
             x=np.linspace(self.min_age,self.max_age,self.n_time)
-            ax.plot(x,100*tyolliset_base)
+            ax.plot(x,100*tyolliset_base,alpha=0.5,lw=0.5)
 
         for i in range(1,n): 
             self.load_sim(results+'_'+str(100+i))
@@ -1068,7 +1086,7 @@ class SimStats(EpisodeStats):
 
             htv,tyollvaikutus,haj,tyollisyysaste,tyolliset=self.comp_tyollisyys_stats(empstate,scale_time=True)
             if plot:
-                ax.plot(x,100*tyolliset)
+                ax.plot(x,100*tyolliset,alpha=0.5,lw=0.5)
     
             agg_htv[i]=htv
             agg_tyoll[i]=tyollvaikutus
@@ -1080,7 +1098,7 @@ class SimStats(EpisodeStats):
         if plot:
             x=np.linspace(self.min_age,self.max_age,self.n_time)
             emp_statsratio=100*self.emp_stats()
-            ax.plot(x,emp_statsratio,label='havainto')
+            ax.plot(x,emp_statsratio,label='havainto',lw=3.0)
             plt.show()
 
         mean_emp=np.mean(emps,axis=0)
