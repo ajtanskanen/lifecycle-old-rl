@@ -746,11 +746,11 @@ class Lifecycle():
 
         self.render_distrib(load=results1,n=n,stats_results=stats_results)
             
-    def render_distrib(self,load=None,n=1,stats_results='results/distrib_stats',plot=False):
+    def render_distrib(self,load=None,n=1,startn=0,stats_results='results/distrib_stats',plot=False):
         if load is None:
             return
             
-        self.episodestats.run_simstats(load,stats_results,n)
+        self.episodestats.run_simstats(load,stats_results,n,startn=startn)
         self.episodestats.plot_simstats(stats_results)
 
         # gather results ...

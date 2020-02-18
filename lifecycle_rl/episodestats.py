@@ -1199,7 +1199,7 @@ class EpisodeStats():
 
     
 class SimStats(EpisodeStats):
-    def run_simstats(self,results,save,n,plot=True):
+    def run_simstats(self,results,save,n,plot=True,startn=0):
         '''
         Multiple stats, not used
         '''
@@ -1218,7 +1218,7 @@ class SimStats(EpisodeStats):
         std_emp=np.zeros((self.n_time,self.n_employment))
         emps=np.zeros((n,self.n_time,self.n_employment))
 
-        self.load_sim(results+'_100')
+        self.load_sim(results+'_'+str(100+startn))
         base_empstate=self.empstate/self.n_pop
         emps[0,:,:]=base_empstate
         htv_base,tyoll_base,haj_base,tyollaste_base,tyolliset_base=self.comp_tyollisyys_stats(base_empstate,scale_time=True)
@@ -1235,9 +1235,9 @@ class SimStats(EpisodeStats):
             ax.set_xlabel('Ikä [v]')
             ax.set_ylabel('Työllisyysaste [%]')
             x=np.linspace(self.min_age,self.max_age,self.n_time)
-            ax.plot(x,100*tyolliset_base,alpha=0.5,lw=0.5)
+            ax.plot(x,100*tyolliset_base,alpha=0.9,lw=2.0)
 
-        for i in range(1,n): 
+        for i in range(startn+1,n): 
             self.load_sim(results+'_'+str(100+i))
             empstate=self.empstate/self.n_pop
             emps[i,:,:]=empstate
@@ -1260,7 +1260,7 @@ class SimStats(EpisodeStats):
         if plot:
             x=np.linspace(self.min_age,self.max_age,self.n_time)
             emp_statsratio=100*self.emp_stats()
-            ax.plot(x,emp_statsratio,label='havainto',lw=3.0)
+            ax.plot(x,emp_statsratio,label='havainto',lw=1.0)
             plt.show()
 
         mean_emp=np.mean(emps,axis=0)
