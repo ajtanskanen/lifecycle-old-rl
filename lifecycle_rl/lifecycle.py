@@ -211,8 +211,8 @@ class Lifecycle():
         full_tensorboard_log=True
         
         if cont:
-            learning_rate=0.5*learning_rate
-            #learning_rate=0.25*learning_rate
+            #learning_rate=0.5*learning_rate
+            learning_rate=0.25*learning_rate
         
         scaled_learning_rate=learning_rate*np.sqrt(batch)
         print('batch {} learning rate {} scaled {}'.format(batch,learning_rate,
@@ -554,6 +554,9 @@ class Lifecycle():
             self.episodestats.render(load=load)
         else:
             self.episodestats.render()
+   
+    def load_sim(self,load=None):
+        self.episodestats.load_sim(load)
    
     def run_dummy(self,strategy='emp',debug=False,pop=None):
         '''
