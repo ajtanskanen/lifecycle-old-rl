@@ -11,6 +11,7 @@ import h5py
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
+from scipy.stats import norm
 
 class EpisodeStats():
     def __init__(self,timestep,n_time,n_emps,n_pop,env,minimal,min_age,max_age,min_retirementage):
@@ -578,13 +579,13 @@ class EpisodeStats():
         if unempratio:
             tyollisyysaste,osatyoaste,tyottomyysaste,ka_tyottomyysaste=self.comp_empratios(self.empstate,self.alive,unempratio=True)
             unempratio_stat=100*self.unempratio_stats()
-            labeli='keskimööröinen työttömyysaste '+str(ka_tyottomyysaste)      
+            labeli='keskimääräinen työttömyysaste '+str(ka_tyottomyysaste)      
             ylabeli='Työttömyysaste [%]'
             labeli2='työttömyysaste'
         else:
             tyollisyysaste,osatyoaste,tyottomyysaste,ka_tyottomyysaste=self.comp_empratios(self.empstate,self.alive,unempratio=False)
             unempratio_stat=100*self.unemp_stats()  
-            labeli='keskimööröinen työttömien osuus väestöstö '+str(ka_tyottomyysaste)
+            labeli='keskimääräinen työttömien osuus väestöstö '+str(ka_tyottomyysaste)
             ylabeli='Työttömien osuus väestöstö [%]'
             labeli2='työttömien osuus väestöstö'
 
@@ -625,12 +626,12 @@ class EpisodeStats():
         if unempratio:
             ax.plot(x,100*self.unempratio_stats(g=1),label='havainto, naiset')
             ax.plot(x,100*self.unempratio_stats(g=2),label='havainto, miehet')
-            labeli='keskimööröinen työttömyysaste '+str(ka_tyottomyysaste)      
+            labeli='keskimääräinen työttömyysaste '+str(ka_tyottomyysaste)      
             ylabeli='Työttömyysaste [%]'
         else:
             ax.plot(x,100*self.unemp_stats(g=1),label='havainto, naiset')
             ax.plot(x,100*self.unemp_stats(g=2),label='havainto, miehet')
-            labeli='keskimööröinen työttömien osuus väestöstö '+str(ka_tyottomyysaste)
+            labeli='keskimääräinen työttömien osuus väestöstö '+str(ka_tyottomyysaste)
             ylabeli='Työttömien osuus väestöstö [%]'
             
         ax.set_xlabel('Ikä [v]')
@@ -790,7 +791,7 @@ class EpisodeStats():
             else:
                 if not self.minimal:
                     ax.stackplot(x,ura_emp,ura_osatyo,ura_vetyo,ura_veosatyo,ura_unemp,ura_tyomarkkinatuki,ura_pipe,ura_disab,ura_mother,ura_dad,ura_kht,ura_ret,ura_student,ura_outsider,ura_army,
-                        labels=('työssä','osatyö','ve+työ','ve+osatyö','työtön','tm-tuki','työttömyysputki','tk','äitiysvapaa','isyysvapaa','khtuki','vanhuuseläke','opiskelija','ulkona','armeijassa'), 
+                        labels=('työssä','osatyö','ve+työ','ve+osatyö','työtön','tm-tuki','työttömyysputki','tk-eläke','äitiysvapaa','isyysvapaa','kh-tuki','vanhuuseläke','opiskelija','työvoiman ulkop.','armeijassa'), 
                         colors=pal)
                 else:
                     ax.stackplot(x,ura_emp,ura_unemp,ura_ret,
@@ -934,7 +935,7 @@ class EpisodeStats():
         plt.show()  
 
         rr=np.sum(total_reward)/self.n_pop
-        print('Yhteensö reward {r}'.format(r=rr))
+        print('yhteensä reward {r}'.format(r=rr))
 
     def plot_wage_reduction(self):
         self.plot_ratiostates(self.stat_wage_reduction,ylabel='wage-reduction tilassa',stack=False)
@@ -953,7 +954,7 @@ class EpisodeStats():
 
     def plot_stats(self):
         self.plot_emp()
-        print('lisäpäivillö on {} henkilöö'.format(self.count_putki()))
+        print('lisäpäivillä on {} henkilöä'.format(self.count_putki()))
         self.plot_unemp(unempratio=True)
         self.plot_unemp(unempratio=False)
         self.plot_unemp_shares()
@@ -1199,6 +1200,8 @@ class EpisodeStats():
         tyoll_osuus2,htv_osuus2,tyot_osuus2,kokotyo_osuus2,osatyo_osuus2=self.comp_employed(cc2.empstate)
         htv1,tyoll1,haj1,tyollaste1,tyolliset1=self.comp_tyollisyys_stats(self.empstate/self.n_pop,scale_time=True,start=s,end=e)
         htv2,tyoll2,haj2,tyollaste2,tyolliset2=self.comp_tyollisyys_stats(cc2.empstate/cc2.n_pop,scale_time=True,start=s,end=e)
+        ansiosid_osuus1,tm_osuus1=self.comp_employed_detailed(self.empstate)
+        ansiosid_osuus2,tm_osuus2=self.comp_employed_detailed(cc2.empstate)
         
         fig,ax=plt.subplots()
         ax.set_xlabel('Ikä [v]')
@@ -1216,12 +1219,32 @@ class EpisodeStats():
         ax.plot(x,100*(kokotyo_osuus1-kokotyo_osuus2),label='kokoaikatyö')
         if not self.minimal:
             ax.plot(x,100*(osatyo_osuus1-osatyo_osuus2),label='osa-aikatyö')
-            ax.plot(x,100*(tyolliset1-tyolliset2),label='työ yhteensö')
-            ax.plot(x,100*(htv_osuus1-htv_osuus2),label='htv yhteensö')
+            ax.plot(x,100*(tyolliset1-tyolliset2),label='työ yhteensä')
+            ax.plot(x,100*(htv_osuus1-htv_osuus2),label='htv yhteensä')
         ax.legend()
         plt.show()
 
-        print('Työllisyysvaikutus {:.0f}-{:.0f}-vuotiaisiin noin {:.0f} htv ja {:.0f} työllistö'.format(s,e,htv1-htv2,tyoll1-tyoll2))
+        fig,ax=plt.subplots()
+        ax.set_xlabel('Ikä [v]')
+        ax.set_ylabel('Ero osuuksissa [%]')
+        diff_emp=diff_emp*100
+        ax.plot(x,100*(tyot_osuus2),label='työttömyys, perus')
+        ax.plot(x,100*tyot_osuus1,label='työttömyys, vaiihtoehto')
+        ax.legend()
+        plt.show()
+
+        fig,ax=plt.subplots()
+        ax.set_xlabel('Ikä [v]')
+        ax.set_ylabel('Ero osuuksissa [%]')
+        diff_emp=diff_emp*100
+        ax.plot(x,100*ansiosid_osuus2,label='ansiosid. työttömyys, perus')
+        ax.plot(x,100*ansiosid_osuus1,label='ansiosid. työttömyys, vaihtoehto')
+        ax.plot(x,100*tm_osuus2,label='tm-tuki, perus')
+        ax.plot(x,100*tm_osuus1,label='tm-tuki, vaihtoehto')
+        ax.legend()
+        plt.show()
+
+        print('Työllisyysvaikutus {:.0f}-{:.0f}-vuotiaisiin noin {:.0f} htv ja {:.0f} työllistä'.format(s,e,htv1-htv2,tyoll1-tyoll2))
         print('Työllisyysastevaikutus {:.0f}-{:.0f}-vuotiailla noin {:.2f} prosenttia ({:.2f} vs {:.2f})'.format(s,e,(tyollaste1-tyollaste2)*100,tyollaste1*100,tyollaste2*100))
         
         # epävarmuus
@@ -1255,7 +1278,7 @@ class EpisodeStats():
             # työllisiksi lasketaan kokoaikatyössä olevat, osa-aikaiset, ve+työ, ve+osatyö 
             # isyysvapaalla olevat jötetty pois, vaikka vapaa kestöö alle 3kk
             tyoll_osuus=(emp[:,1]+emp[:,8]+emp[:,9]+emp[:,10])/np.sum(emp,1)
-            tyot_osuus=(emp[:,0]+emp[:,4])/np.sum(emp,1)
+            tyot_osuus=(emp[:,0]+emp[:,4]+emp[:,13])/np.sum(emp,1)
             htv=(emp[:,1]+emp[:,8]+0.5*emp[:,9]+0.5*emp[:,10])/np.sum(emp,1)
             kokotyo_osuus=(emp[:,1]+emp[:,8])/np.sum(emp,1)
             osatyo_osuus=(emp[:,9]+emp[:,10])/np.sum(emp,1)
@@ -1267,7 +1290,19 @@ class EpisodeStats():
             kokotyo_osuus=np.reshape(kokotyo_osuus,(osatyo_osuus.shape[0],1))
             
         return tyoll_osuus,htv,tyot_osuus,kokotyo_osuus,osatyo_osuus
-    
+
+    def comp_employed_detailed(self,emp):
+        if self.minimal:
+            ansiosid_osuus=emp[:,0]/np.sum(emp,1)
+            tm_osuus=ansiosid_osuus*0
+        else:
+            # työllisiksi lasketaan kokoaikatyössä olevat, osa-aikaiset, ve+työ, ve+osatyö 
+            # isyysvapaalla olevat jötetty pois, vaikka vapaa kestöö alle 3kk
+            ansiosid_osuus=(emp[:,0]+emp[:,4])/np.sum(emp,1)
+            tm_osuus=(emp[:,13])/np.sum(emp,1)
+            
+        return ansiosid_osuus,tm_osuus
+            
     def get_demog(self):
         demog=np.array([61663,63354,65939,68253,68543,71222,70675,71691,70202,70535, # 20-29 y
                         67315,68282,70431,72402,73839,73065,70040,69501,68857,69035, # 30-39 y
@@ -1388,6 +1423,17 @@ class SimStats(EpisodeStats):
         self.save_sim(results+'_best')
                     
         print('best_emp',best_emp)
+        
+    def fit_norm(self,diff):
+        diff_stdval=np.std(diff)
+        diff_meanval=np.mean(diff)
+        diff_minval=np.min(diff)
+        diff_maxval=np.max(diff)
+        sz=(diff_maxval-diff_minval)/10
+        x=np.linspace(diff_minval,diff_maxval,1000)
+        y=norm.pdf(x,diff_meanval,diff_stdval)*diff.shape[0]*sz
+    
+        return x,y
 
     def plot_simstats(self,filename):
         diff_htv,diff_tyoll,agg_htv,agg_tyoll,agg_rew,mean_emp,std_emp,median_emp,emps,\
@@ -1401,7 +1447,10 @@ class SimStats(EpisodeStats):
         std_tyoll=np.std(agg_tyoll)
         diff_htv=agg_htv-mean_htv
         diff_tyoll=agg_tyoll-median_tyoll
-
+        
+        
+        x,y=self.fit_norm(diff_htv)
+        
         if self.minimal:
             m_emp=mean_emp[:,1]
             m_median=median_emp[:,1]
@@ -1416,24 +1465,27 @@ class SimStats(EpisodeStats):
         if self.minimal:
             print('Vaikutus työllisyyteen keskiarvo {:.0f} htv mediaan {:.0f} htv std {:.0f} htv'.format(mean_htv,median_htv,std_htv))
         else:
-            print('Vaikutus työllisyyteen keskiarvo {:.0f} htv, mediaani {:.0f} htv std {:.0f} htv\n   keskiarvo {:.0f} työllistö, mediaani {:.0f} työllistö, std {:.0f} työllistö'.format(mean_htv,median_htv,std_htv,mean_tyoll,median_tyoll,std_tyoll))
+            print('Vaikutus työllisyyteen keskiarvo {:.0f} htv, mediaani {:.0f} htv std {:.0f} htv\n   keskiarvo {:.0f} työllistä, mediaani {:.0f} työllistä, std {:.0f} työllistä'.format(mean_htv,median_htv,std_htv,mean_tyoll,median_tyoll,std_tyoll))
 
         fig,ax=plt.subplots()
-        ax.set_xlabel('Poikkeama työllisyydessö [htv]')
-        ax.set_ylabel('Lukumöörö')
+        ax.set_xlabel('Poikkeama työllisyydessä [htv]')
+        ax.set_ylabel('Lukumäärä')
         ax.hist(diff_htv)
+        ax.plot(x,y)
         plt.show()
 
         if not self.minimal:
+            x,y=self.fit_norm(diff_tyoll)
             fig,ax=plt.subplots()
-            ax.set_xlabel('Poikkeama työllisyydessö [henkilöö]')
-            ax.set_ylabel('Lukumöörö')
+            ax.set_xlabel('Poikkeama työllisyydessä [henkilöä]')
+            ax.set_ylabel('Lukumäärä')
             ax.hist(diff_tyoll)
+            ax.plot(x,y)
             plt.show()
 
         fig,ax=plt.subplots()
         ax.set_xlabel('Palkkio')
-        ax.set_ylabel('Lukumöörö')
+        ax.set_ylabel('Lukumäärä')
         ax.hist(agg_rew)
         plt.show()
 
@@ -1476,21 +1528,21 @@ class SimStats(EpisodeStats):
     
         if plot:
             fig,ax=plt.subplots()
-            ax.set_xlabel('Poikkeama työllisyydessö [htv]')
-            ax.set_ylabel('Lukumöörö')
+            ax.set_xlabel('Poikkeama työllisyydessä [htv]')
+            ax.set_ylabel('Lukumäärä')
             ax.hist(diff_htv)
             plt.show()
 
             if not self.minimal:
                 fig,ax=plt.subplots()
-                ax.set_xlabel('Poikkeama työllisyydessö [henkilöö]')
-                ax.set_ylabel('Lukumöörö')
+                ax.set_xlabel('Poikkeama työllisyydessä [henkilöä]')
+                ax.set_ylabel('Lukumäärä')
                 ax.hist(diff_tyoll)
                 plt.show()
 
             fig,ax=plt.subplots()
             ax.set_xlabel('Palkkio')
-            ax.set_ylabel('Lukumöörö')
+            ax.set_ylabel('Lukumäärä')
             ax.hist(agg_rew)
             plt.show()    
     
@@ -1500,10 +1552,10 @@ class SimStats(EpisodeStats):
         if self.minimal:
             print('Vaikutus työllisyysasteen keskiarvo {} htv mediaan {} htv'.format(mean_htv,median_htv))
         else:
-            print('Vaikutus työllisyysasteen keskiarvo {} htv, mediaani {} htv\n                        keskiarvo {} työllistö, mediaani {} työllistö'.format(mean_htv,median_htv,mean_tyoll,median_tyoll))
+            print('Vaikutus työllisyysasteen keskiarvo {} htv, mediaani {} htv\n                        keskiarvo {} työllistä, mediaani {} työllistä'.format(mean_htv,median_htv,mean_tyoll,median_tyoll))
 
         fig,ax=plt.subplots()
-        ax.set_xlabel('keskimööröinen työllisyys')
+        ax.set_xlabel('keskimääräinen työllisyys')
         ax.set_ylabel('työllisyysaste')
         x=np.linspace(self.min_age,self.max_age,self.n_time)
         ax.plot(x,100*m_emp1,label='keskiarvo1')

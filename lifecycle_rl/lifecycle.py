@@ -35,7 +35,8 @@ class Lifecycle():
                     ansiopvraha_kesto400=None,karenssi_kesto=None,
                     ansiopvraha_toe=None,perustulo=None,mortality=None,
                     randomness=None,include_putki=None,preferencenoise=None,
-                    callback_minsteps=None,pinkslip=True,plotdebug=False):
+                    callback_minsteps=None,pinkslip=True,plotdebug=False,
+                    use_sigma_reduction=None):
 
         '''
         Alusta muuttujat
@@ -104,6 +105,10 @@ class Lifecycle():
 
         if env is not None:
             self.environment=env
+            
+        self.use_sigma_reduction=False
+        if use_sigma_reduction is not None:
+            self.use_sigma_reduction=use_sigma_reduction
 
         # alustetaan gym-environment
         if minimal:
@@ -132,7 +137,7 @@ class Lifecycle():
                 'ansiopvraha_toe': self.ansiopvraha_toe,'include_pinkslip':self.include_pinkslip,
                 'perustulos': self.perustulo, 'karenssi_kesto': self.karenssi_kesto,
                 'mortality': self.mortality, 'randomness': self.randomness,
-                'include_putki': self.include_putki,
+                'include_putki': self.include_putki, 'use_sigma_reduction': self.use_sigma_reduction,
                 'plotdebug': self.plotdebug, 'include_preferencenoise': self.include_preferencenoise}
             #self.n_acts = 4
             #if self.mortality:
