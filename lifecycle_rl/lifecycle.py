@@ -759,16 +759,12 @@ class Lifecycle():
         self.episodestats.plot_simstats(stats_results)
 
         # gather results ...
-        if plot:
-            print('plot')
+        #if plot:
+        #    print('plot')
             
-    def compare_distrib(self,load=None,n=1,stats_results='results/distrib_stats',plot=False):
-        if load is None:
-            return
-            
-        self.episodestats.run_simstats(load,stats_results,n)
-        self.episodestats.plot_simstats(stats_results)
+    def compare_distrib(self,filename1,filename2,n=1):
+        self.episodestats.compare_simstats(filename1,filename2)
 
         # gather results ...
-        if plot:
-            print('plot')            
+        #if plot:
+        #    print('plot')            
