@@ -641,7 +641,8 @@ class Lifecycle():
     def run_results(self,steps1=100,steps2=100,pop=1_000,rlmodel='acktr',twostage=True,
                save='saved/perusmalli',debug=False,simut='simut',results='results/simut_res',
                stats='results/simut_stats',deterministic=True,train=True,predict=True,
-               batch1=1,batch2=100,cont=False,start_from=None,plot=False,callback_minsteps=None):
+               batch1=1,batch2=100,cont=False,start_from=None,plot=False,callback_minsteps=None,
+               verbose=1):
    
         '''
         run_results
@@ -660,11 +661,11 @@ class Lifecycle():
         if train: 
             print('train...')
             if cont:
-                self.run_protocol(rlmodel=rlmodel,steps1=steps1,steps2=steps2,
+                self.run_protocol(rlmodel=rlmodel,steps1=steps1,steps2=steps2,verbose=verbose,
                                   debug=debug,save=save,batch1=batch1,batch2=batch2,
                                   cont=cont,start_from=start_from,twostage=twostage)
             else:
-                self.run_protocol(rlmodel=rlmodel,steps1=steps1,steps2=steps2,
+                self.run_protocol(rlmodel=rlmodel,steps1=steps1,steps2=steps2,verbose=verbose,
                                  debug=debug,batch1=batch1,batch2=batch2,cont=cont,
                                  save=save,twostage=twostage)
         if predict:
@@ -676,7 +677,7 @@ class Lifecycle():
           
     def run_protocol(self,steps1=2_000_000,steps2=1_000_000,rlmodel='acktr',
                debug=False,batch1=1,batch2=1000,cont=False,twostage=True,
-               start_from=None,save='best3'):
+               start_from=None,save='best3',verbose=1):
         '''
         run_protocol
 
@@ -703,7 +704,7 @@ class Lifecycle():
         if twostage and steps2>0:
             print('phase 2')
             self.train(steps=steps2,cont=True,rlmodel=rlmodel,save=tmpname,
-                       debug=debug,start_from=tmpname,batch=batch2,
+                       debug=debug,start_from=tmpname,batch=batch2,verbose=verbose,
                        use_callback=True,use_vecmonitor=True,log_interval=1,bestname=save)
 
     def predict_protocol(self,pop=1_00,rlmodel='acktr',results='results/simut_res',
@@ -722,7 +723,7 @@ class Lifecycle():
                save='saved/distrib_base_',debug=False,simut='simut',results='results/distrib_',
                deterministic=True,train=True,predict=True,batch1=1,batch2=100,cont=False,
                start_from=None,plot=False,twostage=False,callback_minsteps=None,
-               stats_results='results/distrib_stats',startn=None):
+               stats_results='results/distrib_stats',startn=None,verbose=1):
    
         '''
         run_verify
@@ -747,7 +748,7 @@ class Lifecycle():
                twostage=twostage,save=bestname2,debug=debug,simut=simut,results=results2,
                deterministic=deterministic,train=train,predict=predict,
                batch1=batch1,batch2=batch2,cont=cont,start_from=start_from,plot=False,
-               callback_minsteps=callback_minsteps)
+               callback_minsteps=callback_minsteps,verbose=verbose)
 
         self.render_distrib(load=results1,n=n,stats_results=stats_results)
             

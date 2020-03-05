@@ -44,6 +44,10 @@ class EpisodeStats():
         self.salaries_emp=np.zeros((self.n_time,n_emps))
         self.actions=np.zeros((self.n_time,self.n_pop))
         self.popempstate=np.zeros((self.n_time,self.n_pop))
+        self.popunemprightleft=np.zeros((self.n_time,self.n_pop))
+        self.popunemprightused=np.zeros((self.n_time,self.n_pop))
+        self.tyoll_distrib_bu=np.zeros((self.n_time,self.n_pop))
+        self.unemp_distrib_bu=np.zeros((self.n_time,self.n_pop))
         self.siirtyneet=np.zeros((self.n_time,n_emps))
         self.pysyneet=np.zeros((self.n_time,n_emps))
         self.salaries=np.zeros((self.n_time,self.n_pop))
@@ -62,6 +66,7 @@ class EpisodeStats():
             emp,_,_,a,_=self.env.state_decode(state) # current employment state
             newemp,_,newsal,a2,tis=self.env.state_decode(newstate)
             g=0
+            bu=0
         else:
             emp,_,_,_,a,_,_,_,_,_,_,_,_,_=self.env.state_decode(state) # current employment state
             newemp,g,newpen,newsal,a2,tis,paidpens,pink,toe,ura,oof,bu,wr,pr=self.env.state_decode(newstate)
@@ -89,6 +94,8 @@ class EpisodeStats():
                 self.stat_paidpension[t,newemp]+=paidpens
                 self.stat_unemp_len[t,n]=tis
                 self.out_of_work[t,newemp]+=oof
+                self.popunemprightleft[t,n]=-self.env.unempright_left(newemp,tis,bu,a2,ura,oof)
+                self.popunemprightused[t,n]=bu
     
             if aveV is not None:
                 self.aveV[t,n]=aveV
@@ -131,6 +138,7 @@ class EpisodeStats():
         
     def comp_tyollistymisdistribs(self,putki=True,tmtuki=True,laaja=False,outsider=False,ansiosid=True,tyott=False,max_age=100):
         tyoll_distrib=[]
+        tyoll_distrib_bu=[]
         unempset=[]
         
         if tmtuki:
@@ -159,16 +167,18 @@ class EpisodeStats():
                     if self.popempstate[t,k]!=prev_state:
                         if prev_state in unempset and self.popempstate[t,k] in empset:
                             tyoll_distrib.append((t-prev_trans)*self.timestep)
+                            tyoll_distrib_bu.append(self.popunemprightleft[t,k])
                             prev_state=self.popempstate[t,k]
                             prev_trans=t
                         else: # some other state
                             prev_state=self.popempstate[t,k]
                             prev_trans=t
                     
-        return tyoll_distrib
+        return tyoll_distrib,tyoll_distrib_bu
 
     def comp_empdistribs(self,putki=True,tmtuki=True,laaja=False,outsider=False,ansiosid=True,tyott=False,max_age=100):
         unemp_distrib=[]
+        unemp_distrib_bu=[]
         emp_distrib=[]
         unempset=[]
         
@@ -198,6 +208,8 @@ class EpisodeStats():
                     if self.popempstate[t,k]!=prev_state:
                         if prev_state in unempset and self.popempstate[t,k] not in unempset:
                             unemp_distrib.append((t-prev_trans)*self.timestep)
+                            unemp_distrib_bu.append(self.popunemprightleft[t,k])
+                            
                             prev_state=self.popempstate[t,k]
                             prev_trans=t
                         elif prev_state in empset and self.popempstate[t,k] not in unempset:
@@ -208,7 +220,7 @@ class EpisodeStats():
                             prev_state=self.popempstate[t,k]
                             prev_trans=t
                     
-        return unemp_distrib,emp_distrib
+        return unemp_distrib,emp_distrib,unemp_distrib_bu
         
     def empdist_stat(self):
         ratio=np.array([1,0.287024901703801,0.115508955875928,0.0681083442551332,0.0339886413280909,0.0339886413280909,0.0114460463084316,0.0114460463084316,0.0114460463084316,0.00419397116644823,0.00419397116644823,0.00419397116644823,0.00419397116644823,0.00419397116644823,0.00419397116644823,0.00419397116644823,0.00419397116644823,0.00166011358671909,0.00166011358671909,0.00166011358671909,0.00166011358671909,0.00166011358671909,0.00166011358671909,0.00166011358671909,0.00166011358671909,0.00104849279161206,0.00104849279161206,0.00104849279161206,0.00104849279161206,0.00104849279161206,0.00104849279161206,0.00104849279161206,0.00104849279161206])
@@ -308,6 +320,34 @@ class EpisodeStats():
         plt.ylim(0,0.8)
         plt.show()        
 
+    def plot_tyolldistribs_both_bu(self,emp_distrib,tyoll_distrib,max=2):
+        max_time=4
+        nn_time = int(np.round((max_time)*self.inv_timestep))+1
+        x=np.linspace(-max_time,0,nn_time)
+        scaled0,x0=np.histogram(emp_distrib,x)
+        scaled=scaled0
+        scaled_tyoll,x2=np.histogram(tyoll_distrib,x)
+            
+        jaljella=np.cumsum(scaled0[::-1])[::-1] # jöljellö olevien summa
+        #jaljella=np.cumsum(scaled0)
+        #print(jaljella,scaled)
+        scaled=scaled/jaljella
+        jaljella_tyoll=np.cumsum(scaled0[::-1])[::-1] # jöljellö olevien summa
+        #jaljella_tyoll=np.cumsum(scaled0)
+        scaled_tyoll=scaled_tyoll/jaljella_tyoll
+        fig,ax=plt.subplots()
+        ax.set_xlabel('aika ennen ansiopäivärahaoikeuden loppua [v]')
+        point=0.6
+        #self.plot_vlines_unemp(point)
+        ax.plot(x2[1:-1],scaled[1:],label='pois siirtyneiden osuus')
+        ax.plot(x2[1:-1],scaled_tyoll[1:],label='työllistyneiden osuus')
+        ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
+        ax.set_ylabel('pois siirtyneiden osuus')
+
+        plt.xlim(-max,0)
+        #plt.ylim(0,0.8)
+        plt.show()        
+
     def plot_compare_tyolldistribs(self,emp_distrib,tyoll_distrib,emp_distrib2,tyoll_distrib2,tyollistyneet=True,max=4,label='vaihtoehto'):
         max_time=50
         nn_time = int(np.round((max_time)*self.inv_timestep))+1
@@ -361,22 +401,46 @@ class EpisodeStats():
         plt.xlim(0,max)
         plt.show()   
 
+    def plot_unempdistribs_bu(self,unemp_distrib,max=2):
+        #fig,ax=plt.subplots()
+        max_time=50
+        nn_time = int(np.round((max_time)*self.inv_timestep))+1
+        x=np.linspace(-max_time,0,nn_time)
+        scaled,x2=np.histogram(unemp_distrib,x)
+        scaled=scaled/np.abs(np.sum(unemp_distrib))
+        fig,ax=plt.subplots()
+        #self.plot_vlines_unemp(0.6)
+        ax.set_xlabel('työttömyysjakson pituus [v]')
+        ax.set_ylabel('skaalattu taajuus')
+        #x3=np.flip(x[:-1])
+        #ax.plot(x3,scaled)
+        ax.plot(x[:-1],scaled)
+        #ax.set_yscale('log')
+        plt.xlim(-max,0)
+        plt.show()   
+
     def plot_compare_unempdistribs(self,unemp_distrib,unemp_distrib2,max=4,label='vaihtoehto'):
         #fig,ax=plt.subplots()
         max_time=50
         nn_time = int(np.round((max_time)*self.inv_timestep))+1
-        x=np.linspace(0,max_time,nn_time)
+        x=np.linspace(self.timestep,max_time,nn_time)
         scaled,x2=np.histogram(unemp_distrib,x)
-        scaled=scaled/np.sum(unemp_distrib)
+        print('Perus keskikesto {} v {} Keskikesto {} v'.format(np.mean(unemp_distrib2),label,np.mean(unemp_distrib)))
+        print('Skaalaamaton Perus lkm {} v {} lkm {} v'.format(len(unemp_distrib2),label,len(unemp_distrib)))
+        print('Skaalaamaton Perus työtpäiviä yht {} v {} työtpäiviä yht {} v'.format(sum(unemp_distrib2),label,sum(unemp_distrib)))
+        #scaled=scaled/np.sum(unemp_distrib)
+        scaled=scaled/np.sum(scaled)
         scaled3,x3=np.histogram(unemp_distrib2,x)
-        scaled3=scaled3/np.sum(unemp_distrib2)
+        #scaled3=scaled3/np.sum(unemp_distrib2)
+        scaled3=scaled3/np.sum(scaled3)
         fig,ax=plt.subplots()
         self.plot_vlines_unemp(0.9)
-        ax.set_xlabel('työttömyysjakson pituus [v]')
-        ax.set_ylabel('skaalattu taajuus')
+        ax.set_xlabel('Työttömyysjakson pituus [v]')
+        ax.set_ylabel('Osuus')
         ax.plot(x[:-1],scaled,label=label)
         ax.plot(x[:-1],scaled3,label='perus')
         ax.set_yscale('log')
+        plt.ylim(1e-4,1.0)
         ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
         plt.xlim(0,max)
         plt.show()   
@@ -942,15 +1006,21 @@ class EpisodeStats():
         self.plot_ratiostates(self.stat_wage_reduction,ylabel='wage-reduction tilassa',stack=False,unemp=True)
         #self.plot_ratiostates(np.log(1.0+self.stat_wage_reduction),ylabel='log 5wage-reduction tilassa',stack=False)
 
-    def plot_distrib(self,label='',plot_emp=False,ansiosid=False,tmtuki=False,putki=False,outsider=False,max_age=500,laaja=False,max=4):
-        unemp_distrib,emp_distrib=self.comp_empdistribs(ansiosid=ansiosid,tmtuki=tmtuki,putki=putki,outsider=outsider,max_age=max_age,laaja=laaja)
-        tyoll_distrib=self.comp_tyollistymisdistribs(ansiosid=ansiosid,tmtuki=tmtuki,putki=putki,outsider=outsider,max_age=max_age,laaja=laaja)
+    def plot_distrib(self,label='',plot_emp=False,plot_bu=False,ansiosid=False,tmtuki=False,putki=False,outsider=False,max_age=500,laaja=False,max=4):
+        unemp_distrib,emp_distrib,unemp_distrib_bu=self.comp_empdistribs(ansiosid=ansiosid,tmtuki=tmtuki,putki=putki,outsider=outsider,max_age=max_age,laaja=laaja)
+        tyoll_distrib,tyoll_distrib_bu=self.comp_tyollistymisdistribs(ansiosid=ansiosid,tmtuki=tmtuki,putki=putki,outsider=outsider,max_age=max_age,laaja=laaja)
         if plot_emp:
             self.plot_empdistribs(emp_distrib)
         print(label)
-        self.plot_unempdistribs(unemp_distrib)
+        if plot_bu:
+            self.plot_unempdistribs_bu(unemp_distrib_bu)
+        else:
+            self.plot_unempdistribs(unemp_distrib)
         #self.plot_tyolldistribs(unemp_distrib,tyoll_distrib,tyollistyneet=False)     
-        self.plot_tyolldistribs_both(unemp_distrib,tyoll_distrib,max=max)
+        if plot_bu:
+            self.plot_tyolldistribs_both_bu(unemp_distrib_bu,tyoll_distrib_bu,max=max)
+        else:
+            self.plot_tyolldistribs_both(unemp_distrib,tyoll_distrib,max=max)
 
     def plot_stats(self):
         self.plot_emp()
@@ -964,12 +1034,14 @@ class EpisodeStats():
         self.plot_sal()
         
         self.plot_distrib(label='Jakauma ansiosidonnainen+tmtuki+putki, no max age',ansiosid=True,tmtuki=True,putki=True,outsider=False)
-        self.plot_distrib(label='Jakauma ansiosidonnainen+tmtuki+putki, jakso päättynyt ennen 50v ikä',ansiosid=True,tmtuki=True,putki=True,outsider=False,max_age=50)
-        self.plot_distrib(label='Jakauma ansiosidonnainen+tmtuki ilman putkea',ansiosid=True,tmtuki=True,putki=False,outsider=False)
-        self.plot_distrib(label='Jakauma ansiosidonnainen+tmtuki ilman putkea, max Ikä 50v',ansiosid=True,tmtuki=True,putki=False,outsider=False,max_age=50)
+        self.plot_distrib(label='Jakauma ansiosidonnainen+tmtuki+putki, jakso päättynyt ennen 50v ikää',ansiosid=True,tmtuki=True,putki=True,outsider=False,max_age=50)
+        #self.plot_distrib(label='Jakauma ansiosidonnainen+tmtuki+putki, jakso päättynyt ennen 50v ikää, jäljellä oleva aika',plot_bu=True,ansiosid=True,tmtuki=True,putki=True,outsider=False,max_age=50)
+        self.plot_distrib(label='Jakauma ansiosidonnainen+putki, jakso päättynyt ennen 50v ikää, jäljellä oleva aika',plot_bu=False,ansiosid=True,tmtuki=False,putki=True,outsider=False,max_age=50)
+        #self.plot_distrib(label='Jakauma ansiosidonnainen+tmtuki ilman putkea',ansiosid=True,tmtuki=True,putki=False,outsider=False)
+        #self.plot_distrib(label='Jakauma ansiosidonnainen+tmtuki ilman putkea, max Ikä 50v',ansiosid=True,tmtuki=True,putki=False,outsider=False,max_age=50)
         self.plot_distrib(label='Jakauma tmtuki',ansiosid=False,tmtuki=True,putki=False,outsider=False)
         #self.plot_distrib(label='Jakauma työvoiman ulkopuoliset',ansiosid=False,tmtuki=False,putki=False,outsider=True)
-        self.plot_distrib(label='Jakauma laaja (ansiosidonnainen+tmtuki+putki+ulkopuoliset)',laaja=True)
+        #self.plot_distrib(label='Jakauma laaja (ansiosidonnainen+tmtuki+putki+ulkopuoliset)',laaja=True)
 
         self.plot_outsider()
         self.plot_student()
@@ -1135,6 +1207,8 @@ class EpisodeStats():
         dset = f.create_dataset('stat_unemp_len', data=self.stat_unemp_len, dtype=ftype)
         dset = f.create_dataset('popempstate', data=self.popempstate, dtype=ftype)
         dset = f.create_dataset('stat_wage_reduction', data=self.stat_wage_reduction, dtype=ftype)
+        dset = f.create_dataset('popunemprightleft', data=self.popunemprightleft, dtype=ftype)
+        dset = f.create_dataset('popunemprightused', data=self.popunemprightused, dtype=ftype)
         f.close()
 
     def save_to_hdf(self,filename,nimi,arr,dtype):
@@ -1177,6 +1251,8 @@ class EpisodeStats():
         self.stat_unemp_len=f.get('stat_unemp_len').value
         self.popempstate=f.get('popempstate').value
         self.stat_wage_reduction=f.get('stat_wage_reduction').value
+        self.popunemprightleft=f.get('popunemprightleft').value
+        self.popunemprightused=f.get('popunemprightused').value
         
         f.close()
 
@@ -1251,13 +1327,24 @@ class EpisodeStats():
         delta=1.96*1.0/np.sqrt(self.n_pop)
         print('epävarmuus työllisyysasteissa {:.4f}, hajonta {:.4f}'.format(delta,haj1))
         
-        unemp_distrib,emp_distrib=self.comp_empdistribs(ansiosid=True,tmtuki=True,putki=True,outsider=False)
-        tyoll_distrib=self.comp_tyollistymisdistribs(ansiosid=True,tmtuki=True,putki=True,outsider=False)
-        unemp_distrib2,emp_distrib2=cc2.comp_empdistribs(ansiosid=True,tmtuki=True,putki=True,outsider=False)
-        tyoll_distrib2=cc2.comp_tyollistymisdistribs(ansiosid=True,tmtuki=True,putki=True,outsider=False)
+        unemp_distrib,emp_distrib,unemp_distrib_bu=self.comp_empdistribs(ansiosid=True,tmtuki=True,putki=True,outsider=False)
+        tyoll_distrib,tyoll_distrib_bu=self.comp_tyollistymisdistribs(ansiosid=True,tmtuki=True,putki=True,outsider=False)
+        unemp_distrib2,emp_distrib2,unemp_distrib_bu2=cc2.comp_empdistribs(ansiosid=True,tmtuki=True,putki=True,outsider=False)
+        tyoll_distrib2,tyoll_distrib_bu2=cc2.comp_tyollistymisdistribs(ansiosid=True,tmtuki=True,putki=True,outsider=False)
         
         self.plot_compare_empdistribs(emp_distrib,emp_distrib2)
         print('Jakauma ansiosidonnainen+tmtuki+putki, no max age')
+        self.plot_compare_unempdistribs(unemp_distrib,unemp_distrib2,label=label)
+        self.plot_compare_tyolldistribs(unemp_distrib,tyoll_distrib,unemp_distrib2,tyoll_distrib2,tyollistyneet=False,label=label)     
+        self.plot_compare_tyolldistribs(unemp_distrib,tyoll_distrib,unemp_distrib2,tyoll_distrib2,tyollistyneet=True,label=label)     
+
+        unemp_distrib,emp_distrib,unemp_distrib_bu=self.comp_empdistribs(ansiosid=True,tmtuki=True,putki=True,outsider=False,max_age=54)
+        tyoll_distrib,tyoll_distrib_bu=self.comp_tyollistymisdistribs(ansiosid=True,tmtuki=True,putki=True,outsider=False,max_age=54)
+        unemp_distrib2,emp_distrib2,unemp_distrib_bu2=cc2.comp_empdistribs(ansiosid=True,tmtuki=True,putki=True,outsider=False,max_age=54)
+        tyoll_distrib2,tyoll_distrib_bu2=cc2.comp_tyollistymisdistribs(ansiosid=True,tmtuki=True,putki=True,outsider=False,max_age=54)
+        
+        self.plot_compare_empdistribs(emp_distrib,emp_distrib2)
+        print('Jakauma ansiosidonnainen+tmtuki+putki, max age 54')
         self.plot_compare_unempdistribs(unemp_distrib,unemp_distrib2,label=label)
         self.plot_compare_tyolldistribs(unemp_distrib,tyoll_distrib,unemp_distrib2,tyoll_distrib2,tyollistyneet=False,label=label)     
         self.plot_compare_tyolldistribs(unemp_distrib,tyoll_distrib,unemp_distrib2,tyoll_distrib2,tyollistyneet=True,label=label)     
