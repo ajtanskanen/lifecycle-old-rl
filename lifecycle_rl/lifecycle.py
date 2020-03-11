@@ -36,7 +36,7 @@ class Lifecycle():
                     ansiopvraha_toe=None,perustulo=None,mortality=None,
                     randomness=None,include_putki=None,preferencenoise=None,
                     callback_minsteps=None,pinkslip=True,plotdebug=False,
-                    use_sigma_reduction=None):
+                    use_sigma_reduction=None,porrasta_putki=None):
 
         '''
         Alusta muuttujat
@@ -67,6 +67,7 @@ class Lifecycle():
         self.ansiopvraha_toe=None
         self.environment='unemployment-v0'
         self.include_preferencenoise=False
+        self.porrasta_putki=True
 
         if callback_minsteps is not None:
             self.callback_minsteps=callback_minsteps
@@ -96,6 +97,9 @@ class Lifecycle():
 
         if ansiopvraha_toe is not None:
             self.ansiopvraha_toe=ansiopvraha_toe
+            
+        if porrasta_putki is not None:
+            self.porrasta_putki=porrasta_putki
 
         if perustulo is not None:
             self.perustulo=perustulo
@@ -137,6 +141,7 @@ class Lifecycle():
                 'ansiopvraha_toe': self.ansiopvraha_toe,'include_pinkslip':self.include_pinkslip,
                 'perustulos': self.perustulo, 'karenssi_kesto': self.karenssi_kesto,
                 'mortality': self.mortality, 'randomness': self.randomness,
+                'porrasta_putki': self.porrasta_putki,
                 'include_putki': self.include_putki, 'use_sigma_reduction': self.use_sigma_reduction,
                 'plotdebug': self.plotdebug, 'include_preferencenoise': self.include_preferencenoise}
             #self.n_acts = 4
@@ -630,13 +635,13 @@ class Lifecycle():
         self.plot_stats()
         self.plot_reward()
 
-    def compare_with(self,cc2,label='vaihtoehto'):
+    def compare_with(self,cc2,label2='vaihtoehto',label='perus'):
         '''
         compare_with
 
         compare results obtained another model
         '''
-        self.episodestats.compare_with(cc2.episodestats,label=label)
+        self.episodestats.compare_with(cc2.episodestats,label=label,label2=label2)
 
     def run_results(self,steps1=100,steps2=100,pop=1_000,rlmodel='acktr',twostage=True,
                save='saved/perusmalli',debug=False,simut='simut',results='results/simut_res',
@@ -763,8 +768,8 @@ class Lifecycle():
         #if plot:
         #    print('plot')
             
-    def compare_distrib(self,filename1,filename2,n=1):
-        self.episodestats.compare_simstats(filename1,filename2)
+    def compare_distrib(self,filename1,filename2,n=1,label1='perus',label2='vaihtoehto'):
+        self.episodestats.compare_simstats(filename1,filename2,label1=label1,label2=label2)
 
         # gather results ...
         #if plot:

@@ -1264,7 +1264,7 @@ class EpisodeStats():
         self.plot_stats()
         #self.plot_reward()   
 
-    def compare_with(self,cc2,label='vaihtoehto'):
+    def compare_with(self,cc2,label2='vaihtoehto',label='perus'):
         diff_emp=self.empstate/self.n_pop-cc2.empstate/cc2.n_pop
         x=np.linspace(self.min_age,self.max_age,self.n_time)
         #x=range(self.age_min,self.age_min+self.n_time)
@@ -1282,8 +1282,8 @@ class EpisodeStats():
         fig,ax=plt.subplots()
         ax.set_xlabel('Ikä [v]')
         ax.set_ylabel('Työllisyysaste [%]')
-        ax.plot(x,100*tyolliset1,label='vaihtoehto')
-        ax.plot(x,100*tyolliset2,label='perus')
+        ax.plot(x,100*tyolliset1,label=label2)
+        ax.plot(x,100*tyolliset2,label=label1)
         ax.legend()
         plt.show()
 
@@ -1354,29 +1354,59 @@ class EpisodeStats():
         if self.minimal:
             tyoll_osuus=emp[:,1]/np.sum(emp,1)
             tyot_osuus=emp[:,0]/np.sum(emp,1)
-            htv=emp[:,1]/np.sum(emp,1)
+            htv_osuus=emp[:,1]/np.sum(emp,1)
             kokotyo_osuus=tyoll_osuus
             osatyo_osuus=0
             tyoll_osuus=np.reshape(tyoll_osuus,(tyoll_osuus.shape[0],1))
             tyot_osuus=np.reshape(tyot_osuus,(tyot_osuus.shape[0],1))
-            htv=np.reshape(htv,(htv.shape[0],1))
+            htv_osuus=np.reshape(htv_osuus,(htv_osuus.shape[0],1))
             kokotyo_osuus=np.reshape(kokotyo_osuus,(osatyo_osuus.shape[0],1))
         else:
             # työllisiksi lasketaan kokoaikatyössä olevat, osa-aikaiset, ve+työ, ve+osatyö 
             # isyysvapaalla olevat jötetty pois, vaikka vapaa kestöö alle 3kk
             tyoll_osuus=(emp[:,1]+emp[:,8]+emp[:,9]+emp[:,10])/np.sum(emp,1)
             tyot_osuus=(emp[:,0]+emp[:,4]+emp[:,13])/np.sum(emp,1)
-            htv=(emp[:,1]+emp[:,8]+0.5*emp[:,9]+0.5*emp[:,10])/np.sum(emp,1)
+            htv_osuus=(emp[:,1]+emp[:,8]+0.5*emp[:,9]+0.5*emp[:,10])/np.sum(emp,1)
             kokotyo_osuus=(emp[:,1]+emp[:,8])/np.sum(emp,1)
             osatyo_osuus=(emp[:,9]+emp[:,10])/np.sum(emp,1)
             
             tyoll_osuus=np.reshape(tyoll_osuus,(tyoll_osuus.shape[0],1))
             tyot_osuus=np.reshape(tyot_osuus,(tyot_osuus.shape[0],1))
-            htv=np.reshape(htv,(htv.shape[0],1))
+            htv_osuus=np.reshape(htv_osuus,(htv_osuus.shape[0],1))
             osatyo_osuus=np.reshape(osatyo_osuus,(osatyo_osuus.shape[0],1))
             kokotyo_osuus=np.reshape(kokotyo_osuus,(osatyo_osuus.shape[0],1))
             
-        return tyoll_osuus,htv,tyot_osuus,kokotyo_osuus,osatyo_osuus
+        return tyoll_osuus,htv_osuus,tyot_osuus,kokotyo_osuus,osatyo_osuus
+
+    def comp_employed_number(self,emp):
+        demog,demog2=self.get_demog()
+        
+        dem=np.transpose(demog2)
+    
+        if self.minimal:
+            tyolliset_osuus=emp[:,1]/np.sum(emp,1)
+            tyottomat_osuus=emp[:,0]/np.sum(emp,1)
+            tyolliset=tyolliset_osuus*dem
+            tyottomat=tyottomat_osuus*dem
+            htv=emp[:,1]/np.sum(emp,1)*dem
+            tyolliset=np.reshape(tyolliset,(tyolliset.shape[1],1))
+            tyottomat=np.reshape(tyottomat,(tyottomat.shape[1],1))
+            htv=np.reshape(htv,(htv.shape[1],1))
+        else:
+            # työllisiksi lasketaan kokoaikatyössä olevat, osa-aikaiset, ve+työ, ve+osatyö 
+            # isyysvapaalla olevat jötetty pois, vaikka vapaa kestöö alle 3kk
+            tyolliset_osuus=(emp[:,1]+emp[:,8]+emp[:,9]+emp[:,10])/np.sum(emp,1)
+            tyottomat_osuus=(emp[:,0]+emp[:,4]+emp[:,13])/np.sum(emp,1)
+            tyolliset=tyolliset_osuus*dem
+            tyottomat=tyottomat_osuus*dem
+            htv=(emp[:,1]+emp[:,8]+0.5*emp[:,9]+0.5*emp[:,10])/np.sum(emp,1)*dem
+            tyolliset=np.reshape(tyolliset,(tyolliset.shape[1],1))
+            tyottomat=np.reshape(tyottomat,(tyottomat.shape[1],1))
+            tyolliset_osuus=np.reshape(tyolliset_osuus,(tyolliset_osuus.shape[0],1))
+            tyottomat_osuus=np.reshape(tyottomat_osuus,(tyottomat_osuus.shape[0],1))
+            htv=np.reshape(htv,(htv.shape[1],1))
+            
+        return tyolliset,tyottomat,htv,tyolliset_osuus,tyottomat_osuus
 
     def comp_employed_detailed(self,emp):
         if self.minimal:
@@ -1406,7 +1436,7 @@ class EpisodeStats():
 
         return demog,demog2
         
-    def comp_tyollisyys_stats(self,emp,scale_time=True,start=30,end=63.5):
+    def comp_tyollisyys_stats(self,emp,scale_time=True,start=21,end=63.5):
         demog,demog2=self.get_demog()
               
         if scale_time:
@@ -1427,6 +1457,21 @@ class EpisodeStats():
             
         return htv,tyollvaikutus,haj,tyollaste,tyollosuus
 
+    def comp_state_stats(self,state,scale_time=True,start=20,end=63.5):
+        demog,demog2=self.get_demog()
+              
+        if scale_time:
+            scale=self.timestep
+        else:
+            scale=1.0
+
+        min_cage=self.map_age(start)
+        max_cage=self.map_age(end)
+        
+        vaikutus=np.round(scale*np.sum(demog2[min_cage:max_cage]*state[min_cage:max_cage]))
+            
+        return vaikutus
+
     def get_reward(self):
         total_reward=np.sum(self.rewstate,axis=1)
         rr=np.sum(total_reward)/self.n_pop
@@ -1436,22 +1481,20 @@ class EpisodeStats():
 class SimStats(EpisodeStats):
     def run_simstats(self,results,save,n,plot=True,startn=0):
         '''
-        Multiple stats, not used
+        Laskee statistiikat ajoista
         '''
         #n=self.load_hdf(results+'_simut','n')
         e_rate=np.zeros((n,self.n_time))
-        diff_rate=np.zeros((n,self.n_time))
         agg_htv=np.zeros(n)
         agg_tyoll=np.zeros(n)
         agg_rew=np.zeros(n)
-        diff_htv=np.zeros(n)
-        diff_tyoll=np.zeros(n)
         t_aste=np.zeros(self.n_time)
-        mean_hvt=np.zeros(self.n_time)
-        std_htv=np.zeros(self.n_time)
-        mean_emp=np.zeros((self.n_time,self.n_employment))
-        std_emp=np.zeros((self.n_time,self.n_employment))
         emps=np.zeros((n,self.n_time,self.n_employment))
+        emp_tyolliset=np.zeros((n,self.n_time))
+        emp_tyottomat=np.zeros((n,self.n_time))
+        emp_tyolliset_osuus=np.zeros((n,self.n_time))
+        emp_tyottomat_osuus=np.zeros((n,self.n_time))
+        emp_htv=np.zeros((n,self.n_time))
 
         self.load_sim(results+'_'+str(100+startn))
         base_empstate=self.empstate/self.n_pop
@@ -1464,6 +1507,14 @@ class SimStats(EpisodeStats):
         best_rew=reward
         best_emp=0
         t_aste[0]=tyollaste_base
+        
+        tyolliset,tyottomat,htv,tyolliset_osuus,tyottomat_osuus=self.comp_employed_number(base_empstate)
+        
+        emp_tyolliset[0,:]=tyolliset[:,0]
+        emp_tyottomat[0,:]=tyottomat[:,0]
+        emp_tyolliset_osuus[0,:]=tyolliset_osuus[:,0]
+        emp_tyottomat_osuus[0,:]=tyottomat_osuus[:,0]
+        emp_htv[0,:]=htv[:,0]
 
         if plot:
             fig,ax=plt.subplots()
@@ -1488,22 +1539,21 @@ class SimStats(EpisodeStats):
             agg_htv[i]=htv
             agg_tyoll[i]=tyollvaikutus
             agg_rew[i]=reward
-            diff_htv[i]=htv-htv_base
-            diff_tyoll[i]=tyollvaikutus-tyoll_base
             t_aste[i]=tyollisyysaste
-    
-        if plot:
-            x=np.linspace(self.min_age,self.max_age,self.n_time)
-            emp_statsratio=100*self.emp_stats()
-            ax.plot(x,emp_statsratio,label='havainto',lw=1.0)
-            plt.show()
 
-        mean_emp=np.mean(emps,axis=0)
-        std_emp=np.std(emps,axis=0)
-        median_emp=np.median(emps,axis=0)
+            tyolliset,tyottomat,htv,tyolliset_osuus,tyottomat_osuus=self.comp_employed_number(empstate)
+            
+            emp_tyolliset[i,:]=tyolliset[:,0]
+            emp_tyottomat[i,:]=tyottomat[:,0]
+            emp_tyolliset_osuus[i,:]=tyolliset_osuus[:,0]
+            emp_tyottomat_osuus[i,:]=tyottomat_osuus[:,0]
+            emp_htv[i,:]=htv[:,0]
 
-        self.save_simstats(save,diff_htv,diff_tyoll,agg_htv,agg_tyoll,agg_rew,\
-                            mean_emp,std_emp,median_emp,emps,best_rew,best_emp)
+        self.save_simstats(save,agg_htv,agg_tyoll,agg_rew,\
+                            emp_tyolliset,emp_tyolliset_osuus,\
+                            emp_tyottomat,emp_tyottomat_osuus,\
+                            emp_htv,emps,\
+                            best_rew,best_emp)
                     
         # save the best
         self.load_sim(results+'_'+str(100+best_emp))
@@ -1521,10 +1571,10 @@ class SimStats(EpisodeStats):
         y=norm.pdf(x,diff_meanval,diff_stdval)*diff.shape[0]*sz
     
         return x,y
-
+        
     def plot_simstats(self,filename):
-        diff_htv,diff_tyoll,agg_htv,agg_tyoll,agg_rew,mean_emp,std_emp,median_emp,emps,\
-            best_rew,best_emp=self.load_simstats(filename)
+        agg_htv,agg_tyoll,agg_rew,emp_tyolliset,emp_tyolliset_osuus,\
+            emp_tyottomat,emp_tyottomat_osuus,emp_htv,emps,best_rew,best_emp=self.load_simstats(filename)
 
         mean_htv=np.mean(agg_htv)
         median_htv=np.median(agg_htv)
@@ -1537,16 +1587,10 @@ class SimStats(EpisodeStats):
         
         x,y=self.fit_norm(diff_htv)
         
-        if self.minimal:
-            m_emp=mean_emp[:,1]
-            m_median=median_emp[:,1]
-            s_emp=std_emp[:,1]
-            m_best=emps[best_emp,:,1]
-        else:
-            m_emp=mean_emp[:,1]+mean_emp[:,10]+mean_emp[:,8]+mean_emp[:,9]
-            m_median=median_emp[:,1]+median_emp[:,10]+median_emp[:,8]+median_emp[:,9]
-            s_emp=np.reshape(np.std(emps[:,:,1]+emps[:,:,10]+emps[:,:,8]+emps[:,:,9],axis=0),m_median.shape)
-            m_best=emps[best_emp,:,1]+emps[best_emp,:,10]+emps[best_emp,:,8]+emps[best_emp,:,9]
+        m_mean=np.mean(emp_tyolliset_osuus,axis=0)
+        m_median=np.median(emp_tyolliset_osuus,axis=0)
+        s_emp=np.std(emp_tyolliset_osuus,axis=0)
+        m_best=emp_tyolliset_osuus[best_emp,:]
 
         if self.minimal:
             print('Vaikutus työllisyyteen keskiarvo {:.0f} htv mediaan {:.0f} htv std {:.0f} htv'.format(mean_htv,median_htv,std_htv))
@@ -1579,7 +1623,7 @@ class SimStats(EpisodeStats):
         ax.set_xlabel('Ikä [v]')
         ax.set_ylabel('Työllisyysaste [%]')
         x=np.linspace(self.min_age,self.max_age,self.n_time)
-        ax.plot(x,100*m_emp,label='keskiarvo')
+        ax.plot(x,100*m_mean,label='keskiarvo')
         ax.plot(x,100*m_median,label='mediaani')
         #ax.plot(x,100*(m_emp+s_emp),label='ka+std')
         #ax.plot(x,100*(m_emp-s_emp),label='ka-std')
@@ -1597,8 +1641,8 @@ class SimStats(EpisodeStats):
         plt.show()
 
     def get_simstats(self,filename1,plot=False):
-        diff_htv,diff_tyoll,agg_htv,agg_tyoll,agg_rew,mean_emp,std_emp,median_emp,emps,\
-            best_rew,best_emp=self.load_simstats(filename1)
+        agg_htv,agg_tyoll,agg_rew,emp_tyolliset,emp_tyolliset_osuus,\
+            emp_tyottomat,emp_tyottomat_osuus,emp_htv,emps,best_rew,best_emp=self.load_simstats(filename1)
 
         mean_htv=np.mean(agg_htv)
         median_htv=np.median(agg_htv)
@@ -1607,21 +1651,24 @@ class SimStats(EpisodeStats):
         std_htv=np.std(agg_htv)
         diff_htv=agg_htv-mean_htv
         diff_tyoll=agg_tyoll-mean_tyoll
+        
+        m_mean=np.mean(emp_tyolliset_osuus,axis=0)
+        m_median=np.median(emp_tyolliset_osuus,axis=0)
+        s_emp=np.std(emp_tyolliset_osuus,axis=0)
+        m_best=emp_tyolliset_osuus[best_emp,:]
+
+        h_mean=np.mean(emp_htv,axis=0)
+        h_median=np.median(emp_htv,axis=0)
+        hs_emp=np.std(emp_htv,axis=0)
+        h_best=emp_htv[best_emp,:]
+
 
         if self.minimal:
-            m_emp=mean_emp[:,1]
-            m_median=median_emp[:,1]
-            s_emp=std_emp[:,1]
-            m_best=emps[best_emp,:,1]
-            u_tmtuki=0*np.mean(emps[:,:,0],axis=0)
-            u_ansiosid=np.mean(emps[:,:,0],axis=0)
+            u_tmtuki=0*np.median(emps[:,:,0],axis=0)
+            u_ansiosid=np.median(emps[:,:,0],axis=0)
         else:
-            m_emp=mean_emp[:,1]+mean_emp[:,10]+mean_emp[:,8]+mean_emp[:,9]
-            m_median=median_emp[:,1]+median_emp[:,10]+median_emp[:,8]+median_emp[:,9]
-            s_emp=std_emp[:,1]
-            m_best=emps[best_emp,:,1]+emps[best_emp,:,10]+emps[best_emp,:,8]+emps[best_emp,:,9]
-            u_tmtuki=np.mean(emps[:,:,13],axis=0)
-            u_ansiosid=np.mean(emps[:,:,0]+emps[:,:,4],axis=0)
+            u_tmtuki=np.median(emps[:,:,13],axis=0)
+            u_ansiosid=np.median(emps[:,:,0]+emps[:,:,4],axis=0)
     
         if plot:
             fig,ax=plt.subplots()
@@ -1643,11 +1690,11 @@ class SimStats(EpisodeStats):
             ax.hist(agg_rew)
             plt.show()    
     
-        return m_best,m_emp,m_median,s_emp,median_htv,u_tmtuki,u_ansiosid
+        return m_best,m_mean,m_median,s_emp,median_htv,u_tmtuki,u_ansiosid,h_median #,emp_tyolliset
 
-    def compare_simstats(self,filename1,filename2):
-        m_best1,m_emp1,m_median1,s_emp1,median_htv1,u_tmtuki1,u_ansiosid1=self.get_simstats(filename1)
-        m_best2,m_emp2,m_median2,s_emp2,median_htv2,u_tmtuki2,u_ansiosid2=self.get_simstats(filename2)
+    def compare_simstats(self,filename1,filename2,label1='perus',label2='vaihtoehto'):
+        m_best1,m_emp1,m_median1,s_emp1,median_htv1,u_tmtuki1,u_ansiosid1,h_median1=self.get_simstats(filename1)
+        m_best2,m_emp2,m_median2,s_emp2,median_htv2,u_tmtuki2,u_ansiosid2,h_median2=self.get_simstats(filename2)
         
         print('Vaikutus työllisyysasteeseen {} htv'.format(median_htv2-median_htv1))
 
@@ -1660,8 +1707,8 @@ class SimStats(EpisodeStats):
         ax.set_xlabel('Ikä [v]')
         ax.set_ylabel('Työllisyysaste [%]')
         x=np.linspace(self.min_age,self.max_age,self.n_time)
-        ax.plot(x[1:],100*m_median1[1:],label='perus')
-        ax.plot(x[1:],100*m_median2[1:],label='vaihtoehto')
+        ax.plot(x[1:],100*m_median1[1:],label=label1)
+        ax.plot(x[1:],100*m_median2[1:],label=label2)
         #emp_statsratio=100*self.emp_stats()
         #ax.plot(x,emp_statsratio,label='havainto')
         ax.legend()
@@ -1671,28 +1718,54 @@ class SimStats(EpisodeStats):
         ax.set_xlabel('Ikä [v]')
         ax.set_ylabel('Osuus väestöstä [%]')
         x=np.linspace(self.min_age,self.max_age,self.n_time)
-        ax.plot(x[1:],100*u_tmtuki1[1:],label='tm-tuki, perus')
-        ax.plot(x[1:],100*u_tmtuki2[1:],label='tm-tuki, vaihtoehto')
-        ax.plot(x[1:],100*u_ansiosid1[1:],label='ansiosidonnainen, perus')
-        ax.plot(x[1:],100*u_ansiosid2[1:],label='ansiosidonnainen, vaihtoehto')
+        ax.plot(x[1:],100*u_tmtuki1[1:],label='tm-tuki, '+label1)
+        ax.plot(x[1:],100*u_tmtuki2[1:],label='tm-tuki, '+label2)
+        ax.plot(x[1:],100*u_ansiosid1[1:],label='ansiosidonnainen, '+label1)
+        ax.plot(x[1:],100*u_ansiosid2[1:],label='ansiosidonnainen, '+label2)
         ax.legend()
         plt.show()
 
+        fig,ax=plt.subplots()
+        ax.set_xlabel('Ikä [v]')
+        ax.set_ylabel('työllisyysero [%]')
+        x=np.linspace(self.min_age,self.max_age,self.n_time)
+        ax.plot(x[1:],100*(m_median2[1:]-m_median1[1:]),label=label1)
+        #emp_statsratio=100*self.emp_stats()
+        #ax.plot(x,emp_statsratio,label='havainto')
+        #ax.legend()
+        plt.show()
 
-    def save_simstats(self,filename,diff_htv,diff_tyoll,agg_htv,agg_tyoll,agg_rew,mean_emp,\
-                      std_emp,median_emp,emps,best_rew,best_emp):
+        demog1,demog2=self.get_demog()
+        fig,ax=plt.subplots()
+        ax.set_xlabel('Ikä [v]')
+        ax.set_ylabel('cumsum työllisyys [lkm]')
+        x=np.linspace(self.min_age,self.max_age,self.n_time)
+        cs=self.timestep*np.cumsum(h_median2[1:]-h_median1[1:])
+        ax.plot(x[1:],cs,label=label1)
+        #emp_statsratio=100*self.emp_stats()
+        #ax.plot(x,emp_statsratio,label='havainto')
+        #ax.legend()
+        plt.show()
+
+        for age in set([63,63.5,50]):
+            mx=self.map_age(age)
+            print('Kumulatiivinen työllisyysvaikutus {} vuotiaana {:.1f} htv'.format(age,cs[mx]))
+
+    def save_simstats(self,filename,agg_htv,agg_tyoll,agg_rew,emp_tyolliset,emp_tyolliset_osuus,\
+                        emp_tyottomat,emp_tyottomat_osuus,emp_htv,emps,best_rew,best_emp):
         f = h5py.File(filename, 'w')
         dset = f.create_dataset('agg_htv', data=agg_htv, dtype='float64')
         dset = f.create_dataset('agg_tyoll', data=agg_tyoll, dtype='float64')
-        dset = f.create_dataset('diff_htv', data=diff_htv, dtype='float64')
-        dset = f.create_dataset('diff_tyoll', data=diff_tyoll, dtype='float64')
         dset = f.create_dataset('agg_rew', data=agg_rew, dtype='float64')
-        dset = f.create_dataset('mean_emp', data=mean_emp, dtype='float64')
-        dset = f.create_dataset('std_emp', data=std_emp, dtype='float64')
-        dset = f.create_dataset('median_emp', data=median_emp, dtype='float64')
+        dset = f.create_dataset('emp_tyolliset', data=emp_tyolliset, dtype='float64')
+        dset = f.create_dataset('emp_tyolliset_osuus', data=emp_tyolliset_osuus, dtype='float64')
+        dset = f.create_dataset('emp_tyottomat', data=emp_tyottomat, dtype='float64')
+        dset = f.create_dataset('emp_tyottomat_osuus', data=emp_tyottomat_osuus, dtype='float64')
+        dset = f.create_dataset('emp_htv', data=emp_htv, dtype='float64')
         dset = f.create_dataset('emps', data=emps, dtype='float64')
         dset = f.create_dataset('best_rew', data=best_rew, dtype='float64')
         dset = f.create_dataset('best_emp', data=best_emp, dtype='float64')
+        
         f.close()
 
     def load_simstats(self,filename):
@@ -1700,31 +1773,17 @@ class SimStats(EpisodeStats):
         #n_pop = f.get('n_pop').value
         agg_htv = f.get('agg_htv').value
         agg_tyoll = f.get('agg_tyoll').value
-        diff_htv = f.get('diff_htv').value
-        diff_tyoll = f.get('diff_tyoll').value
         agg_rew = f.get('agg_rew').value
-        mean_emp = f.get('mean_emp').value
-        std_emp = f.get('std_emp').value
         emps = f.get('emps').value
-        median_emp = f.get('median_emp').value
         best_rew = f.get('best_rew').value
         best_emp = int(f.get('best_emp').value)
+        emp_tyolliset = f.get('emp_tyolliset').value
+        emp_tyolliset_osuus = f.get('emp_tyolliset_osuus').value
+        emp_tyottomat = f.get('emp_tyottomat').value
+        emp_tyottomat_osuus = f.get('emp_tyottomat_osuus').value
+        emp_htv = f.get('emp_htv').value
+        
         f.close()
-        return diff_htv,diff_tyoll,agg_htv,agg_tyoll,agg_rew,mean_emp,std_emp,median_emp,\
-               emps,best_rew,best_emp
-               
-    def load_simstats_dir(self,filename):
-        d={}
-        f = h5py.File(filename, 'r')
-        d['agg_htv']=f.get('agg_htv').value
-        d['agg_tyoll']=f.get('agg_tyoll').value
-        d['diff_htv'] = f.get('diff_htv').value
-        d['diff_tyoll'] = f.get('diff_tyoll').value
-        d['agg_rew'] = f.get('agg_rew').value
-        d['mean_emp'] = f.get('mean_emp').value
-        d['std_emp'] = f.get('std_emp').value
-        d['emps'] = f.get('emps').value
-        d['median_emp'] = f.get('median_emp').value
-        d['best_rew'] = f.get('best_rew').value
-        d['best_emp'] = int(f.get('best_emp').value)
-        f.close()
+
+        return agg_htv,agg_tyoll,agg_rew,emp_tyolliset,emp_tyolliset_osuus,\
+               emp_tyottomat,emp_tyottomat_osuus,emp_htv,emps,best_rew,best_emp
