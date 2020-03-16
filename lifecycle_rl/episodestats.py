@@ -1436,7 +1436,7 @@ class EpisodeStats():
 
         return demog,demog2
         
-    def comp_tyollisyys_stats(self,emp,scale_time=True,start=21,end=63.5):
+    def comp_tyollisyys_stats(self,emp,scale_time=True,start=20.25,end=63.5):
         demog,demog2=self.get_demog()
               
         if scale_time:
@@ -1457,7 +1457,7 @@ class EpisodeStats():
             
         return htv,tyollvaikutus,haj,tyollaste,tyollosuus
 
-    def comp_state_stats(self,state,scale_time=True,start=20,end=63.5):
+    def comp_state_stats(self,state,scale_time=True,start=20.25,end=63.5):
         demog,demog2=self.get_demog()
               
         if scale_time:
@@ -1508,13 +1508,13 @@ class SimStats(EpisodeStats):
         best_emp=0
         t_aste[0]=tyollaste_base
         
-        tyolliset,tyottomat,htv,tyolliset_osuus,tyottomat_osuus=self.comp_employed_number(base_empstate)
+        tyolliset_ika,tyottomat,htv_ika,tyolliset_osuus,tyottomat_osuus=self.comp_employed_number(base_empstate)
         
-        emp_tyolliset[0,:]=tyolliset[:,0]
+        emp_tyolliset[0,:]=tyolliset_ika[:,0]
         emp_tyottomat[0,:]=tyottomat[:,0]
         emp_tyolliset_osuus[0,:]=tyolliset_osuus[:,0]
         emp_tyottomat_osuus[0,:]=tyottomat_osuus[:,0]
-        emp_htv[0,:]=htv[:,0]
+        emp_htv[0,:]=htv_ika[:,0]
 
         if plot:
             fig,ax=plt.subplots()
@@ -1541,13 +1541,13 @@ class SimStats(EpisodeStats):
             agg_rew[i]=reward
             t_aste[i]=tyollisyysaste
 
-            tyolliset,tyottomat,htv,tyolliset_osuus,tyottomat_osuus=self.comp_employed_number(empstate)
+            tyolliset_ika,tyottomat,htv_ika,tyolliset_osuus,tyottomat_osuus=self.comp_employed_number(empstate)
             
-            emp_tyolliset[i,:]=tyolliset[:,0]
+            emp_tyolliset[i,:]=tyolliset_ika[:,0]
             emp_tyottomat[i,:]=tyottomat[:,0]
             emp_tyolliset_osuus[i,:]=tyolliset_osuus[:,0]
             emp_tyottomat_osuus[i,:]=tyottomat_osuus[:,0]
-            emp_htv[i,:]=htv[:,0]
+            emp_htv[i,:]=htv_ika[:,0]
 
         self.save_simstats(save,agg_htv,agg_tyoll,agg_rew,\
                             emp_tyolliset,emp_tyolliset_osuus,\
@@ -1654,6 +1654,7 @@ class SimStats(EpisodeStats):
         
         m_mean=np.mean(emp_tyolliset_osuus,axis=0)
         m_median=np.median(emp_tyolliset_osuus,axis=0)
+        mn_median=np.median(emp_tyolliset,axis=0)
         s_emp=np.std(emp_tyolliset_osuus,axis=0)
         m_best=emp_tyolliset_osuus[best_emp,:]
 
@@ -1690,11 +1691,11 @@ class SimStats(EpisodeStats):
             ax.hist(agg_rew)
             plt.show()    
     
-        return m_best,m_mean,m_median,s_emp,median_htv,u_tmtuki,u_ansiosid,h_median #,emp_tyolliset
+        return m_best,m_mean,m_median,s_emp,median_htv,u_tmtuki,u_ansiosid,h_median,mn_median #,emp_tyolliset
 
     def compare_simstats(self,filename1,filename2,label1='perus',label2='vaihtoehto'):
-        m_best1,m_emp1,m_median1,s_emp1,median_htv1,u_tmtuki1,u_ansiosid1,h_median1=self.get_simstats(filename1)
-        m_best2,m_emp2,m_median2,s_emp2,median_htv2,u_tmtuki2,u_ansiosid2,h_median2=self.get_simstats(filename2)
+        m_best1,m_emp1,m_median1,s_emp1,median_htv1,u_tmtuki1,u_ansiosid1,h_median1,mn_median1=self.get_simstats(filename1)
+        m_best2,m_emp2,m_median2,s_emp2,median_htv2,u_tmtuki2,u_ansiosid2,h_median2,mn_median2=self.get_simstats(filename2)
         
         print('Vaikutus työllisyysasteeseen {} htv'.format(median_htv2-median_htv1))
 
@@ -1705,10 +1706,10 @@ class SimStats(EpisodeStats):
 
         fig,ax=plt.subplots()
         ax.set_xlabel('Ikä [v]')
-        ax.set_ylabel('Työllisyysaste [%]')
+        ax.set_ylabel('Työllisyysero [hlö/htv]')
         x=np.linspace(self.min_age,self.max_age,self.n_time)
-        ax.plot(x[1:],100*m_median1[1:],label=label1)
-        ax.plot(x[1:],100*m_median2[1:],label=label2)
+        ax.plot(x[1:],mn_median2[1:]-mn_median1[1:],label=label2+' miinus '+label1)
+        ax.plot(x[1:],h_median2[1:]-h_median1[1:],label=label2+' miinus '+label1+' htv')
         #emp_statsratio=100*self.emp_stats()
         #ax.plot(x,emp_statsratio,label='havainto')
         ax.legend()

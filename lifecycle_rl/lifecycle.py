@@ -36,8 +36,8 @@ class Lifecycle():
                     ansiopvraha_toe=None,perustulo=None,mortality=None,
                     randomness=None,include_putki=None,preferencenoise=None,
                     callback_minsteps=None,pinkslip=True,plotdebug=False,
-                    use_sigma_reduction=None,porrasta_putki=None):
-
+                    use_sigma_reduction=None,porrasta_putki=None,
+                    porrasta_1askel=None,porrasta_2askel=None,porrasta_3askel=None):
         '''
         Alusta muuttujat
         '''
@@ -68,6 +68,9 @@ class Lifecycle():
         self.environment='unemployment-v0'
         self.include_preferencenoise=False
         self.porrasta_putki=True
+        self.porrasta_1askel=True
+        self.porrasta_2askel=True
+        self.porrasta_3askel=True
 
         if callback_minsteps is not None:
             self.callback_minsteps=callback_minsteps
@@ -100,6 +103,15 @@ class Lifecycle():
             
         if porrasta_putki is not None:
             self.porrasta_putki=porrasta_putki
+
+        if porrasta_1askel is not None:
+            self.porrasta_1askel=porrasta_1askel
+
+        if porrasta_2askel is not None:
+            self.porrasta_2askel=porrasta_2askel
+
+        if porrasta_3askel is not None:
+            self.porrasta_3askel=porrasta_3askel
 
         if perustulo is not None:
             self.perustulo=perustulo
@@ -141,7 +153,8 @@ class Lifecycle():
                 'ansiopvraha_toe': self.ansiopvraha_toe,'include_pinkslip':self.include_pinkslip,
                 'perustulos': self.perustulo, 'karenssi_kesto': self.karenssi_kesto,
                 'mortality': self.mortality, 'randomness': self.randomness,
-                'porrasta_putki': self.porrasta_putki,
+                'porrasta_putki': self.porrasta_putki, 'porrasta_1askel': self.porrasta_1askel,
+                'porrasta_2askel': self.porrasta_2askel, 'porrasta_3askel': self.porrasta_3askel,
                 'include_putki': self.include_putki, 'use_sigma_reduction': self.use_sigma_reduction,
                 'plotdebug': self.plotdebug, 'include_preferencenoise': self.include_preferencenoise}
             #self.n_acts = 4
