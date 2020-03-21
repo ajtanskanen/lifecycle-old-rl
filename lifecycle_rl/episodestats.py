@@ -136,7 +136,7 @@ class EpisodeStats():
         ax.plot(x,meansal-stdsal)
         plt.show()
         
-    def comp_tyollistymisdistribs(self,putki=True,tmtuki=True,laaja=False,outsider=False,ansiosid=True,tyott=False,max_age=100):
+    def comp_tyollistymisdistribs(self,popempstate=None,popunemprightleft=None,putki=True,tmtuki=True,laaja=False,outsider=False,ansiosid=True,tyott=False,max_age=100):
         tyoll_distrib=[]
         tyoll_distrib_bu=[]
         unempset=[]
@@ -158,25 +158,29 @@ class EpisodeStats():
         empset=set([1,10])
         unempset=set(unempset)
         
+        if popempstate is None or popunemprightleft is None:
+            popempstate=self.popempstate
+            popunemprightleft=self.popunemprightleft
+        
         for k in range(self.n_pop):
-            prev_state=self.popempstate[0,k]
+            prev_state=popempstate[0,k]
             prev_trans=0
             for t in range(1,self.n_time):
                 age=self.min_age+t*self.timestep
                 if age<=max_age:
-                    if self.popempstate[t,k]!=prev_state:
-                        if prev_state in unempset and self.popempstate[t,k] in empset:
+                    if popempstate[t,k]!=prev_state:
+                        if prev_state in unempset and popempstate[t,k] in empset:
                             tyoll_distrib.append((t-prev_trans)*self.timestep)
-                            tyoll_distrib_bu.append(self.popunemprightleft[t,k])
-                            prev_state=self.popempstate[t,k]
+                            tyoll_distrib_bu.append(popunemprightleft[t,k])
+                            prev_state=popempstate[t,k]
                             prev_trans=t
                         else: # some other state
-                            prev_state=self.popempstate[t,k]
+                            prev_state=popempstate[t,k]
                             prev_trans=t
                     
         return tyoll_distrib,tyoll_distrib_bu
 
-    def comp_empdistribs(self,putki=True,tmtuki=True,laaja=False,outsider=False,ansiosid=True,tyott=False,max_age=100):
+    def comp_empdistribs(self,popempstate=None,popunemprightleft=None,putki=True,tmtuki=True,laaja=False,outsider=False,ansiosid=True,tyott=False,max_age=100):
         unemp_distrib=[]
         unemp_distrib_bu=[]
         emp_distrib=[]
@@ -196,28 +200,32 @@ class EpisodeStats():
         if laaja:
             unempset=[0,4,11,13]
             
+        if popempstate is None or popunemprightleft is None:
+            popempstate=self.popempstate
+            popunemprightleft=self.popunemprightleft
+        
         empset=set([1,10])
         unempset=set(unempset)
         
         for k in range(self.n_pop):
-            prev_state=self.popempstate[0,k]
+            prev_state=popempstate[0,k]
             prev_trans=0
             for t in range(1,self.n_time):
                 age=self.min_age+t*self.timestep
                 if age<=max_age:
                     if self.popempstate[t,k]!=prev_state:
-                        if prev_state in unempset and self.popempstate[t,k] not in unempset:
+                        if prev_state in unempset and popempstate[t,k] not in unempset:
                             unemp_distrib.append((t-prev_trans)*self.timestep)
-                            unemp_distrib_bu.append(self.popunemprightleft[t,k])
+                            unemp_distrib_bu.append(popunemprightleft[t,k])
                             
-                            prev_state=self.popempstate[t,k]
+                            prev_state=popempstate[t,k]
                             prev_trans=t
-                        elif prev_state in empset and self.popempstate[t,k] not in unempset:
+                        elif prev_state in empset and popempstate[t,k] not in unempset:
                             emp_distrib.append((t-prev_trans)*self.timestep)
-                            prev_state=self.popempstate[t,k]
+                            prev_state=popempstate[t,k]
                             prev_trans=t
                         else: # some other state
-                            prev_state=self.popempstate[t,k]
+                            prev_state=popempstate[t,k]
                             prev_trans=t
                     
         return unemp_distrib,emp_distrib,unemp_distrib_bu
@@ -255,8 +263,8 @@ class EpisodeStats():
         scaled3,x3=np.histogram(emp_distrib2,x)
         scaled3=scaled3/np.sum(emp_distrib2)
         
-        ax.plot(x2[:-1],scaled,label=label)
         ax.plot(x3[:-1],scaled3,label='perus')
+        ax.plot(x2[:-1],scaled,label=label)
         ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)        
         plt.show()
         
@@ -378,8 +386,8 @@ class EpisodeStats():
             ax.set_ylabel('pois siirtyneiden osuus')
         self.plot_vlines_unemp()
         #ax.bar(x2[1:-1],scaled[1:])
-        ax.plot(x2[1:-1],scaled[1:],label=label)
         ax.plot(x3[1:-1],scaled3[1:],label='perus')
+        ax.plot(x2[1:-1],scaled[1:],label=label)
         ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
         plt.xlim(0,max)
         plt.show()        
@@ -436,8 +444,8 @@ class EpisodeStats():
         self.plot_vlines_unemp(0.9)
         ax.set_xlabel('Työttömyysjakson pituus [v]')
         ax.set_ylabel('Osuus')
-        ax.plot(x[:-1],scaled,label=label)
         ax.plot(x[:-1],scaled3,label='perus')
+        ax.plot(x[:-1],scaled,label=label)
         ax.set_yscale('log')
         plt.ylim(1e-4,1.0)
         ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
@@ -1340,7 +1348,7 @@ class EpisodeStats():
         self.plot_compare_empdistribs(emp_distrib,emp_distrib2)
         print('Jakauma ansiosidonnainen+tmtuki+putki, no max age')
         self.plot_compare_unempdistribs(unemp_distrib,unemp_distrib2,label=label)
-        self.plot_compare_tyolldistribs(unemp_distrib,tyoll_distrib,unemp_distrib2,tyoll_distrib2,tyollistyneet=False,label=label)     
+        self.plot_compare_tyolldistribs(unemp_distrib,tyoll_distrib,unemp_distrib2,tyoll_distrib2,tyollistyneet=False,label=label)
         self.plot_compare_tyolldistribs(unemp_distrib,tyoll_distrib,unemp_distrib2,tyoll_distrib2,tyollistyneet=True,label=label)     
 
         unemp_distrib,emp_distrib,unemp_distrib_bu=self.comp_empdistribs(ansiosid=True,tmtuki=True,putki=True,outsider=False,max_age=54)
@@ -1486,10 +1494,12 @@ class EpisodeStats():
 
     
 class SimStats(EpisodeStats):
-    def run_simstats(self,results,save,n,plot=True,startn=0):
+    def run_simstats(self,results,save,n,plot=True,startn=0,max_age=54):
         '''
         Laskee statistiikat ajoista
         '''
+        
+        print('run_simstats...')
         #n=self.load_hdf(results+'_simut','n')
         e_rate=np.zeros((n,self.n_time))
         agg_htv=np.zeros(n)
@@ -1522,6 +1532,9 @@ class SimStats(EpisodeStats):
         emp_tyolliset_osuus[0,:]=tyolliset_osuus[:,0]
         emp_tyottomat_osuus[0,:]=tyottomat_osuus[:,0]
         emp_htv[0,:]=htv_ika[:,0]
+        
+        unemp_distrib,emp_distrib,unemp_distrib_bu=self.comp_empdistribs(ansiosid=True,tmtuki=True,putki=True,outsider=False,max_age=max_age)
+        tyoll_distrib,tyoll_distrib_bu=self.comp_tyollistymisdistribs(ansiosid=True,tmtuki=True,putki=True,outsider=False,max_age=max_age)
 
         if plot:
             fig,ax=plt.subplots()
@@ -1556,16 +1569,34 @@ class SimStats(EpisodeStats):
             emp_tyottomat_osuus[i,:]=tyottomat_osuus[:,0]
             emp_htv[i,:]=htv_ika[:,0]
 
+            unemp_distrib2,emp_distrib2,unemp_distrib_bu2=self.comp_empdistribs(ansiosid=True,tmtuki=True,putki=True,outsider=False,max_age=max_age)
+            tyoll_distrib2,tyoll_distrib_bu2=self.comp_tyollistymisdistribs(ansiosid=True,tmtuki=True,putki=True,outsider=False,max_age=max_age)
+            
+            unemp_distrib+=unemp_distrib2
+            emp_distrib+=emp_distrib2
+            unemp_distrib_bu+=unemp_distrib_bu2
+            tyoll_distrib+=tyoll_distrib2
+            tyoll_distrib_bu+=tyoll_distrib_bu2
+
+        unemp_distrib/=(n-startn)
+        emp_distrib/=(n-startn)
+        unemp_distrib_bu/=(n-startn)
+        tyoll_distrib/=(n-startn)
+        tyoll_distrib_bu/=(n-startn)
+
         self.save_simstats(save,agg_htv,agg_tyoll,agg_rew,\
                             emp_tyolliset,emp_tyolliset_osuus,\
                             emp_tyottomat,emp_tyottomat_osuus,\
                             emp_htv,emps,\
-                            best_rew,best_emp)
+                            best_rew,best_emp,\
+                            unemp_distrib,emp_distrib,unemp_distrib_bu,\
+                            tyoll_distrib,tyoll_distrib_bu)
                     
         # save the best
         self.load_sim(results+'_'+str(100+best_emp))
         self.save_sim(results+'_best')
                     
+        print('done')
         print('best_emp',best_emp)
         
     def fit_norm(self,diff):
@@ -1611,9 +1642,11 @@ class SimStats(EpisodeStats):
         m_best=emp_tyolliset_osuus[best_emp,:]
 
         if self.minimal:
-            print('Vaikutus työllisyyteen keskiarvo {:.0f} htv mediaan {:.0f} htv std {:.0f} htv'.format(mean_htv,median_htv,std_htv))
+            print('Työllisyyden keskiarvo {:.0f} htv mediaani {:.0f} htv std {:.0f} htv'.format(mean_htv,median_htv,std_htv))
         else:
-            print('Vaikutus työllisyyteen keskiarvo {:.0f} htv, mediaani {:.0f} htv std {:.0f} htv\n   keskiarvo {:.0f} työllistä, mediaani {:.0f} työllistä, std {:.0f} työllistä'.format(mean_htv,median_htv,std_htv,mean_tyoll,median_tyoll,std_tyoll))
+            print('Työllisyyden keskiarvo keskiarvo {:.0f} htv, mediaani {:.0f} htv std {:.0f} htv\n'
+                  'keskiarvo {:.0f} työllistä, mediaani {:.0f} työllistä, std {:.0f} työllistä'.format(
+                    mean_htv,median_htv,std_htv,mean_tyoll,median_tyoll,std_tyoll))
 
         fig,ax=plt.subplots()
         ax.set_xlabel('Poikkeama työllisyydessä [htv]')
@@ -1658,7 +1691,7 @@ class SimStats(EpisodeStats):
         ax.plot(x,100*s_emp)
         plt.show()
 
-    def get_simstats(self,filename1,plot=False):
+    def get_simstats(self,filename1,plot=False,use_mean=False):
         agg_htv,agg_tyoll,agg_rew,emp_tyolliset,emp_tyolliset_osuus,\
             emp_tyottomat,emp_tyottomat_osuus,emp_htv,emps,best_rew,best_emp,emps=self.load_simstats(filename1)
 
@@ -1673,6 +1706,7 @@ class SimStats(EpisodeStats):
         m_mean=np.mean(emp_tyolliset_osuus,axis=0)
         m_median=np.median(emp_tyolliset_osuus,axis=0)
         mn_median=np.median(emp_tyolliset,axis=0)
+        mn_mean=np.median(emp_tyolliset,axis=0)
         s_emp=np.std(emp_tyolliset_osuus,axis=0)
         m_best=emp_tyolliset_osuus[best_emp,:]
 
@@ -1709,18 +1743,19 @@ class SimStats(EpisodeStats):
             ax.hist(agg_rew)
             plt.show()    
     
-        return m_best,m_mean,m_median,s_emp,median_htv,u_tmtuki,u_ansiosid,h_median,mn_median #,emp_tyolliset
+        if use_mean:
+            return m_best,m_mean,s_emp,mean_htv,u_tmtuki,u_ansiosid,h_mean,mn_mean
+        else:
+            return m_best,m_median,s_emp,median_htv,u_tmtuki,u_ansiosid,h_median,mn_median
 
     def compare_simstats(self,filename1,filename2,label1='perus',label2='vaihtoehto'):
-        m_best1,m_emp1,m_median1,s_emp1,median_htv1,u_tmtuki1,u_ansiosid1,h_median1,mn_median1=self.get_simstats(filename1)
-        m_best2,m_emp2,m_median2,s_emp2,median_htv2,u_tmtuki2,u_ansiosid2,h_median2,mn_median2=self.get_simstats(filename2)
+        m_best1,m_median1,s_emp1,median_htv1,u_tmtuki1,u_ansiosid1,h_median1,mn_median1=self.get_simstats(filename1)
+        _,m_mean1,s_emp1,mean_htv1,u_tmtuki1,u_ansiosid1,h_mean1,mn_mean1=self.get_simstats(filename1,use_mean=True)
+        m_best2,m_median2,s_emp2,median_htv2,u_tmtuki2,u_ansiosid2,h_median2,mn_median2=self.get_simstats(filename2)
+        _,m_mean2,s_emp2,mean_htv2,u_tmtuki2,u_ansiosid2,h_mean2,mn_mean2=self.get_simstats(filename2,use_mean=True)
         
-        print('Vaikutus työllisyysasteeseen {} htv ({} vs {})'.format(median_htv2-median_htv1,median_htv2,median_htv1))
-
-        #if self.minimal:
-        #    print('Vaikutus työllisyysasteen keskiarvo {} htv mediaan {} htv'.format(d['mean_htv'],d['median_htv']))
-        #else:
-        #    print('Vaikutus työllisyysasteen keskiarvo {} htv, mediaani {} htv\n                        keskiarvo {} työllistä, mediaani {} työllistä'.format(d['mean_htv'],d['median_htv'],d['mean_tyoll'],d['median_tyoll']))
+        print('Vaikutus mediaanityöllisyyteen {:.0f} htv ({:.0f} vs {:.0f})'.format(median_htv2-median_htv1,median_htv2,median_htv1))
+        print('Vaikutus keskiarvotyöllisyyteen {:.0f} htv ({:.0f} vs {:.0f})'.format(mean_htv2-mean_htv1,mean_htv2,mean_htv1))
 
         fig,ax=plt.subplots()
         ax.set_xlabel('Ikä [v]')
@@ -1728,6 +1763,17 @@ class SimStats(EpisodeStats):
         x=np.linspace(self.min_age,self.max_age,self.n_time)
         ax.plot(x[1:],100*m_median1[1:],label=label1)
         ax.plot(x[1:],100*m_median2[1:],label=label2)
+        #emp_statsratio=100*self.emp_stats()
+        #ax.plot(x,emp_statsratio,label='havainto')
+        ax.legend()
+        plt.show()
+
+        fig,ax=plt.subplots()
+        ax.set_xlabel('Ikä [v]')
+        ax.set_ylabel('Työllisyys [%]')
+        x=np.linspace(self.min_age,self.max_age,self.n_time)
+        ax.plot(x[1:],100*m_mean1[1:],label=label1)
+        ax.plot(x[1:],100*m_mean2[1:],label=label2)
         #emp_statsratio=100*self.emp_stats()
         #ax.plot(x,emp_statsratio,label='havainto')
         ax.legend()
@@ -1770,21 +1816,30 @@ class SimStats(EpisodeStats):
         ax.set_xlabel('Ikä [v]')
         ax.set_ylabel('cumsum työllisyys [lkm]')
         x=np.linspace(self.min_age,self.max_age,self.n_time)
-        cs=self.timestep*np.cumsum(h_median2[1:]-h_median1[1:])
-        c2=self.timestep*np.cumsum(h_median1[1:])
-        c1=self.timestep*np.cumsum(h_median2[1:])
+        cs=self.timestep*np.cumsum(h_mean2[1:]-h_mean1[1:])
+        c2=self.timestep*np.cumsum(h_mean1[1:])
+        c1=self.timestep*np.cumsum(h_mean2[1:])
         ax.plot(x[1:],cs,label=label1)
         #emp_statsratio=100*self.emp_stats()
         #ax.plot(x,emp_statsratio,label='havainto')
         #ax.legend()
         plt.show()
 
-        for age in set([63,63.25,63.5,50]):
+        for age in set([50,63,63.25,63.5]):
             mx=self.map_age(age)-1
-            print('Kumulatiivinen työllisyysvaikutus {} vuotiaana {:.1f} htv ({} vs {})'.format(age,cs[mx],c1[mx],c2[mx]))
+            print('Kumulatiivinen työllisyysvaikutus {:.2f} vuotiaana {:.1f} htv ({:.0f} vs {:.0f})'.format(age,cs[mx],c1[mx],c2[mx]))
+            
+        unemp_distrib1,emp_distrib1,unemp_distrib_bu1,tyoll_distrib1,tyoll_distrib_bu1=self.load_simdistribs(filename1)
+        unemp_distrib2,emp_distrib2,unemp_distrib_bu2,tyoll_distrib2,tyoll_distrib_bu2=self.load_simdistribs(filename2)
+        
+        #self.plot_compare_empdistribs(emp_distrib1,emp_distrib2,label='vaihtoehto')
+        self.plot_compare_unempdistribs(unemp_distrib1,unemp_distrib2,label='vaihtoehto')
+        self.plot_compare_tyolldistribs(emp_distrib1,tyoll_distrib1,emp_distrib2,tyoll_distrib2,tyollistyneet=True)
 
     def save_simstats(self,filename,agg_htv,agg_tyoll,agg_rew,emp_tyolliset,emp_tyolliset_osuus,\
-                        emp_tyottomat,emp_tyottomat_osuus,emp_htv,emps,best_rew,best_emp):
+                        emp_tyottomat,emp_tyottomat_osuus,emp_htv,emps,best_rew,best_emp,\
+                        unemp_distrib,emp_distrib,unemp_distrib_bu,\
+                        tyoll_distrib,tyoll_distrib_bu):
         f = h5py.File(filename, 'w')
         dset = f.create_dataset('agg_htv', data=agg_htv, dtype='float64')
         dset = f.create_dataset('agg_tyoll', data=agg_tyoll, dtype='float64')
@@ -1797,6 +1852,11 @@ class SimStats(EpisodeStats):
         dset = f.create_dataset('emps', data=emps, dtype='float64')
         dset = f.create_dataset('best_rew', data=best_rew, dtype='float64')
         dset = f.create_dataset('best_emp', data=best_emp, dtype='float64')
+        dset = f.create_dataset('unemp_distrib', data=unemp_distrib, dtype='float64')
+        dset = f.create_dataset('emp_distrib', data=emp_distrib, dtype='float64')
+        dset = f.create_dataset('unemp_distrib_bu', data=unemp_distrib_bu, dtype='float64')
+        dset = f.create_dataset('tyoll_distrib', data=tyoll_distrib, dtype='float64')
+        dset = f.create_dataset('tyoll_distrib_bu', data=tyoll_distrib_bu, dtype='float64')
         
         f.close()
 
@@ -1819,3 +1879,16 @@ class SimStats(EpisodeStats):
 
         return agg_htv,agg_tyoll,agg_rew,emp_tyolliset,emp_tyolliset_osuus,\
                emp_tyottomat,emp_tyottomat_osuus,emp_htv,emps,best_rew,best_emp,emps
+
+    def load_simdistribs(self,filename):
+        f = h5py.File(filename, 'r')
+        unemp_distrib = f.get('unemp_distrib').value
+        emp_distrib = f.get('emp_distrib').value
+        unemp_distrib_bu = f.get('unemp_distrib_bu').value
+        tyoll_distrib = f.get('tyoll_distrib').value
+        tyoll_distrib_bu = f.get('tyoll_distrib_bu').value
+        
+        f.close()
+
+        return unemp_distrib,emp_distrib,unemp_distrib_bu,\
+               tyoll_distrib,tyoll_distrib_bu
