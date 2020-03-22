@@ -287,8 +287,9 @@ class EpisodeStats():
             x2=x0
         else:
             scaled,x2=np.histogram(tyoll_distrib,x)
-        jaljella=np.cumsum(scaled0[::-1])[::-1] # jöljellö olevien summa
+        jaljella=np.cumsum(scaled0[::-1])[::-1] # jäljellä olevien kumulatiivinen summa
         scaled=scaled/jaljella
+        
         fig,ax=plt.subplots()
         ax.set_xlabel('työttömyysjakson pituus [v]')
         if tyollistyneet:
@@ -298,7 +299,8 @@ class EpisodeStats():
             ax.set_ylabel('pois siirtyneiden osuus')
             point=0.9
         self.plot_vlines_unemp(point)
-        ax.bar(x2[1:-1],scaled[1:],align='center',width=self.timestep)
+        ax.plot(x2[1:-1],scaled[1:])
+        #ax.bar(x2[1:-1],scaled[1:],align='center',width=self.timestep)
         plt.xlim(0,max)
         plt.show()        
 
@@ -310,9 +312,9 @@ class EpisodeStats():
         scaled=scaled0
         scaled_tyoll,x2=np.histogram(tyoll_distrib,x)
             
-        jaljella=np.cumsum(scaled0[::-1])[::-1] # jöljellö olevien summa
+        jaljella=np.cumsum(scaled0[::-1])[::-1] # jäljellä olevien summa
         scaled=scaled/jaljella
-        jaljella_tyoll=np.cumsum(scaled0[::-1])[::-1] # jöljellö olevien summa
+        jaljella_tyoll=np.cumsum(scaled0[::-1])[::-1] # jäljellä olevien summa
         scaled_tyoll=scaled_tyoll/jaljella_tyoll
         fig,ax=plt.subplots()
         ax.set_xlabel('työttömyysjakson pituus [v]')
@@ -335,11 +337,11 @@ class EpisodeStats():
         scaled=scaled0
         scaled_tyoll,x2=np.histogram(tyoll_distrib,x)
             
-        jaljella=np.cumsum(scaled0[::-1])[::-1] # jöljellö olevien summa
+        jaljella=np.cumsum(scaled0[::-1])[::-1] # jäljellä olevien summa
         #jaljella=np.cumsum(scaled0)
         #print(jaljella,scaled)
         scaled=scaled/jaljella
-        jaljella_tyoll=np.cumsum(scaled0[::-1])[::-1] # jöljellö olevien summa
+        jaljella_tyoll=np.cumsum(scaled0[::-1])[::-1] # jäljellä olevien summa
         #jaljella_tyoll=np.cumsum(scaled0)
         scaled_tyoll=scaled_tyoll/jaljella_tyoll
         fig,ax=plt.subplots()
@@ -355,29 +357,31 @@ class EpisodeStats():
         #plt.ylim(0,0.8)
         plt.show()        
 
-    def plot_compare_tyolldistribs(self,emp_distrib,tyoll_distrib,emp_distrib2,tyoll_distrib2,tyollistyneet=True,max=4,label='vaihtoehto'):
+    def plot_compare_tyolldistribs(self,emp_distrib1,tyoll_distrib1,emp_distrib2,tyoll_distrib2,tyollistyneet=True,max=4,label1='perus',label2='vaihtoehto'):
         max_time=50
         nn_time = int(np.round((max_time)*self.inv_timestep))+1
         x=np.linspace(0,max_time,nn_time)
-        scaled0,x0=np.histogram(emp_distrib,x)
+
+        # data1
+        scaled01,x0=np.histogram(emp_distrib1,x)
         if not tyollistyneet:
-            scaled=scaled0
+            scaled1=scaled01
+            x1=x0
+        else:
+            scaled1,x1=np.histogram(tyoll_distrib1,x)
+        jaljella1=np.cumsum(scaled01[::-1])[::-1] # jäljellä olevien summa
+        scaled1=scaled1/jaljella1
+        
+        # data2
+        scaled02,x0=np.histogram(emp_distrib2,x)
+        if not tyollistyneet:
+            scaled2=scaled02
             x2=x0
         else:
-            scaled,x2=np.histogram(tyoll_distrib,x)
-        #scaled,x2=np.histogram(emp_distrib,x)
-        jaljella=np.cumsum(scaled0[::-1])[::-1] # jöljellö olevien summa
-        scaled=scaled/jaljella
-        scaled0,x0=np.histogram(emp_distrib2,x)
-        if not tyollistyneet:
-            scaled3=scaled0
-            x3=x0
-        else:
-            scaled3,x3=np.histogram(tyoll_distrib2,x)
-        #scaled3,x3=np.histogram(emp_distrib2,x)
-        jaljella3=np.cumsum(scaled0[::-1])[::-1] # jöljellö olevien summa
-        scaled3=scaled3/jaljella3
-        #print(scaled,jaljella,scaled.shape,x2.shape)
+            scaled2,x2=np.histogram(tyoll_distrib2,x)
+        jaljella2=np.cumsum(scaled02[::-1])[::-1] # jäljellä olevien summa
+        scaled2=scaled2/jaljella2
+        
         fig,ax=plt.subplots()
         ax.set_xlabel('työttömyysjakson pituus [v]')
         if tyollistyneet:
@@ -385,9 +389,8 @@ class EpisodeStats():
         else:
             ax.set_ylabel('pois siirtyneiden osuus')
         self.plot_vlines_unemp()
-        #ax.bar(x2[1:-1],scaled[1:])
-        ax.plot(x3[1:-1],scaled3[1:],label='perus')
-        ax.plot(x2[1:-1],scaled[1:],label=label)
+        ax.plot(x1[1:-1],scaled1[1:],label=label1)
+        ax.plot(x2[1:-1],scaled2[1:],label=label2)
         ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
         plt.xlim(0,max)
         plt.show()        
@@ -426,26 +429,26 @@ class EpisodeStats():
         plt.xlim(-max,0)
         plt.show()   
 
-    def plot_compare_unempdistribs(self,unemp_distrib,unemp_distrib2,max=4,label='vaihtoehto'):
+    def plot_compare_unempdistribs(self,unemp_distrib1,unemp_distrib2,max=4,label1='perus',label2='vaihtoehto'):
         #fig,ax=plt.subplots()
         max_time=50
         nn_time = int(np.round((max_time)*self.inv_timestep))+1
         x=np.linspace(self.timestep,max_time,nn_time)
-        scaled,x2=np.histogram(unemp_distrib,x)
-        print('Perus keskikesto {} v {} Keskikesto {} v'.format(np.mean(unemp_distrib2),label,np.mean(unemp_distrib)))
-        print('Skaalaamaton Perus lkm {} v {} lkm {} v'.format(len(unemp_distrib2),label,len(unemp_distrib)))
-        print('Skaalaamaton Perus työtpäiviä yht {} v {} työtpäiviä yht {} v'.format(sum(unemp_distrib2),label,sum(unemp_distrib)))
+        scaled1,x1=np.histogram(unemp_distrib1,x)
+        print('{} keskikesto {} v {} Keskikesto {} v'.format(label1,np.mean(unemp_distrib2),label2,np.mean(unemp_distrib1)))
+        print('Skaalaamaton {} lkm {} v {} lkm {} v'.format(label1,len(unemp_distrib2),label2,len(unemp_distrib1)))
+        print('Skaalaamaton {} työtpäiviä yht {} v {} työtpäiviä yht {} v'.format(label1,sum(unemp_distrib2),label2,sum(unemp_distrib1)))
         #scaled=scaled/np.sum(unemp_distrib)
-        scaled=scaled/np.sum(scaled)
-        scaled3,x3=np.histogram(unemp_distrib2,x)
-        #scaled3=scaled3/np.sum(unemp_distrib2)
-        scaled3=scaled3/np.sum(scaled3)
+        scaled1=scaled1/np.sum(scaled1)
+        
+        scaled2,x1=np.histogram(unemp_distrib2,x)
+        scaled2=scaled2/np.sum(scaled2)
         fig,ax=plt.subplots()
         self.plot_vlines_unemp(0.9)
         ax.set_xlabel('Työttömyysjakson pituus [v]')
         ax.set_ylabel('Osuus')
-        ax.plot(x[:-1],scaled3,label='perus')
-        ax.plot(x[:-1],scaled,label=label)
+        ax.plot(x[:-1],scaled1,label=label1)
+        ax.plot(x[:-1],scaled2,label=label2)
         ax.set_yscale('log')
         plt.ylim(1e-4,1.0)
         ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
@@ -1347,9 +1350,9 @@ class EpisodeStats():
         
         self.plot_compare_empdistribs(emp_distrib,emp_distrib2)
         print('Jakauma ansiosidonnainen+tmtuki+putki, no max age')
-        self.plot_compare_unempdistribs(unemp_distrib,unemp_distrib2,label=label)
-        self.plot_compare_tyolldistribs(unemp_distrib,tyoll_distrib,unemp_distrib2,tyoll_distrib2,tyollistyneet=False,label=label)
-        self.plot_compare_tyolldistribs(unemp_distrib,tyoll_distrib,unemp_distrib2,tyoll_distrib2,tyollistyneet=True,label=label)     
+        self.plot_compare_unempdistribs(unemp_distrib,unemp_distrib2,label1=label,label2=label2)
+        self.plot_compare_tyolldistribs(unemp_distrib,tyoll_distrib,unemp_distrib2,tyoll_distrib2,tyollistyneet=False,label1=label,label2=label2)
+        self.plot_compare_tyolldistribs(unemp_distrib,tyoll_distrib,unemp_distrib2,tyoll_distrib2,tyollistyneet=True,label1=label,label2=label2)     
 
         unemp_distrib,emp_distrib,unemp_distrib_bu=self.comp_empdistribs(ansiosid=True,tmtuki=True,putki=True,outsider=False,max_age=54)
         tyoll_distrib,tyoll_distrib_bu=self.comp_tyollistymisdistribs(ansiosid=True,tmtuki=True,putki=True,outsider=False,max_age=54)
@@ -1358,9 +1361,9 @@ class EpisodeStats():
         
         self.plot_compare_empdistribs(emp_distrib,emp_distrib2)
         print('Jakauma ansiosidonnainen+tmtuki+putki, max age 54')
-        self.plot_compare_unempdistribs(unemp_distrib,unemp_distrib2,label=label)
-        self.plot_compare_tyolldistribs(unemp_distrib,tyoll_distrib,unemp_distrib2,tyoll_distrib2,tyollistyneet=False,label=label)     
-        self.plot_compare_tyolldistribs(unemp_distrib,tyoll_distrib,unemp_distrib2,tyoll_distrib2,tyollistyneet=True,label=label)     
+        self.plot_compare_unempdistribs(unemp_distrib,unemp_distrib2,label1=label,label2=label2)
+        self.plot_compare_tyolldistribs(unemp_distrib,tyoll_distrib,unemp_distrib2,tyoll_distrib2,tyollistyneet=False,label1=label,label2=label2)     
+        self.plot_compare_tyolldistribs(unemp_distrib,tyoll_distrib,unemp_distrib2,tyoll_distrib2,tyollistyneet=True,label1=label,label2=label2)     
         
         
     def comp_employed(self,emp):
@@ -1572,17 +1575,11 @@ class SimStats(EpisodeStats):
             unemp_distrib2,emp_distrib2,unemp_distrib_bu2=self.comp_empdistribs(ansiosid=True,tmtuki=True,putki=True,outsider=False,max_age=max_age)
             tyoll_distrib2,tyoll_distrib_bu2=self.comp_tyollistymisdistribs(ansiosid=True,tmtuki=True,putki=True,outsider=False,max_age=max_age)
             
-            unemp_distrib+=unemp_distrib2
-            emp_distrib+=emp_distrib2
-            unemp_distrib_bu+=unemp_distrib_bu2
-            tyoll_distrib+=tyoll_distrib2
-            tyoll_distrib_bu+=tyoll_distrib_bu2
-
-        unemp_distrib/=(n-startn)
-        emp_distrib/=(n-startn)
-        unemp_distrib_bu/=(n-startn)
-        tyoll_distrib/=(n-startn)
-        tyoll_distrib_bu/=(n-startn)
+            unemp_distrib.extend(unemp_distrib2)
+            emp_distrib.extend(emp_distrib2)
+            unemp_distrib_bu.extend(unemp_distrib_bu2)
+            tyoll_distrib.extend(tyoll_distrib2)
+            tyoll_distrib_bu.extend(tyoll_distrib_bu2)
 
         self.save_simstats(save,agg_htv,agg_tyoll,agg_rew,\
                             emp_tyolliset,emp_tyolliset_osuus,\
@@ -1690,6 +1687,12 @@ class SimStats(EpisodeStats):
         x=np.linspace(self.min_age,self.max_age,self.n_time)
         ax.plot(x,100*s_emp)
         plt.show()
+        
+        unemp_distrib1,emp_distrib1,unemp_distrib_bu1,tyoll_distrib1,tyoll_distrib_bu1=self.load_simdistribs(filename)
+       
+        #self.plot_compare_empdistribs(emp_distrib1,emp_distrib2,label='vaihtoehto')
+        self.plot_unempdistribs(unemp_distrib1)
+        self.plot_tyolldistribs(unemp_distrib1,tyoll_distrib1,tyollistyneet=True)
 
     def get_simstats(self,filename1,plot=False,use_mean=False):
         agg_htv,agg_tyoll,agg_rew,emp_tyolliset,emp_tyolliset_osuus,\
@@ -1833,8 +1836,8 @@ class SimStats(EpisodeStats):
         unemp_distrib2,emp_distrib2,unemp_distrib_bu2,tyoll_distrib2,tyoll_distrib_bu2=self.load_simdistribs(filename2)
         
         #self.plot_compare_empdistribs(emp_distrib1,emp_distrib2,label='vaihtoehto')
-        self.plot_compare_unempdistribs(unemp_distrib1,unemp_distrib2,label='vaihtoehto')
-        self.plot_compare_tyolldistribs(emp_distrib1,tyoll_distrib1,emp_distrib2,tyoll_distrib2,tyollistyneet=True)
+        self.plot_compare_unempdistribs(unemp_distrib1,unemp_distrib2,label1=label1,label2=label2)
+        self.plot_compare_tyolldistribs(unemp_distrib1,tyoll_distrib1,unemp_distrib2,tyoll_distrib2,tyollistyneet=True,label1=label1,label2=label2)
 
     def save_simstats(self,filename,agg_htv,agg_tyoll,agg_rew,emp_tyolliset,emp_tyolliset_osuus,\
                         emp_tyottomat,emp_tyottomat_osuus,emp_htv,emps,best_rew,best_emp,\
