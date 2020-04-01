@@ -1299,7 +1299,7 @@ class EpisodeStats():
         ax.set_xlabel('Ikä [v]')
         ax.set_ylabel('Työllisyysaste [%]')
         ax.plot(x,100*tyolliset1,label=label2)
-        ax.plot(x,100*tyolliset2,label=label1)
+        ax.plot(x,100*tyolliset2,label=label)
         ax.legend()
         plt.show()
 

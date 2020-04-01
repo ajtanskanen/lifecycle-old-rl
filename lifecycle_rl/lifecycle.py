@@ -151,7 +151,7 @@ class Lifecycle():
                 'min_retirementage': self.min_retirementage, 'max_retirementage':self.max_retirementage,
                 'ansiopvraha_kesto300': self.ansiopvraha_kesto300,'ansiopvraha_kesto400': self.ansiopvraha_kesto400,
                 'ansiopvraha_toe': self.ansiopvraha_toe,'include_pinkslip':self.include_pinkslip,
-                'perustulos': self.perustulo, 'karenssi_kesto': self.karenssi_kesto,
+                'perustulo': self.perustulo, 'karenssi_kesto': self.karenssi_kesto,
                 'mortality': self.mortality, 'randomness': self.randomness,
                 'porrasta_putki': self.porrasta_putki, 'porrasta_1askel': self.porrasta_1askel,
                 'porrasta_2askel': self.porrasta_2askel, 'porrasta_3askel': self.porrasta_3askel,
