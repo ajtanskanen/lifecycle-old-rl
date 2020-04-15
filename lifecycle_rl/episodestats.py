@@ -12,6 +12,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from scipy.stats import norm
+import locale
+from tabulate import tabulate
+import pandas as pd
+
+
+locale.setlocale(locale.LC_ALL, 'fi_FI')
 
 class EpisodeStats():
     def __init__(self,timestep,n_time,n_emps,n_pop,env,minimal,min_age,max_age,min_retirementage):
@@ -60,8 +66,27 @@ class EpisodeStats():
         self.out_of_work=np.zeros((self.n_time,n_emps))
         self.stat_unemp_len=np.zeros((self.n_time,self.n_pop))
         self.stat_wage_reduction=np.zeros((self.n_time,n_emps))
+        self.infostats_taxes=np.zeros((self.n_time,1))
+        self.infostats_etuustulo=np.zeros((self.n_time,1))
+        self.infostats_perustulo=np.zeros((self.n_time,1))
+        self.infostats_palkkatulo=np.zeros((self.n_time,1))
+        self.infostats_ansiopvraha=np.zeros((self.n_time,1))
+        self.infostats_asumistuki=np.zeros((self.n_time,1))
+        self.infostats_valtionvero=np.zeros((self.n_time,1))
+        self.infostats_kunnallisvero=np.zeros((self.n_time,1))
+        self.infostats_ptel=np.zeros((self.n_time,1))
+        self.infostats_tyotvakmaksu=np.zeros((self.n_time,1))
+        self.infostats_tyoelake=np.zeros((self.n_time,1))
+        self.infostats_kokoelake=np.zeros((self.n_time,1))
+        self.infostats_opintotuki=np.zeros((self.n_time,1))
+        self.infostats_isyyspaivaraha=np.zeros((self.n_time,1))
+        self.infostats_aitiyspaivaraha=np.zeros((self.n_time,1))
+        self.infostats_kotihoidontuki=np.zeros((self.n_time,1))
+        self.infostats_sairauspaivaraha=np.zeros((self.n_time,1))
+        self.infostats_toimeentulotuki=np.zeros((self.n_time,1))
+        self.infostats_tulot_netto=np.zeros((self.n_time,1))
 
-    def add(self,n,act,r,state,newstate,debug=False,plot=False,aveV=None): 
+    def add(self,n,act,r,state,newstate,q,debug=False,plot=False,aveV=None): 
         if self.minimal:
             emp,_,_,a,_=self.env.state_decode(state) # current employment state
             newemp,_,newsal,a2,tis=self.env.state_decode(newstate)
@@ -96,6 +121,25 @@ class EpisodeStats():
                 self.out_of_work[t,newemp]+=oof
                 self.popunemprightleft[t,n]=-self.env.unempright_left(newemp,tis,bu,a2,ura,oof)
                 self.popunemprightused[t,n]=bu
+                self.infostats_taxes[t]+=q['verot']*self.timestep*12
+                self.infostats_etuustulo[t]+=q['etuustulo_brutto']*self.timestep*12
+                self.infostats_perustulo[t]+=q['perustulo']*self.timestep*12
+                self.infostats_palkkatulo[t]+=q['palkkatulot']*self.timestep*12
+                self.infostats_ansiopvraha[t]+=q['ansiopvraha']*self.timestep*12
+                self.infostats_asumistuki[t]+=q['asumistuki']*self.timestep*12
+                self.infostats_valtionvero[t]+=q['valtionvero']*self.timestep*12
+                self.infostats_kunnallisvero[t]+=q['kunnallisvero']*self.timestep*12
+                self.infostats_ptel[t]+=q['ptel']*self.timestep*12
+                self.infostats_tyotvakmaksu[t]+=q['tyotvakmaksu']*self.timestep*12
+                self.infostats_tyoelake[t]+=q['elake_maksussa']*self.timestep*12
+                self.infostats_kokoelake[t]+=q['kokoelake']*self.timestep*12
+                self.infostats_opintotuki[t]+=q['opintotuki']*self.timestep*12
+                self.infostats_isyyspaivaraha[t]+=q['isyyspaivaraha']*self.timestep*12
+                self.infostats_aitiyspaivaraha[t]+=q['aitiyspaivaraha']*self.timestep*12
+                self.infostats_kotihoidontuki[t]+=q['kotihoidontuki']*self.timestep*12
+                self.infostats_sairauspaivaraha[t]+=q['sairauspaivaraha']*self.timestep*12
+                self.infostats_toimeentulotuki[t]+=q['toimtuki']*self.timestep*12
+                self.infostats_tulot_netto[t]+=q['kateen']*self.timestep*12
     
             if aveV is not None:
                 self.aveV[t,n]=aveV
@@ -135,6 +179,51 @@ class EpisodeStats():
         ax.plot(x,meansal+stdsal)
         ax.plot(x,meansal-stdsal)
         plt.show()
+        
+    def comp_virrat(self,popempstate=None,putki=True,tmtuki=True,laaja=False,outsider=False,ansiosid=True,tyott=False,kaikki=False,max_age=100):
+        tyoll_virta=np.zeros((self.n_time,1))
+        tyot_virta=np.zeros((self.n_time,1))
+        unempset=[]
+        empset=[]
+        
+        if tmtuki:
+            unempset.append(13)
+        if outsider:
+            unempset.append(11)
+        if putki:
+            unempset.append(4)
+        if ansiosid:
+            unempset.append(0)
+        if tyott:
+            unempset=[0,4,13]
+        if laaja:
+            unempset=[0,4,11,13]
+        if kaikki:
+            unempset=[0,2,3,4,5,6,7,8,9,11,12,13,14]
+            
+        empset=set([1,10])
+        unempset=set(unempset)
+        
+        if popempstate is None:
+            popempstate=self.popempstate
+        
+        for k in range(self.n_pop):
+            prev_state=popempstate[0,k]
+            prev_trans=0
+            for t in range(1,self.n_time):
+                age=self.min_age+t*self.timestep
+                if age<=max_age:
+                    if popempstate[t,k]!=prev_state:
+                        if prev_state in unempset and popempstate[t,k] in empset:
+                            tyoll_virta[t]+=1
+                            prev_state=popempstate[t,k]
+                        elif prev_state in empset and popempstate[t,k] in unempset:
+                            tyot_virta[t]+=1
+                            prev_state=popempstate[t,k]
+                        else: # some other state
+                            prev_state=popempstate[t,k]
+
+        return tyoll_virta,tyot_virta
         
     def comp_tyollistymisdistribs(self,popempstate=None,popunemprightleft=None,putki=True,tmtuki=True,laaja=False,outsider=False,ansiosid=True,tyott=False,max_age=100):
         tyoll_distrib=[]
@@ -453,6 +542,26 @@ class EpisodeStats():
         plt.ylim(1e-4,1.0)
         ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
         plt.xlim(0,max)
+        plt.show()   
+
+    def plot_compare_virrat(self,virta1,virta2,min_time=25,max_time=65,label1='perus',label2='vaihtoehto',virta_label='työllisyys',ymin=None,ymax=None):
+        x=np.linspace(self.min_age,self.max_age,self.n_time)
+        
+        demog,demog2=self.get_demog()
+        scaled1=virta1/self.alive*demog2
+        scaled2=virta2/self.alive*demog2
+        
+        fig,ax=plt.subplots()
+        plt.xlim(min_time,max_time)
+        ax.set_xlabel('Ikä [v]')
+        ax.set_ylabel(virta_label+'virta')
+        ax.plot(x,scaled1,label=label1)
+        ax.plot(x,scaled2,label=label2)
+        ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
+        if ymin is not None:
+            if ymax is not None:
+                plt.ylim(ymin,ymax)
+            
         plt.show()   
 
     def comp_empratios(self,emp,alive,unempratio=True):
@@ -1039,6 +1148,19 @@ class EpisodeStats():
             self.plot_tyolldistribs_both(unemp_distrib,tyoll_distrib,max=max)
 
     def plot_stats(self):
+        
+        q=self.comp_budget(scale=True)
+        q_stat=self.stat_budget_2018()
+
+        df1 = pd.DataFrame.from_dict(q,orient='index',columns=['e/v'])
+        df2 = pd.DataFrame.from_dict(q_stat,orient='index',columns=['toteuma'])
+        df=df1.copy()
+        df['toteuma']=df2['toteuma']
+        df['ero']=df1['e/v']-df2['toteuma']
+                           
+        print('Rahavirrat skaalattuna väestötasolle')
+        print(tabulate(df, headers='keys', tablefmt='psql', floatfmt=",.2f"))
+    
         self.plot_emp()
         print('Lisäpäivillä on {:.0f} henkilöä'.format(self.count_putki()))
         self.plot_unemp(unempratio=True)
@@ -1095,7 +1217,7 @@ class EpisodeStats():
     def emp_stats(self,g=0):
         '''
         työssä olevien osuus väestöstö
-        Löhde: Tilastokeskus
+        Lähde: Tilastokeskus
         '''
         if g==0: # kaikki
             emp=np.array([0.461,0.545,0.567,0.599,0.645,0.678,0.706,0.728,0.740,0.752,0.758,0.769,0.776,0.781,0.787,0.795,0.801,0.807,0.809,0.820,0.820,0.829,0.831,0.833,0.832,0.828,0.827,0.824,0.822,0.817,0.815,0.813,0.807,0.802,0.796,0.788,0.772,0.763,0.752,0.728,0.686,0.630,0.568,0.382,0.217,0.142,0.106,0.086,0.011,0.003,0.002])
@@ -1110,7 +1232,7 @@ class EpisodeStats():
     def disab_stat(self,g):
         '''
         Työkyvyttömyyselökkeellö olevien osuus väestöstö
-        Löhde: ETK
+        Lähde: ETK
         '''
         if g==1:
             ratio=np.array([0.014412417,0.017866162,0.019956194,0.019219484,0.022074491,0.022873602,0.024247334,0.025981477,0.025087389,0.023162522,0.025013013,0.023496079,0.025713399,0.025633996,0.028251301,0.028930719,0.028930188,0.030955287,0.031211716,0.030980726,0.035395247,0.03522291,0.035834422,0.036878386,0.040316277,0.044732619,0.046460599,0.050652725,0.054797849,0.057018324,0.0627497,0.067904263,0.072840649,0.079978222,0.083953327,0.092811744,0.106671337,0.119490669,0.129239815,0.149503982,0.179130081,0.20749958,0.22768029,0.142296259,0.135142865,0.010457403,0,0,0,0,0])
@@ -1122,7 +1244,7 @@ class EpisodeStats():
     def student_stats(self,g=0):
         '''
         Opiskelijoiden osuus väestöstö
-        Löhde: Tilastokeskus
+        Lähde: Tilastokeskus
         '''
         if g==0: # kaikki
             emp_ratio=np.array([0.261,0.279,0.272,0.242,0.195,0.155,0.123,0.098,0.082,0.070,0.062,0.054,0.048,0.045,0.041,0.039,0.035,0.033,0.031,0.027,0.025,0.024,0.022,0.019,0.018,0.017,0.017,0.016,0.015,0.014,0.013,0.011,0.010,0.009,0.009,0.008,0.008,0.006,0.005,0.004,0.003,0.003,0.002,0.002,0.002,0.002,0.002,0.001,0.001,0.001,0.001])
@@ -1136,7 +1258,7 @@ class EpisodeStats():
     def army_stats(self,g=0):
         '''
         Armeijassa olevien osuus väestöstö
-        Löhde: Tilastokeskus
+        Lähde: Tilastokeskus
         '''
         if g==0: # kaikki
             emp_ratio=np.array([0.048,0.009,0.004,0.002,0.001,0.001,0.001,0.001,0.000,0.000,0.000,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0   ])
@@ -1150,7 +1272,7 @@ class EpisodeStats():
     def outsider_stats(self,g=0):
         '''
         Työelömön ulkopuolella olevien osuus väestöstö
-        Löhde: Tilastokeskus
+        Lähde: Tilastokeskus
         '''
         if g==0: # kaikki
             emp_ratio=np.array([ 0.115,0.070,0.065,0.066,0.066,0.069,0.073,0.075,0.077,0.079,0.079,0.079,0.076,0.075,0.072,0.067,0.065,0.063,0.062,0.057,0.055,0.050,0.048,0.048,0.047,0.046,0.045,0.044,0.042,0.044,0.042,0.043,0.042,0.043,0.043,0.044,0.045,0.045,0.045,0.044,0.044,0.040,0.038,0.022,0.010,0.007,0.004,0.004,0.004,0.004,0.004 ])
@@ -1161,10 +1283,16 @@ class EpisodeStats():
 
         return self.map_ratios(emp_ratio)
         
+    def tyotjakso_stats(self):
+        '''
+        Päättyneiden työttömyysjaksojen jakauma
+        '''
+        d=[]
+        
     def pensioner_stats(self,g=0):
         '''
         Elökkeellö olevien osuus väestöstö
-        Löhde: Tilastokeskus
+        Lähde: Tilastokeskus
         '''
         if g==0: # kaikki
             emp_ratio=np.array([ 0.011,0.014,0.016,0.016,0.018,0.019,0.019,0.021,0.020,0.019,0.020,0.021,0.022,0.022,0.024,0.024,0.025,0.025,0.026,0.026,0.029,0.029,0.030,0.031,0.034,0.037,0.039,0.042,0.045,0.047,0.052,0.056,0.060,0.065,0.070,0.076,0.088,0.098,0.110,0.128,0.159,0.196,0.277,0.533,0.741,0.849,0.888,0.908,0.983,0.992,0.993 ])
@@ -1178,7 +1306,7 @@ class EpisodeStats():
     def unemp_stats(self,g=0):
         '''
         Työttömien osuus väestöstö
-        Löhde: Tilastokeskus
+        Lähde: Tilastokeskus
         '''
         emp_ratio=np.zeros(self.n_time)
         if g==0:
@@ -1192,7 +1320,7 @@ class EpisodeStats():
     def unempratio_stats(self,g=0):
         '''
         Työttömien osuus väestöstö
-        Löhde: Tilastokeskus
+        Lähde: Tilastokeskus
         '''
         emp_ratio=self.emp_stats(g=g)
         unemp_ratio=self.unemp_stats(g=g)
@@ -1225,6 +1353,25 @@ class EpisodeStats():
         dset = f.create_dataset('stat_wage_reduction', data=self.stat_wage_reduction, dtype=ftype)
         dset = f.create_dataset('popunemprightleft', data=self.popunemprightleft, dtype=ftype)
         dset = f.create_dataset('popunemprightused', data=self.popunemprightused, dtype=ftype)
+        dset = f.create_dataset('infostats_taxes', data=self.infostats_taxes, dtype=ftype)
+        dset = f.create_dataset('infostats_etuustulo', data=self.infostats_etuustulo, dtype=ftype)
+        dset = f.create_dataset('infostats_perustulo', data=self.infostats_perustulo, dtype=ftype)
+        dset = f.create_dataset('infostats_palkkatulo', data=self.infostats_palkkatulo, dtype=ftype)
+        dset = f.create_dataset('infostats_ansiopvraha', data=self.infostats_ansiopvraha, dtype=ftype)
+        dset = f.create_dataset('infostats_asumistuki', data=self.infostats_asumistuki, dtype=ftype)
+        dset = f.create_dataset('infostats_valtionvero', data=self.infostats_valtionvero, dtype=ftype)
+        dset = f.create_dataset('infostats_kunnallisvero', data=self.infostats_kunnallisvero, dtype=ftype)
+        dset = f.create_dataset('infostats_ptel', data=self.infostats_ptel, dtype=ftype)
+        dset = f.create_dataset('infostats_tyotvakmaksu', data=self.infostats_tyotvakmaksu, dtype=ftype)
+        dset = f.create_dataset('infostats_tyoelake', data=self.infostats_tyoelake, dtype=ftype)
+        dset = f.create_dataset('infostats_kokoelake', data=self.infostats_kokoelake, dtype=ftype)
+        dset = f.create_dataset('infostats_opintotuki', data=self.infostats_opintotuki, dtype=ftype)
+        dset = f.create_dataset('infostats_isyyspaivaraha', data=self.infostats_isyyspaivaraha, dtype=ftype)
+        dset = f.create_dataset('infostats_aitiyspaivaraha', data=self.infostats_aitiyspaivaraha, dtype=ftype)
+        dset = f.create_dataset('infostats_kotihoidontuki', data=self.infostats_kotihoidontuki, dtype=ftype)
+        dset = f.create_dataset('infostats_sairauspaivaraha', data=self.infostats_sairauspaivaraha, dtype=ftype)
+        dset = f.create_dataset('infostats_toimeentulotuki', data=self.infostats_toimeentulotuki, dtype=ftype)
+        dset = f.create_dataset('infostats_tulot_netto', data=self.infostats_tulot_netto, dtype=ftype)
         f.close()
 
     def save_to_hdf(self,filename,nimi,arr,dtype):
@@ -1240,13 +1387,7 @@ class EpisodeStats():
         
     def load_sim(self,filename,n_pop=None):
         f = h5py.File(filename, 'r')
-        if 'n_pop' in f:
-            self.n_pop=int(f.get('n_pop').value)
-        else:
-            self.n_pop=1_000
-        if n_pop is not None:
-            self.n_pop=n_pop
-            
+
         self.empstate=f.get('empstate').value
         self.gempstate=f.get('gempstate').value
         self.deceiced=f.get('deceiced').value
@@ -1270,6 +1411,34 @@ class EpisodeStats():
         self.popunemprightleft=f.get('popunemprightleft').value
         self.popunemprightused=f.get('popunemprightused').value
         
+        if 'infostats_taxes' in f.keys(): # older runs do not have these
+            self.infostats_taxes=f.get('infostats_taxes').value
+            self.infostats_etuustulo=f.get('infostats_etuustulo').value
+            self.infostats_perustulo=f.get('infostats_perustulo').value
+            self.infostats_palkkatulo=f.get('infostats_palkkatulo').value
+            self.infostats_ansiopvraha=f.get('infostats_ansiopvraha').value
+            self.infostats_asumistuki=f.get('infostats_asumistuki').value
+            self.infostats_valtionvero=f.get('infostats_valtionvero').value
+            self.infostats_kunnallisvero=f.get('infostats_kunnallisvero').value
+            self.infostats_ptel=f.get('infostats_ptel').value
+            self.infostats_tyotvakmaksu=f.get('infostats_tyotvakmaksu').value
+            self.infostats_tyoelake=f.get('infostats_tyoelake').value
+            self.infostats_kokoelake=f.get('infostats_kokoelake').value
+            self.infostats_opintotuki=f.get('infostats_opintotuki').value
+            self.infostats_isyyspaivaraha=f.get('infostats_isyyspaivaraha').value
+            self.infostats_aitiyspaivaraha=f.get('infostats_aitiyspaivaraha').value
+            self.infostats_kotihoidontuki=f.get('infostats_kotihoidontuki').value
+            self.infostats_sairauspaivaraha=f.get('infostats_sairauspaivaraha').value
+            self.infostats_toimeentulotuki=f.get('infostats_toimeentulotuki').value
+            self.infostats_tulot_netto=f.get('infostats_tulot_netto').value
+        
+        if 'n_pop' in f:
+            self.n_pop=int(f.get('n_pop').value)
+        else:
+            self.n_pop=np.sum(self.empstate[0,:])
+        if n_pop is not None:
+            self.n_pop=n_pop
+            
         f.close()
 
     def render(self,load=None):
@@ -1280,7 +1449,62 @@ class EpisodeStats():
         self.plot_stats()
         #self.plot_reward()   
 
-    def compare_with(self,cc2,label2='vaihtoehto',label='perus'):
+    def stat_budget_2018(self,scale=False):
+        q={}
+        q['palkkatulo']=89_134_200_000 # lähde: ETK
+        q['etuusmeno']=0
+        q['verot']=30_763_000_000 
+        q['valtionvero']=5_542_000_000
+        q['kunnallisvero']=18_991_000_000
+        q['ptel']=5_560_000_000
+        #q['elakemaksut']=22_085_700_000 # Lähde: ETK
+        q['tyotvakmaksu']=0.019*q['palkkatulo']
+        q['ansiopvraha']=3_895_333_045 # 1_930_846_464+1_964_486_581 # ansioturva + perusturva = 3 895 333 045
+        q['asumistuki']=1_488_900_000 + 600_100_000 # yleinen plus eläkkeensaajan
+        q['tyoelake']=27_865_000_000
+        q['kokoelake']=q['tyoelake']+2_357_000_000
+        q['opintotuki']=417_404_073+54_057
+        q['isyyspaivaraha']=104_212_164
+        q['aitiyspaivaraha']=341_304_991+462_228_789
+        q['kotihoidontuki']=245_768_701
+        q['sairauspaivaraha']=786_659_783
+        q['toimeentulotuki']=715_950_847
+        q['perustulo']=0
+        q['etuusmeno']=q['ansiopvraha']+q['kokoelake']+q['opintotuki']+q['isyyspaivaraha']+\
+            q['aitiyspaivaraha']+q['sairauspaivaraha']+q['toimeentulotuki']+q['perustulo']
+        q['tulot_netto']=q['palkkatulo']+q['etuusmeno']-q['verot']-q['ptel']
+
+        return q
+        
+    def comp_budget(self,scale=False):
+        demog,demog2=self.get_demog()
+
+        scalex=demog2/self.n_pop
+        
+        q={}
+        q['palkkatulo']=np.sum(self.infostats_palkkatulo*scalex)
+        q['etuusmeno']=np.sum(self.infostats_etuustulo*scalex)
+        q['verot']=np.sum(self.infostats_taxes*scalex)
+        q['valtionvero']=np.sum(self.infostats_valtionvero*scalex)
+        q['kunnallisvero']=np.sum(self.infostats_kunnallisvero*scalex)
+        q['ptel']=np.sum(self.infostats_ptel*scalex)
+        q['tyotvakmaksu']=np.sum(self.infostats_tyotvakmaksu*scalex)
+        q['ansiopvraha']=np.sum(self.infostats_ansiopvraha*scalex)
+        q['asumistuki']=np.sum(self.infostats_asumistuki*scalex)
+        q['tyoelake']=np.sum(self.infostats_tyoelake*scalex)
+        q['kokoelake']=np.sum(self.infostats_kokoelake*scalex)
+        q['opintotuki']=np.sum(self.infostats_opintotuki*scalex)
+        q['isyyspaivaraha']=np.sum(self.infostats_isyyspaivaraha*scalex)
+        q['aitiyspaivaraha']=np.sum(self.infostats_aitiyspaivaraha*scalex)
+        q['kotihoidontuki']=np.sum(self.infostats_kotihoidontuki*scalex)
+        q['sairauspaivaraha']=np.sum(self.infostats_sairauspaivaraha*scalex)
+        q['toimeentulotuki']=np.sum(self.infostats_toimeentulotuki*scalex)
+        q['perustulo']=np.sum(self.infostats_perustulo*scalex)
+        q['tulot_netto']=np.sum(self.infostats_tulot_netto*scalex)
+
+        return q
+
+    def compare_with(self,cc2,label2='perus',label='vaihtoehto'):
         diff_emp=self.empstate/self.n_pop-cc2.empstate/cc2.n_pop
         x=np.linspace(self.min_age,self.max_age,self.n_time)
         #x=range(self.age_min,self.age_min+self.n_time)
@@ -1294,6 +1518,27 @@ class EpisodeStats():
         htv2,tyoll2,haj2,tyollaste2,tyolliset2=self.comp_tyollisyys_stats(cc2.empstate/cc2.n_pop,scale_time=True,start=s,end=e)
         ansiosid_osuus1,tm_osuus1=self.comp_employed_detailed(self.empstate)
         ansiosid_osuus2,tm_osuus2=self.comp_employed_detailed(cc2.empstate)
+        
+        q1=self.comp_budget(scale=True)
+        q2=cc2.comp_budget(scale=True)
+        
+        df1 = pd.DataFrame.from_dict(q1,orient='index',columns=[label])
+        df2 = pd.DataFrame.from_dict(q2,orient='index',columns=['one'])
+        df=df1.copy()
+        df[label2]=df2['one']
+        df['ero']=df1[label]-df2['one']
+
+        print('Rahavirrat skaalattuna väestötasolle')
+        print(tabulate(df, headers='keys', tablefmt='psql', floatfmt=",.2f"))
+        
+        #print('Rahavirrat skaalattuna väestötasolle')
+        #print('Verot {} {} vs {} {}'.format(label,q1['verot'],label2,q2['verot']))
+        #print('Verot {} {} vs {} {}'.format(label,q1['verot'],label2,q2['verot']))
+        #print('Verot {} {} vs {} {}'.format(label,q1['verot'],label2,q2['verot']))
+        #print('Etuustulo {} {} vs {} {}'.format(label,q1['etuus'],label2,q2['etuus']))
+        #print('Palkkatulo {} {} vs {} {}'.format(label,q1['palkkatulo'],label2,q2['palkkatulo']))
+        #print('Ansiopvraha {} {} vs {} {}'.format(label,q1['ansiopvraha'],label2,q2['ansiopvraha']))
+        #print('Asumistuki {} {} vs {} {}'.format(label,q2['asumistuki'],label2,q2['asumistuki']))
         
         fig,ax=plt.subplots()
         ax.set_xlabel('Ikä [v]')
@@ -1343,28 +1588,44 @@ class EpisodeStats():
         delta=1.96*1.0/np.sqrt(self.n_pop)
         print('epävarmuus työllisyysasteissa {:.4f}, hajonta {:.4f}'.format(delta,haj1))
         
-        unemp_distrib,emp_distrib,unemp_distrib_bu=self.comp_empdistribs(ansiosid=True,tmtuki=True,putki=True,outsider=False)
-        tyoll_distrib,tyoll_distrib_bu=self.comp_tyollistymisdistribs(ansiosid=True,tmtuki=True,putki=True,outsider=False)
-        unemp_distrib2,emp_distrib2,unemp_distrib_bu2=cc2.comp_empdistribs(ansiosid=True,tmtuki=True,putki=True,outsider=False)
-        tyoll_distrib2,tyoll_distrib_bu2=cc2.comp_tyollistymisdistribs(ansiosid=True,tmtuki=True,putki=True,outsider=False)
+        if False:
+            unemp_distrib,emp_distrib,unemp_distrib_bu=self.comp_empdistribs(ansiosid=True,tmtuki=True,putki=True,outsider=False)
+            tyoll_distrib,tyoll_distrib_bu=self.comp_tyollistymisdistribs(ansiosid=True,tmtuki=True,putki=True,outsider=False)
+            unemp_distrib2,emp_distrib2,unemp_distrib_bu2=cc2.comp_empdistribs(ansiosid=True,tmtuki=True,putki=True,outsider=False)
+            tyoll_distrib2,tyoll_distrib_bu2=cc2.comp_tyollistymisdistribs(ansiosid=True,tmtuki=True,putki=True,outsider=False)
         
-        self.plot_compare_empdistribs(emp_distrib,emp_distrib2)
-        print('Jakauma ansiosidonnainen+tmtuki+putki, no max age')
-        self.plot_compare_unempdistribs(unemp_distrib,unemp_distrib2,label1=label,label2=label2)
-        self.plot_compare_tyolldistribs(unemp_distrib,tyoll_distrib,unemp_distrib2,tyoll_distrib2,tyollistyneet=False,label1=label,label2=label2)
-        self.plot_compare_tyolldistribs(unemp_distrib,tyoll_distrib,unemp_distrib2,tyoll_distrib2,tyollistyneet=True,label1=label,label2=label2)     
+            self.plot_compare_empdistribs(emp_distrib,emp_distrib2)
+            print('Jakauma ansiosidonnainen+tmtuki+putki, no max age')
+            self.plot_compare_unempdistribs(unemp_distrib,unemp_distrib2,label1=label2,label2=label)
+            self.plot_compare_tyolldistribs(unemp_distrib,tyoll_distrib,unemp_distrib2,tyoll_distrib2,tyollistyneet=False,label1=label2,label2=label)
+            self.plot_compare_tyolldistribs(unemp_distrib,tyoll_distrib,unemp_distrib2,tyoll_distrib2,tyollistyneet=True,label1=label2,label2=label)     
 
-        unemp_distrib,emp_distrib,unemp_distrib_bu=self.comp_empdistribs(ansiosid=True,tmtuki=True,putki=True,outsider=False,max_age=54)
-        tyoll_distrib,tyoll_distrib_bu=self.comp_tyollistymisdistribs(ansiosid=True,tmtuki=True,putki=True,outsider=False,max_age=54)
-        unemp_distrib2,emp_distrib2,unemp_distrib_bu2=cc2.comp_empdistribs(ansiosid=True,tmtuki=True,putki=True,outsider=False,max_age=54)
-        tyoll_distrib2,tyoll_distrib_bu2=cc2.comp_tyollistymisdistribs(ansiosid=True,tmtuki=True,putki=True,outsider=False,max_age=54)
+            unemp_distrib,emp_distrib,unemp_distrib_bu=self.comp_empdistribs(ansiosid=True,tmtuki=True,putki=True,outsider=False,max_age=54)
+            tyoll_distrib,tyoll_distrib_bu=self.comp_tyollistymisdistribs(ansiosid=True,tmtuki=True,putki=True,outsider=False,max_age=54)
+            unemp_distrib2,emp_distrib2,unemp_distrib_bu2=cc2.comp_empdistribs(ansiosid=True,tmtuki=True,putki=True,outsider=False,max_age=54)
+            tyoll_distrib2,tyoll_distrib_bu2=cc2.comp_tyollistymisdistribs(ansiosid=True,tmtuki=True,putki=True,outsider=False,max_age=54)
         
-        self.plot_compare_empdistribs(emp_distrib,emp_distrib2)
-        print('Jakauma ansiosidonnainen+tmtuki+putki, max age 54')
-        self.plot_compare_unempdistribs(unemp_distrib,unemp_distrib2,label1=label,label2=label2)
-        self.plot_compare_tyolldistribs(unemp_distrib,tyoll_distrib,unemp_distrib2,tyoll_distrib2,tyollistyneet=False,label1=label,label2=label2)     
-        self.plot_compare_tyolldistribs(unemp_distrib,tyoll_distrib,unemp_distrib2,tyoll_distrib2,tyollistyneet=True,label1=label,label2=label2)     
+            self.plot_compare_empdistribs(emp_distrib,emp_distrib2)
+            print('Jakauma ansiosidonnainen+tmtuki+putki, max age 54')
+            self.plot_compare_unempdistribs(unemp_distrib,unemp_distrib2,label1=label2,label2=label)
+            self.plot_compare_tyolldistribs(unemp_distrib,tyoll_distrib,unemp_distrib2,tyoll_distrib2,tyollistyneet=False,label1=label2,label2=label)     
+            self.plot_compare_tyolldistribs(unemp_distrib,tyoll_distrib,unemp_distrib2,tyoll_distrib2,tyollistyneet=True,label1=label2,label2=label)     
         
+        tyoll_virta,tyot_virta=self.comp_virrat(ansiosid=True,tmtuki=True,putki=True,outsider=False)
+        tyoll_virta2,tyot_virta2=cc2.comp_virrat(ansiosid=True,tmtuki=True,putki=True,outsider=False)
+        self.plot_compare_virrat(tyoll_virta,tyoll_virta2,virta_label='Työllisyys')
+        self.plot_compare_virrat(tyot_virta,tyot_virta2,min_time=40,max_time=64,virta_label='Työttömyys')
+        self.plot_compare_virrat(tyot_virta,tyot_virta2,min_time=55,max_time=64,virta_label='Työttömyys')
+
+        tyoll_virta,tyot_virta=self.comp_virrat(ansiosid=True,tmtuki=False,putki=True,outsider=False)
+        tyoll_virta2,tyot_virta2=cc2.comp_virrat(ansiosid=True,tmtuki=False,putki=True,outsider=False)
+        self.plot_compare_virrat(tyot_virta,tyot_virta2,min_time=40,max_time=64,virta_label='ei-tm-Työttömyys')
+        self.plot_compare_virrat(tyot_virta,tyot_virta2,min_time=55,max_time=64,virta_label='ei-tm-Työttömyys')
+
+        tyoll_virta,tyot_virta=self.comp_virrat(ansiosid=False,tmtuki=True,putki=True,outsider=False)
+        tyoll_virta2,tyot_virta2=cc2.comp_virrat(ansiosid=False,tmtuki=True,putki=True,outsider=False)
+        self.plot_compare_virrat(tyot_virta,tyot_virta2,min_time=40,max_time=64,virta_label='tm-Työttömyys')
+        self.plot_compare_virrat(tyot_virta,tyot_virta2,min_time=55,max_time=64,virta_label='tm-Työttömyys')
         
     def comp_employed(self,emp):
         nn=np.sum(emp,1)
@@ -1515,6 +1776,10 @@ class SimStats(EpisodeStats):
         emp_tyolliset_osuus=np.zeros((n,self.n_time))
         emp_tyottomat_osuus=np.zeros((n,self.n_time))
         emp_htv=np.zeros((n,self.n_time))
+        tyoll_virta=np.zeros((n,self.n_time))
+        tyot_virta=np.zeros((n,self.n_time))
+        tyot_virta_ansiosid=np.zeros((n,self.n_time))
+        tyot_virta_tm=np.zeros((n,self.n_time))
 
         self.load_sim(results+'_'+str(100+startn))
         base_empstate=self.empstate/self.n_pop
@@ -1538,6 +1803,16 @@ class SimStats(EpisodeStats):
         
         unemp_distrib,emp_distrib,unemp_distrib_bu=self.comp_empdistribs(ansiosid=True,tmtuki=True,putki=True,outsider=False,max_age=max_age)
         tyoll_distrib,tyoll_distrib_bu=self.comp_tyollistymisdistribs(ansiosid=True,tmtuki=True,putki=True,outsider=False,max_age=max_age)
+
+        # virrat työllisyyteen ja työttömyyteen
+        tyoll_virta0,tyot_virta0=self.comp_virrat(ansiosid=True,tmtuki=True,putki=True,outsider=False)
+        tyoll_virta_ansiosid0,tyot_virta_ansiosid0=self.comp_virrat(ansiosid=True,tmtuki=False,putki=True,outsider=False)
+        tyoll_virta_tm0,tyot_virta_tm0=self.comp_virrat(ansiosid=False,tmtuki=True,putki=False,outsider=False)
+
+        tyoll_virta[0,:]=tyoll_virta0[:,0]
+        tyot_virta[0,:]=tyot_virta0[:,0]
+        tyot_virta_ansiosid[0,:]=tyot_virta_ansiosid0[:,0]
+        tyot_virta_tm[0,:]=tyot_virta_tm0[:,0]
 
         if plot:
             fig,ax=plt.subplots()
@@ -1580,6 +1855,17 @@ class SimStats(EpisodeStats):
             unemp_distrib_bu.extend(unemp_distrib_bu2)
             tyoll_distrib.extend(tyoll_distrib2)
             tyoll_distrib_bu.extend(tyoll_distrib_bu2)
+            
+            # virrat työllisyyteen ja työttömyyteen
+            tyoll_virta0,tyot_virta0=self.comp_virrat(ansiosid=True,tmtuki=True,putki=True,outsider=False)
+            tyoll_virta_ansiosid0,tyot_virta_ansiosid0=self.comp_virrat(ansiosid=True,tmtuki=False,putki=True,outsider=False)
+            tyoll_virta_tm0,tyot_virta_tm0=self.comp_virrat(ansiosid=False,tmtuki=True,putki=False,outsider=False)
+
+            tyoll_virta[i,:]=tyoll_virta0[:,0]
+            tyot_virta[i,:]=tyot_virta0[:,0]
+            tyot_virta_ansiosid[i,:]=tyot_virta_ansiosid0[:,0]
+            tyot_virta_tm[i,:]=tyot_virta_tm0[:,0]
+
 
         self.save_simstats(save,agg_htv,agg_tyoll,agg_rew,\
                             emp_tyolliset,emp_tyolliset_osuus,\
@@ -1587,7 +1873,8 @@ class SimStats(EpisodeStats):
                             emp_htv,emps,\
                             best_rew,best_emp,\
                             unemp_distrib,emp_distrib,unemp_distrib_bu,\
-                            tyoll_distrib,tyoll_distrib_bu)
+                            tyoll_distrib,tyoll_distrib_bu,\
+                            tyoll_virta,tyot_virta,tyot_virta_ansiosid,tyot_virta_tm)
                     
         # save the best
         self.load_sim(results+'_'+str(100+best_emp))
@@ -1832,17 +2119,21 @@ class SimStats(EpisodeStats):
             mx=self.map_age(age)-1
             print('Kumulatiivinen työllisyysvaikutus {:.2f} vuotiaana {:.1f} htv ({:.0f} vs {:.0f})'.format(age,cs[mx],c1[mx],c2[mx]))
             
-        unemp_distrib1,emp_distrib1,unemp_distrib_bu1,tyoll_distrib1,tyoll_distrib_bu1=self.load_simdistribs(filename1)
-        unemp_distrib2,emp_distrib2,unemp_distrib_bu2,tyoll_distrib2,tyoll_distrib_bu2=self.load_simdistribs(filename2)
+        unemp_distrib1,emp_distrib1,unemp_distrib_bu1,tyoll_distrib1,tyoll_distrib_bu1,\
+            tyoll_virta1,tyot_virta1,tyot_virta_ansiosid1,tyot_virta_tm1=self.load_simdistribs(filename1)
+        unemp_distrib2,emp_distrib2,unemp_distrib_bu2,tyoll_distrib2,tyoll_distrib_bu2,\
+            tyoll_virta2,tyot_virta2,tyot_virta_ansiosid2,tyot_virta_tm2=self.load_simdistribs(filename2)
         
         #self.plot_compare_empdistribs(emp_distrib1,emp_distrib2,label='vaihtoehto')
         self.plot_compare_unempdistribs(unemp_distrib1,unemp_distrib2,label1=label1,label2=label2)
         self.plot_compare_tyolldistribs(unemp_distrib1,tyoll_distrib1,unemp_distrib2,tyoll_distrib2,tyollistyneet=True,label1=label1,label2=label2)
+        self.plot_compare_virtadistribs(tyoll_virta1,tyoll_virta2,tyot_virta1,tyot_virta2,tyot_virta_ansiosid1,tyot_virta_ansiosid2,tyot_virta_tm1,tyot_virta_tm2,label1=label1,label2=label2)
 
     def save_simstats(self,filename,agg_htv,agg_tyoll,agg_rew,emp_tyolliset,emp_tyolliset_osuus,\
                         emp_tyottomat,emp_tyottomat_osuus,emp_htv,emps,best_rew,best_emp,\
                         unemp_distrib,emp_distrib,unemp_distrib_bu,\
-                        tyoll_distrib,tyoll_distrib_bu):
+                        tyoll_distrib,tyoll_distrib_bu,\
+                        tyoll_virta,tyot_virta,tyot_virta_ansiosid,tyot_virta_tm):
         f = h5py.File(filename, 'w')
         dset = f.create_dataset('agg_htv', data=agg_htv, dtype='float64')
         dset = f.create_dataset('agg_tyoll', data=agg_tyoll, dtype='float64')
@@ -1860,6 +2151,10 @@ class SimStats(EpisodeStats):
         dset = f.create_dataset('unemp_distrib_bu', data=unemp_distrib_bu, dtype='float64')
         dset = f.create_dataset('tyoll_distrib', data=tyoll_distrib, dtype='float64')
         dset = f.create_dataset('tyoll_distrib_bu', data=tyoll_distrib_bu, dtype='float64')
+        dset = f.create_dataset('tyoll_virta', data=tyoll_virta, dtype='float64')
+        dset = f.create_dataset('tyot_virta', data=tyot_virta, dtype='float64')
+        dset = f.create_dataset('tyot_virta_ansiosid', data=tyot_virta_ansiosid, dtype='float64')
+        dset = f.create_dataset('tyot_virta_tm', data=tyot_virta_tm, dtype='float64')
         
         f.close()
 
@@ -1890,8 +2185,52 @@ class SimStats(EpisodeStats):
         unemp_distrib_bu = f.get('unemp_distrib_bu').value
         tyoll_distrib = f.get('tyoll_distrib').value
         tyoll_distrib_bu = f.get('tyoll_distrib_bu').value
+        tyoll_virta = f.get('tyoll_virta').value
+        tyot_virta = f.get('tyot_virta').value
+        tyot_virta_ansiosid = f.get('tyot_virta_ansiosid').value
+        tyot_virta_tm = f.get('tyot_virta_tm').value
         
         f.close()
 
         return unemp_distrib,emp_distrib,unemp_distrib_bu,\
-               tyoll_distrib,tyoll_distrib_bu
+               tyoll_distrib,tyoll_distrib_bu,\
+               tyoll_virta,tyot_virta,tyot_virta_ansiosid,tyot_virta_tm
+
+    def plot_compare_csvirta(self,m1,m2,lbl):
+        nc1=np.reshape(np.cumsum(m1),m1.shape)
+        nc2=np.reshape(np.cumsum(m2),m1.shape)
+        fig,ax=plt.subplots()
+        x=np.linspace(self.min_age,self.max_age,self.n_time)
+        plt.plot(x,nc1)
+        plt.plot(x,nc2)
+        ax.set_xlabel('Aika')
+        ax.set_ylabel(lbl)
+        plt.show()
+        fig,ax=plt.subplots()
+        plt.plot(x,nc1-nc2)
+        ax.set_xlabel('Aika')
+        ax.set_ylabel('diff '+lbl)
+        plt.show()
+
+    def plot_compare_virtadistribs(self,tyoll_virta1,tyoll_virta2,tyot_virta1,tyot_virta2,tyot_virta_ansiosid1,tyot_virta_ansiosid2,tyot_virta_tm1,tyot_virta_tm2,label1='',label2=''):
+        m1=np.mean(np.transpose(tyoll_virta1),axis=1,keepdims=True)
+        m2=np.mean(np.transpose(tyoll_virta2),axis=1,keepdims=True)
+        self.plot_compare_virrat(m1,m2,virta_label='työllisyys',label1=label1,label2=label2,ymin=0,ymax=3000)
+        self.plot_compare_csvirta(m1,m2,'cumsum työllisyysvirta')
+
+        m1=np.mean(np.transpose(tyot_virta1),axis=1,keepdims=True)
+        m2=np.mean(np.transpose(tyot_virta2),axis=1,keepdims=True)
+        self.plot_compare_virrat(m1,m2,virta_label='työttömyys',label1=label1,label2=label2)
+        self.plot_compare_csvirta(m1,m2,'cumsum työttömyysvirta')
+
+        m1=np.mean(np.transpose(tyot_virta_ansiosid1),axis=1,keepdims=True)
+        m2=np.mean(np.transpose(tyot_virta_ansiosid2),axis=1,keepdims=True)
+        self.plot_compare_virrat(m1,m2,virta_label='ei-tm-työttömyys',label1=label1,label2=label2)
+        m1=np.mean(np.transpose(tyot_virta_tm1),axis=1,keepdims=True)
+        m2=np.mean(np.transpose(tyot_virta_tm2),axis=1,keepdims=True)
+        self.plot_compare_virrat(m1,m2,virta_label='tm-työttömyys',label1=label1,label2=label2)
+        n1=np.mean(np.transpose(tyoll_virta1),axis=1,keepdims=True)-np.mean(np.transpose(tyot_virta1),axis=1,keepdims=True)
+        n2=np.mean(np.transpose(tyoll_virta2),axis=1,keepdims=True)-np.mean(np.transpose(tyot_virta2),axis=1,keepdims=True)
+        self.plot_compare_virrat(n1,n2,virta_label='netto',label1=label1,label2=label2,ymin=-1000,ymax=1000)
+        self.plot_compare_csvirta(n1,n2,'cumsum nettovirta')
+        

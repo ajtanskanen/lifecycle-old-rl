@@ -526,8 +526,7 @@ class Lifecycle():
         elif self.rlmodel=='trpo':
             model = TRPO.load(load, env=env, verbose=1,gamma=self.gamma, policy_kwargs=policy_kwargs)
         else:
-            model = DQN.load(load, env=env, verbose=1,gamma=self.gamma,prioritized_replay=True,
-                             policy_kwargs=policy_kwargs)
+            model = DQN.load(load, env=env, verbose=1,gamma=self.gamma,prioritized_replay=True,policy_kwargs=policy_kwargs)
 
         states = env.reset()
         n=n_cpu-1
@@ -541,30 +540,20 @@ class Lifecycle():
 
             done=False
             for k in range(n_cpu):
-                #emp,pension,wage,age,time_in_state=self.state_decode(states[k])
-                #print('Tila {} palkka {} ikä {} t-i-s {} eläke {}'.format(
-                #    emp,wage,age,time_in_state,pension))
                 if dones[k]:
-                    #print(infos[k]['terminal_observation'])
                     terminal_state=infos[k]['terminal_observation']  
-                    #self.episodestats.add(pop_num[k],0,rewards[k],states[k],newstate[k],debug=debug)
-                    self.episodestats.add(pop_num[k],act[k],rewards[k],states[k],terminal_state,debug=debug)
+                    self.episodestats.add(pop_num[k],act[k],rewards[k],states[k],terminal_state,infos[k],debug=debug)
                     tqdm_e.update(1)
                     n+=1
                     tqdm_e.set_description("Pop " + str(n))
                     done=True
                     pop_num[k]=n
                 else:
-                    self.episodestats.add(pop_num[k],act[k],rewards[k],states[k],newstate[k],debug=debug)
+                    self.episodestats.add(pop_num[k],act[k],rewards[k],states[k],newstate[k],infos[k],debug=debug)
     
-            #if done:
-            #    states = env.reset()
-            #else:
             states = newstate
 
         self.episodestats.save_sim(save)
-
-        #print('done')
 
         if plot:
             self.render()

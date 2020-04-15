@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(name='lifecycle_rl',
-	version='0.5.0',
+	version='0.9.0',
 	install_requires=['gym','fin_benefits','numpy','gym_unemployment'], #And any other dependencies required
 	packages=setuptools.find_packages(),	
     # metadata to display on PyPI
