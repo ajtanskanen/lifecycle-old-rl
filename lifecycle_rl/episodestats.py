@@ -180,6 +180,166 @@ class EpisodeStats():
         ax.plot(x,meansal-stdsal)
         plt.show()
         
+    def comp_unemp_durations(self,popempstate=None,popunemprightused=None,putki=True,\
+            tmtuki=False,laaja=False,outsider=False,ansiosid=True,tyott=False,kaikki=False,\
+            return_q=True,max_age=100):
+        '''
+        Poikkileikkaushetken työttömyyskestot
+        '''
+        unempset=[]
+        
+        if tmtuki:
+            unempset.append(13)
+        if outsider:
+            unempset.append(11)
+        if putki:
+            unempset.append(4)
+        if ansiosid:
+            unempset.append(0)
+        if tyott:
+            unempset=[0,4,13]
+        if laaja:
+            unempset=[0,4,11,13]
+        if kaikki:
+            unempset=[0,2,3,4,5,6,7,8,9,11,12,13,14]
+            
+        unempset=set(unempset)
+        
+        if popempstate is None:
+            popempstate=self.popempstate
+            
+        if popunemprightused is None:
+            popunemprightused=self.popunemprightused
+
+        keskikesto=np.zeros((5,5)) # 20-29, 30-39, 40-49, 50-59, 60-69, vastaa TYJin tilastoa
+        n=np.zeros(5)
+        
+        for k in range(self.n_pop):
+            for t in range(1,self.n_time):
+                age=self.min_age+t*self.timestep
+                if age<=max_age:
+                    if popempstate[t,k] in unempset:
+                        if age<29:
+                            l=0
+                        elif age<39:
+                            l=1
+                        elif age<49:
+                            l=2
+                        elif age<59:
+                            l=3
+                        else:
+                            l=4
+                            
+                        n[l]+=1
+                        if self.popunemprightused[t,k]<=0.51:
+                            keskikesto[l,0]+=1
+                        elif self.popunemprightused[t,k]<=1.01:
+                            keskikesto[l,1]+=1
+                        elif self.popunemprightused[t,k]<=1.51:
+                            keskikesto[l,2]+=1
+                        elif self.popunemprightused[t,k]<=2.01:
+                            keskikesto[l,3]+=1
+                        else:
+                            keskikesto[l,4]+=1
+
+        for k in range(5):
+            keskikesto[k,:] /= n[k]
+            
+        if return_q:
+            return self.empdur_to_dict(keskikesto)
+        else:
+            return keskikesto
+
+    def empdur_to_dict(self,empdur):
+        q={}
+        q['20-29']=empdur[0,:]
+        q['30-39']=empdur[1,:]
+        q['40-49']=empdur[2,:]
+        q['50-59']=empdur[3,:]
+        q['60-65']=empdur[4,:]
+        return q
+            
+    def comp_unemp_durations_v2(self,popempstate=None,putki=True,tmtuki=False,laaja=False,\
+            outsider=False,ansiosid=True,tyott=False,kaikki=False,\
+            return_q=True,max_age=100):
+        '''
+        Poikkileikkaushetken työttömyyskestot
+        Tässä lasketaan tulos tiladatasta, jolloin kyse on viimeisimmän jakson kestosta
+        '''
+        unempset=[]
+        
+        if tmtuki:
+            unempset.append(13)
+        if outsider:
+            unempset.append(11)
+        if putki:
+            unempset.append(4)
+        if ansiosid:
+            unempset.append(0)
+        if tyott:
+            unempset=[0,4,13]
+        if laaja:
+            unempset=[0,4,11,13]
+        if kaikki:
+            unempset=[0,2,3,4,5,6,7,8,9,11,12,13,14]
+            
+        unempset=set(unempset)
+        
+        if popempstate is None:
+            popempstate=self.popempstate
+
+        keskikesto=np.zeros((5,5)) # 20-29, 30-39, 40-49, 50-59, 60-69, vastaa TYJin tilastoa
+        n=np.zeros(5)
+        
+        for k in range(self.n_pop):
+            prev_state=popempstate[0,k]
+            prev_trans=0
+            for t in range(1,self.n_time):
+                age=self.min_age+t*self.timestep
+                if age<=max_age:
+                    if popempstate[t,k]!=prev_state:
+                        if prev_state in unempset and popempstate[t,k] not in unempset:
+                            prev_state=popempstate[t,k]
+                            duration=(t-prev_trans)*self.timestep
+                            prev_trans=t
+                            
+                            if age<29:
+                                l=0
+                            elif age<39:
+                                l=1
+                            elif age<49:
+                                l=2
+                            elif age<59:
+                                l=3
+                            else:
+                                l=4
+                            
+                            n[l]+=1
+                            if duration<=0.51:
+                                keskikesto[l,0]+=1
+                            elif duration<=1.01:
+                                keskikesto[l,1]+=1
+                            elif duration<=1.51:
+                                keskikesto[l,2]+=1
+                            elif duration<=2.01:
+                                keskikesto[l,3]+=1
+                            else:
+                                keskikesto[l,4]+=1                            
+                        elif prev_state not in unempset and popempstate[t,k] in unempset:
+                            prev_trans=t
+                            prev_state=popempstate[t,k]
+                        else: # some other state
+                            prev_state=popempstate[t,k]
+                            prev_trans=t
+                
+        for k in range(5):
+            keskikesto[k,:] /= n[k]
+            
+        if return_q:
+            return self.empdur_to_dict(keskikesto)
+        else:
+            return keskikesto
+        
     def comp_virrat(self,popempstate=None,putki=True,tmtuki=True,laaja=False,outsider=False,ansiosid=True,tyott=False,kaikki=False,max_age=100):
         tyoll_virta=np.zeros((self.n_time,1))
         tyot_virta=np.zeros((self.n_time,1))
@@ -518,28 +678,34 @@ class EpisodeStats():
         plt.xlim(-max,0)
         plt.show()   
 
-    def plot_compare_unempdistribs(self,unemp_distrib1,unemp_distrib2,max=4,label1='perus',label2='vaihtoehto'):
+    def plot_compare_unempdistribs(self,unemp_distrib1,unemp_distrib2,max=4,label2='none',label1='none',logy=True,diff=False):
         #fig,ax=plt.subplots()
         max_time=50
         nn_time = int(np.round((max_time)*self.inv_timestep))+1
         x=np.linspace(self.timestep,max_time,nn_time)
         scaled1,x1=np.histogram(unemp_distrib1,x)
-        print('{} keskikesto {} v {} Keskikesto {} v'.format(label1,np.mean(unemp_distrib2),label2,np.mean(unemp_distrib1)))
-        print('Skaalaamaton {} lkm {} v {} lkm {} v'.format(label1,len(unemp_distrib2),label2,len(unemp_distrib1)))
-        print('Skaalaamaton {} työtpäiviä yht {} v {} työtpäiviä yht {} v'.format(label1,sum(unemp_distrib2),label2,sum(unemp_distrib1)))
+        print('{} keskikesto {} v {} keskikesto {} v'.format(label1,np.mean(unemp_distrib1),label2,np.mean(unemp_distrib2)))
+        print('Skaalaamaton {} lkm {} v {} lkm {} v'.format(label1,len(unemp_distrib1),label2,len(unemp_distrib2)))
+        print('Skaalaamaton {} työtpäiviä yht {} v {} työtpäiviä yht {} v'.format(label1,sum(unemp_distrib1),label2,sum(unemp_distrib2)))
         #scaled=scaled/np.sum(unemp_distrib)
         scaled1=scaled1/np.sum(scaled1)
         
         scaled2,x1=np.histogram(unemp_distrib2,x)
         scaled2=scaled2/np.sum(scaled2)
         fig,ax=plt.subplots()
-        self.plot_vlines_unemp(0.9)
+        if not diff:
+            self.plot_vlines_unemp(0.9)
         ax.set_xlabel('Työttömyysjakson pituus [v]')
         ax.set_ylabel('Osuus')
-        ax.plot(x[:-1],scaled1,label=label1)
-        ax.plot(x[:-1],scaled2,label=label2)
-        ax.set_yscale('log')
-        plt.ylim(1e-4,1.0)
+        if diff:
+            ax.plot(x[:-1],scaled1-scaled2,label=label1+'-'+label2)
+        else:
+            ax.plot(x[:-1],scaled1,label=label1)
+            ax.plot(x[:-1],scaled2,label=label2)
+        if logy and not diff:
+            ax.set_yscale('log')
+        if not diff:
+            plt.ylim(1e-4,1.0)
         ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
         plt.xlim(0,max)
         plt.show()   
@@ -1158,9 +1324,19 @@ class EpisodeStats():
         df['toteuma']=df2['toteuma']
         df['ero']=df1['e/v']-df2['toteuma']
                            
-        print('Rahavirrat skaalattuna väestötasolle')
+        print('Rahavirrat skaalattuna väestötasolle (TEST, not functional! does not include everything)')
         print(tabulate(df, headers='keys', tablefmt='psql', floatfmt=",.2f"))
-    
+        
+        print('Keskikestot käytettyjen ansiosidonnaisten päivärahojen mukaan')
+        keskikesto=self.comp_unemp_durations()
+        df = pd.DataFrame.from_dict(keskikesto,orient='index',columns=['0-6 kk','6-12 kk','12-18 kk','18-24kk','yli 24 kk'])
+        print(tabulate(df, headers='keys', tablefmt='psql', floatfmt=",.2f"))
+        
+        print('Keskikestot viimeisimmän työttömyysjakson mukaan')
+        keskikesto=self.comp_unemp_durations_v2()
+        df = pd.DataFrame.from_dict(keskikesto,orient='index',columns=['0-6 kk','6-12 kk','12-18 kk','18-24kk','yli 24 kk'])
+        print(tabulate(df, headers='keys', tablefmt='psql', floatfmt=",.2f"))
+        
         self.plot_emp()
         print('Lisäpäivillä on {:.0f} henkilöä'.format(self.count_putki()))
         self.plot_unemp(unempratio=True)
@@ -1504,7 +1680,7 @@ class EpisodeStats():
 
         return q
 
-    def compare_with(self,cc2,label2='perus',label='vaihtoehto'):
+    def compare_with(self,cc2,label2='perus',label1='vaihtoehto'):
         diff_emp=self.empstate/self.n_pop-cc2.empstate/cc2.n_pop
         x=np.linspace(self.min_age,self.max_age,self.n_time)
         #x=range(self.age_min,self.age_min+self.n_time)
@@ -1522,13 +1698,13 @@ class EpisodeStats():
         q1=self.comp_budget(scale=True)
         q2=cc2.comp_budget(scale=True)
         
-        df1 = pd.DataFrame.from_dict(q1,orient='index',columns=[label])
+        df1 = pd.DataFrame.from_dict(q1,orient='index',columns=[label1])
         df2 = pd.DataFrame.from_dict(q2,orient='index',columns=['one'])
         df=df1.copy()
         df[label2]=df2['one']
-        df['ero']=df1[label]-df2['one']
+        df['ero']=df1[label1]-df2['one']
 
-        print('Rahavirrat skaalattuna väestötasolle')
+        print('Rahavirrat skaalattuna väestötasolle (TEST, not functional! does not include everything)')
         print(tabulate(df, headers='keys', tablefmt='psql', floatfmt=",.2f"))
         
         #print('Rahavirrat skaalattuna väestötasolle')
@@ -1544,7 +1720,7 @@ class EpisodeStats():
         ax.set_xlabel('Ikä [v]')
         ax.set_ylabel('Työllisyysaste [%]')
         ax.plot(x,100*tyolliset1,label=label2)
-        ax.plot(x,100*tyolliset2,label=label)
+        ax.plot(x,100*tyolliset2,label=label1)
         ax.legend()
         plt.show()
 
@@ -1588,7 +1764,7 @@ class EpisodeStats():
         delta=1.96*1.0/np.sqrt(self.n_pop)
         print('epävarmuus työllisyysasteissa {:.4f}, hajonta {:.4f}'.format(delta,haj1))
         
-        if False:
+        if True:
             unemp_distrib,emp_distrib,unemp_distrib_bu=self.comp_empdistribs(ansiosid=True,tmtuki=True,putki=True,outsider=False)
             tyoll_distrib,tyoll_distrib_bu=self.comp_tyollistymisdistribs(ansiosid=True,tmtuki=True,putki=True,outsider=False)
             unemp_distrib2,emp_distrib2,unemp_distrib_bu2=cc2.comp_empdistribs(ansiosid=True,tmtuki=True,putki=True,outsider=False)
@@ -1596,9 +1772,11 @@ class EpisodeStats():
         
             self.plot_compare_empdistribs(emp_distrib,emp_distrib2)
             print('Jakauma ansiosidonnainen+tmtuki+putki, no max age')
-            self.plot_compare_unempdistribs(unemp_distrib,unemp_distrib2,label1=label2,label2=label)
-            self.plot_compare_tyolldistribs(unemp_distrib,tyoll_distrib,unemp_distrib2,tyoll_distrib2,tyollistyneet=False,label1=label2,label2=label)
-            self.plot_compare_tyolldistribs(unemp_distrib,tyoll_distrib,unemp_distrib2,tyoll_distrib2,tyollistyneet=True,label1=label2,label2=label)     
+            self.plot_compare_unempdistribs(unemp_distrib,unemp_distrib2,label1=label1,label2=label2)
+            self.plot_compare_unempdistribs(unemp_distrib,unemp_distrib2,label1=label1,label2=label2,logy=False)
+            self.plot_compare_unempdistribs(unemp_distrib,unemp_distrib2,label1=label1,label2=label2,logy=False,diff=True)
+            self.plot_compare_tyolldistribs(unemp_distrib,tyoll_distrib,unemp_distrib2,tyoll_distrib2,tyollistyneet=False,label1=label1,label2=label2)
+            self.plot_compare_tyolldistribs(unemp_distrib,tyoll_distrib,unemp_distrib2,tyoll_distrib2,tyollistyneet=True,label1=label1,label2=label2)     
 
             unemp_distrib,emp_distrib,unemp_distrib_bu=self.comp_empdistribs(ansiosid=True,tmtuki=True,putki=True,outsider=False,max_age=54)
             tyoll_distrib,tyoll_distrib_bu=self.comp_tyollistymisdistribs(ansiosid=True,tmtuki=True,putki=True,outsider=False,max_age=54)
@@ -1607,9 +1785,18 @@ class EpisodeStats():
         
             self.plot_compare_empdistribs(emp_distrib,emp_distrib2)
             print('Jakauma ansiosidonnainen+tmtuki+putki, max age 54')
-            self.plot_compare_unempdistribs(unemp_distrib,unemp_distrib2,label1=label2,label2=label)
-            self.plot_compare_tyolldistribs(unemp_distrib,tyoll_distrib,unemp_distrib2,tyoll_distrib2,tyollistyneet=False,label1=label2,label2=label)     
-            self.plot_compare_tyolldistribs(unemp_distrib,tyoll_distrib,unemp_distrib2,tyoll_distrib2,tyollistyneet=True,label1=label2,label2=label)     
+            self.plot_compare_unempdistribs(unemp_distrib,unemp_distrib2,label1=label1,label2=label2)
+            self.plot_compare_tyolldistribs(unemp_distrib,tyoll_distrib,unemp_distrib2,tyoll_distrib2,tyollistyneet=False,label1=label1,label2=label2)     
+            self.plot_compare_tyolldistribs(unemp_distrib,tyoll_distrib,unemp_distrib2,tyoll_distrib2,tyollistyneet=True,label1=label1,label2=label2)     
+        
+        print(label2)
+        keskikesto=self.comp_unemp_durations()
+        self.plot_unemp_durdistribs(keskikesto)
+        
+        print(label)
+        keskikesto=cc2.comp_unemp_durations()
+        self.plot_unemp_durdistribs(keskikesto)
+        
         
         tyoll_virta,tyot_virta=self.comp_virrat(ansiosid=True,tmtuki=True,putki=True,outsider=False)
         tyoll_virta2,tyot_virta2=cc2.comp_virrat(ansiosid=True,tmtuki=True,putki=True,outsider=False)
@@ -1780,6 +1967,8 @@ class SimStats(EpisodeStats):
         tyot_virta=np.zeros((n,self.n_time))
         tyot_virta_ansiosid=np.zeros((n,self.n_time))
         tyot_virta_tm=np.zeros((n,self.n_time))
+        unemp_dur=np.zeros((n,5,5))
+        unemp_lastdur=np.zeros((n,5,5))
 
         self.load_sim(results+'_'+str(100+startn))
         base_empstate=self.empstate/self.n_pop
@@ -1813,6 +2002,11 @@ class SimStats(EpisodeStats):
         tyot_virta[0,:]=tyot_virta0[:,0]
         tyot_virta_ansiosid[0,:]=tyot_virta_ansiosid0[:,0]
         tyot_virta_tm[0,:]=tyot_virta_tm0[:,0]
+        
+        unemp_dur0=self.comp_unemp_durations(return_q=False)
+        unemp_lastdur0=self.comp_unemp_durations_v2(return_q=False)
+        unemp_dur[0,:,:]=unemp_dur0[:,:]
+        unemp_lastdur[0,:,:]=unemp_lastdur0[:,:]
 
         if plot:
             fig,ax=plt.subplots()
@@ -1866,6 +2060,10 @@ class SimStats(EpisodeStats):
             tyot_virta_ansiosid[i,:]=tyot_virta_ansiosid0[:,0]
             tyot_virta_tm[i,:]=tyot_virta_tm0[:,0]
 
+            unemp_dur0=self.comp_unemp_durations(return_q=False)
+            unemp_lastdur0=self.comp_unemp_durations_v2(return_q=False)
+            unemp_dur[i,:,:]=unemp_dur0[:,:]
+            unemp_lastdur[i,:,:]=unemp_lastdur0[:,:]
 
         self.save_simstats(save,agg_htv,agg_tyoll,agg_rew,\
                             emp_tyolliset,emp_tyolliset_osuus,\
@@ -1874,7 +2072,8 @@ class SimStats(EpisodeStats):
                             best_rew,best_emp,\
                             unemp_distrib,emp_distrib,unemp_distrib_bu,\
                             tyoll_distrib,tyoll_distrib_bu,\
-                            tyoll_virta,tyot_virta,tyot_virta_ansiosid,tyot_virta_tm)
+                            tyoll_virta,tyot_virta,tyot_virta_ansiosid,tyot_virta_tm,\
+                            unemp_dur,unemp_lastdur)
                     
         # save the best
         self.load_sim(results+'_'+str(100+best_emp))
@@ -1975,8 +2174,16 @@ class SimStats(EpisodeStats):
         ax.plot(x,100*s_emp)
         plt.show()
         
-        unemp_distrib1,emp_distrib1,unemp_distrib_bu1,tyoll_distrib1,tyoll_distrib_bu1=self.load_simdistribs(filename)
+        unemp_distrib1,emp_distrib1,unemp_distrib_bu1,\
+            tyoll_distrib1,tyoll_distrib_bu1,\
+            tyoll_virta,tyot_virta,tyot_virta_ansiosid,tyot_virta_tm,\
+            unemp_dur,unemp_lastdur=self.load_simdistribs(filename)
        
+        print('Keskikestot käytettyjen ansiosidonnaisten päivärahojen mukaan')
+        self.plot_unemp_durdistribs(unemp_dur)
+        print('Keskikestot viimeisimmän työttömyysjakson mukaan')
+        self.plot_unemp_durdistribs(unemp_lastdur)
+
         #self.plot_compare_empdistribs(emp_distrib1,emp_distrib2,label='vaihtoehto')
         self.plot_unempdistribs(unemp_distrib1)
         self.plot_tyolldistribs(unemp_distrib1,tyoll_distrib1,tyollistyneet=True)
@@ -2120,9 +2327,11 @@ class SimStats(EpisodeStats):
             print('Kumulatiivinen työllisyysvaikutus {:.2f} vuotiaana {:.1f} htv ({:.0f} vs {:.0f})'.format(age,cs[mx],c1[mx],c2[mx]))
             
         unemp_distrib1,emp_distrib1,unemp_distrib_bu1,tyoll_distrib1,tyoll_distrib_bu1,\
-            tyoll_virta1,tyot_virta1,tyot_virta_ansiosid1,tyot_virta_tm1=self.load_simdistribs(filename1)
+            tyoll_virta1,tyot_virta1,tyot_virta_ansiosid1,tyot_virta_tm1,kestot1,viimkesto1=self.load_simdistribs(filename1)
         unemp_distrib2,emp_distrib2,unemp_distrib_bu2,tyoll_distrib2,tyoll_distrib_bu2,\
-            tyoll_virta2,tyot_virta2,tyot_virta_ansiosid2,tyot_virta_tm2=self.load_simdistribs(filename2)
+            tyoll_virta2,tyot_virta2,tyot_virta_ansiosid2,tyot_virta_tm2,kestot2,viimkesto2=self.load_simdistribs(filename2)
+        
+        self.plot_compare_unemp_durdistribs(kestot1,kestot2,viimkesto1,viimkesto2,label1='',label2='')
         
         #self.plot_compare_empdistribs(emp_distrib1,emp_distrib2,label='vaihtoehto')
         self.plot_compare_unempdistribs(unemp_distrib1,unemp_distrib2,label1=label1,label2=label2)
@@ -2133,7 +2342,8 @@ class SimStats(EpisodeStats):
                         emp_tyottomat,emp_tyottomat_osuus,emp_htv,emps,best_rew,best_emp,\
                         unemp_distrib,emp_distrib,unemp_distrib_bu,\
                         tyoll_distrib,tyoll_distrib_bu,\
-                        tyoll_virta,tyot_virta,tyot_virta_ansiosid,tyot_virta_tm):
+                        tyoll_virta,tyot_virta,tyot_virta_ansiosid,tyot_virta_tm,\
+                        unemp_dur,unemp_lastdur):
         f = h5py.File(filename, 'w')
         dset = f.create_dataset('agg_htv', data=agg_htv, dtype='float64')
         dset = f.create_dataset('agg_tyoll', data=agg_tyoll, dtype='float64')
@@ -2155,8 +2365,8 @@ class SimStats(EpisodeStats):
         dset = f.create_dataset('tyot_virta', data=tyot_virta, dtype='float64')
         dset = f.create_dataset('tyot_virta_ansiosid', data=tyot_virta_ansiosid, dtype='float64')
         dset = f.create_dataset('tyot_virta_tm', data=tyot_virta_tm, dtype='float64')
-        
-        f.close()
+        dset = f.create_dataset('unemp_dur', data=unemp_dur, dtype='float64')
+        dset = f.create_dataset('unemp_lastdur', data=unemp_lastdur, dtype='float64')
 
     def load_simstats(self,filename):
         f = h5py.File(filename, 'r')
@@ -2180,21 +2390,58 @@ class SimStats(EpisodeStats):
 
     def load_simdistribs(self,filename):
         f = h5py.File(filename, 'r')
-        unemp_distrib = f.get('unemp_distrib').value
-        emp_distrib = f.get('emp_distrib').value
-        unemp_distrib_bu = f.get('unemp_distrib_bu').value
-        tyoll_distrib = f.get('tyoll_distrib').value
-        tyoll_distrib_bu = f.get('tyoll_distrib_bu').value
-        tyoll_virta = f.get('tyoll_virta').value
-        tyot_virta = f.get('tyot_virta').value
-        tyot_virta_ansiosid = f.get('tyot_virta_ansiosid').value
-        tyot_virta_tm = f.get('tyot_virta_tm').value
+        if 'tyoll_virta' in f:
+            unemp_distrib = f.get('unemp_distrib').value
+        else:
+            unemp_distrib=np.zeros((self.n_time,self.n_pop))
+        
+        if 'tyoll_virta' in f:
+            emp_distrib = f.get('emp_distrib').value
+        else:
+            emp_distrib=np.zeros((self.n_time,self.n_pop))
+        if 'tyoll_virta' in f:
+            unemp_distrib_bu = f.get('unemp_distrib_bu').value
+        else:
+            unemp_distrib_bu=np.zeros((self.n_time,self.n_pop))
+        if 'tyoll_virta' in f:
+            tyoll_distrib = f.get('tyoll_distrib').value
+        else:
+            tyoll_distrib=np.zeros((self.n_time,self.n_pop))
+        if 'tyoll_virta' in f:
+            tyoll_distrib_bu = f.get('tyoll_distrib_bu').value
+        else:
+            tyoll_distrib_bu=np.zeros((self.n_time,self.n_pop))
+        if 'tyoll_virta' in f:
+            tyoll_virta = f.get('tyoll_virta').value
+        else:
+            tyoll_virta=np.zeros((self.n_time,self.n_pop))
+        if 'tyot_virta' in f:
+            tyot_virta = f.get('tyot_virta').value
+        else:
+            tyot_virta=np.zeros((self.n_time,self.n_pop))
+        if 'tyot_virta_ansiosid' in f:
+            tyot_virta_ansiosid = f.get('tyot_virta_ansiosid').value
+        else:
+            tyot_virta_ansiosid=np.zeros((self.n_time,self.n_pop))
+        if 'tyot_virta_tm' in f:
+            tyot_virta_tm = f.get('tyot_virta_tm').value
+        else:
+            tyot_virta_tm=np.zeros((self.n_time,self.n_pop))
+        if 'unemp_dur' in f:
+            unemp_dur = f.get('unemp_dur').value
+        else:
+            unemp_dur=np.zeros((1,5,5))
+        if 'unemp_lastdur' in f:
+            unemp_lastdur = f.get('unemp_lastdur').value
+        else:
+            unemp_lastdur=np.zeros((1,5,5))
         
         f.close()
 
         return unemp_distrib,emp_distrib,unemp_distrib_bu,\
                tyoll_distrib,tyoll_distrib_bu,\
-               tyoll_virta,tyot_virta,tyot_virta_ansiosid,tyot_virta_tm
+               tyoll_virta,tyot_virta,tyot_virta_ansiosid,tyot_virta_tm,\
+               unemp_dur,unemp_lastdur
 
     def plot_compare_csvirta(self,m1,m2,lbl):
         nc1=np.reshape(np.cumsum(m1),m1.shape)
@@ -2233,4 +2480,22 @@ class SimStats(EpisodeStats):
         n2=np.mean(np.transpose(tyoll_virta2),axis=1,keepdims=True)-np.mean(np.transpose(tyot_virta2),axis=1,keepdims=True)
         self.plot_compare_virrat(n1,n2,virta_label='netto',label1=label1,label2=label2,ymin=-1000,ymax=1000)
         self.plot_compare_csvirta(n1,n2,'cumsum nettovirta')
+
+    def plot_unemp_durdistribs(self,kestot):
+        if len(kestot.shape)>1:
+            m1=self.empdur_to_dict(np.mean(kestot,axis=0))
+        else:
+            m1=self.empdur_to_dict(kestot)
+
+        df = pd.DataFrame.from_dict(m1,orient='index',columns=['0-6 kk','6-12 kk','12-18 kk','18-24kk','yli 24 kk'])
+        print(tabulate(df, headers='keys', tablefmt='psql', floatfmt=",.2f"))
+
+    def plot_compare_unemp_durdistribs(self,kestot1,kestot2,viimekesto1,viimekesto2,label1='',label2=''):
+        print('Keskikestot käytettyjen ansiosidonnaisten päivärahojen mukaan')
+        self.plot_unemp_durdistribs(kestot1)
+        self.plot_unemp_durdistribs(kestot2)
+
+        print('Keskikestot viimeisimmän työttömyysjakson mukaan')
+        self.plot_unemp_durdistribs(viimekesto1)
+        self.plot_unemp_durdistribs(viimekesto2)
         

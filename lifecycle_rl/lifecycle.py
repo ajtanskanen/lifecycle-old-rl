@@ -637,13 +637,13 @@ class Lifecycle():
         self.plot_stats()
         self.plot_reward()
 
-    def compare_with(self,cc2,label2='vaihtoehto',label='perus'):
+    def compare_with(self,cc2,label1='vaihtoehto',label2='perus'):
         '''
         compare_with
 
         compare results obtained another model
         '''
-        self.episodestats.compare_with(cc2.episodestats,label=label,label2=label2)
+        self.episodestats.compare_with(cc2.episodestats,label1=label1,label2=label2)
 
     def run_results(self,steps1=100,steps2=100,pop=1_000,rlmodel='acktr',twostage=True,
                save='saved/perusmalli',debug=False,simut='simut',results='results/simut_res',
