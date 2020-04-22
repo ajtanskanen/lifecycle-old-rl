@@ -1790,11 +1790,11 @@ class EpisodeStats():
             self.plot_compare_tyolldistribs(unemp_distrib,tyoll_distrib,unemp_distrib2,tyoll_distrib2,tyollistyneet=True,label1=label1,label2=label2)     
         
         print(label2)
-        keskikesto=self.comp_unemp_durations()
+        keskikesto=self.comp_unemp_durations(return_q=False)
         self.plot_unemp_durdistribs(keskikesto)
         
         print(label)
-        keskikesto=cc2.comp_unemp_durations()
+        keskikesto=cc2.comp_unemp_durations(return_q=False)
         self.plot_unemp_durdistribs(keskikesto)
         
         
@@ -2482,7 +2482,7 @@ class SimStats(EpisodeStats):
         self.plot_compare_csvirta(n1,n2,'cumsum nettovirta')
 
     def plot_unemp_durdistribs(self,kestot):
-        if len(kestot.shape)>1:
+        if len(kestot.shape)>2:
             m1=self.empdur_to_dict(np.mean(kestot,axis=0))
         else:
             m1=self.empdur_to_dict(kestot)
