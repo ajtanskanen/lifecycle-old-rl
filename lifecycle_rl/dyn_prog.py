@@ -3,7 +3,7 @@
     dyn_prog.py
     
     implements a scheme similar to solving valuation of american options for the life cycle model
-    despite the name, it is questionable 
+    this is a kind of dynamic programming scheme
     
 
 '''
@@ -42,16 +42,16 @@ class DynProgLifecycle(Lifecycle):
         self.hila_elake0 = 0
         
         # dynaamisen ohjelmoinnin parametrejä
-        self.n_palkka = 10
-        self.deltapalkka = 5000
-        self.n_elake = 10
-        self.deltaelake = 2500
-        self.n_tis = 5
+        self.n_palkka = 50
+        self.deltapalkka = 2000
+        self.n_elake = 20
+        self.deltaelake = 3000
+        self.n_tis = 3
         self.deltatis = 1
 
     def init_grid(self):
-        self.Hila = np.zeros((self.n_time+2,self.n_palkka,self.n_elake,self.n_employment,self.n_tis))
-        self.actHila = np.zeros((self.n_time+2,self.n_palkka,self.n_elake,self.n_employment,self.n_tis,self.n_acts))        
+        self.Hila = np.zeros((self.n_time+2,self.n_palkka,self.n_elake,self.n_employment,self.n_tis,self.n_palkka))
+        self.actHila = np.zeros((self.n_time+2,self.n_palkka,self.n_elake,self.n_employment,self.n_tis,self.n_palkka,self.n_acts))        
 
     def map_elake(self,v):
         return self.hila_elake0+self.deltaelake*v # pitäisikö käyttää exp-hilaa?
@@ -101,21 +101,23 @@ class DynProgLifecycle(Lifecycle):
         return v # pitäisikö käyttää exp-hilaa?
 
     def inv_tis(self,v):
-        vmin=0 #max(0,min(self.n_tis-2,int((v-self.hila_tis0)/self.deltatis)))
-        vmax=min(self.n_tis-1,v)
-        w=0.0
+        if v>self.n_tis-1:
+            vmax=self.n_tis-1
+        else:
+            vmax=min(self.n_tis-1,v)
 
-        #return int(vmin),int(vmax),w    
         return int(vmax)
+        #return int(vmax)
     
     # lineaarinen approksimaatio
     def get_V(self,t,s):
         '''
         hae hilasta tilan s arvo hetkelle t
         '''
-        emp,elake,palkka,ika,time_in_state=self.env.state_decode(s)
+        emp,elake,palkka,ika,time_in_state,next_wage=self.env.state_decode(s)
         emin,emax,we=self.inv_elake(elake)
         pmin,pmax,wp=self.inv_palkka(palkka)
+        p2min,p2max,wp2=self.inv_palkka(next_wage)        
         tismax=self.inv_tis(time_in_state)
         emp=int(emp)
         
@@ -124,12 +126,21 @@ class DynProgLifecycle(Lifecycle):
         #      wp*((1-we)*((1-wt)*self.Hila[t,pmax,emin,emp,tismin]+wt*self.Hila[t,pmax,emin,emp,tismax])\
         #             +we*((1-wt)*self.Hila[t,pmax,emax,emp,tismin]+wt*self.Hila[t,pmax,emax,emp,tismax]))
 
-        V=(1-wp)*((1-we)*(self.Hila[t,pmin,emin,emp,tismax])\
-                     +we*(self.Hila[t,pmin,emax,emp,tismax]))+\
-              wp*((1-we)*(self.Hila[t,pmax,emin,emp,tismax])\
-                     +we*(self.Hila[t,pmax,emax,emp,tismax]))
+        #V=(1-wp)*((1-we)*(self.Hila[t,pmin,emin,emp,tismax])\
+        #             +we*(self.Hila[t,pmin,emax,emp,tismax]))+\
+        #      wp*((1-we)*(self.Hila[t,pmax,emin,emp,tismax])\
+        #             +we*(self.Hila[t,pmax,emax,emp,tismax]))
 
-        V=max(0,V)
+        V1=(1-wp2)*((1-wp)*((1-we)*(self.Hila[t,pmin,emin,emp,tismax,p2min])\
+                         +we*(self.Hila[t,pmin,emax,emp,tismax,p2min]))+\
+                  wp*((1-we)*(self.Hila[t,pmax,emin,emp,tismax,p2min])\
+                         +we*(self.Hila[t,pmax,emax,emp,tismax,p2min])))+\
+          wp2*((1-wp)*((1-we)*(self.Hila[t,pmin,emin,emp,tismax,p2max])\
+                         +we*(self.Hila[t,pmin,emax,emp,tismax,p2max]))+\
+                  wp*((1-we)*(self.Hila[t,pmax,emin,emp,tismax,p2max])\
+                         +we*(self.Hila[t,pmax,emax,emp,tismax,p2max])))                         
+
+        V=max(0,V1)
 
         return V
 
@@ -139,9 +150,10 @@ class DynProgLifecycle(Lifecycle):
         hae hilasta tilan s arvo hetkelle t
         '''
         #print(s)
-        emp,elake,palkka,ika,time_in_state=self.env.state_decode(s)
+        emp,elake,palkka,ika,time_in_state,next_wage=self.env.state_decode(s)
         emin,emax,we=self.inv_elake(elake)
         pmin,pmax,wp=self.inv_palkka(palkka)
+        p2min,p2max,wp2=self.inv_palkka(next_wage)        
         tismax=self.inv_tis(time_in_state)
         emp=int(emp)
         tismax=int(tismax)
@@ -158,13 +170,17 @@ class DynProgLifecycle(Lifecycle):
             
         for k in range(n_emp):
             #print(t,pmin,emin,emp,tismax,k)
-            V[k]=max(0,(1-wp)*((1-we)*(self.actHila[t,pmin,emin,emp,tismax,k])+we*(self.actHila[t,pmin,emax,emp,tismax,k]))+\
-                           wp*((1-we)*(self.actHila[t,pmax,emin,emp,tismax,k])+we*(self.actHila[t,pmax,emax,emp,tismax,k])))
+            #V[k]=max(0,(1-wp)*((1-we)*(self.actHila[t,pmin,emin,emp,tismax,k])+we*(self.actHila[t,pmin,emax,emp,tismax,k]))+\
+            #               wp*((1-we)*(self.actHila[t,pmax,emin,emp,tismax,k])+we*(self.actHila[t,pmax,emax,emp,tismax,k])))
             #V[k]=max(0,(1-wp)*((1-we)*((1-wt)*self.actHila[t,pmin,emin,emp,tismin,k]+wt*self.actHila[t,pmin,emin,emp,tismax,k])\
             #                      +we*((1-wt)*self.actHila[t,pmin,emax,emp,tismin,k]+wt*self.actHila[t,pmin,emax,emp,tismax,k]))+\
             #               wp*((1-we)*((1-wt)*self.actHila[t,pmax,emin,emp,tismin,k]+wt*self.actHila[t,pmax,emin,emp,tismax,k])\
             #                      +we*((1-wt)*self.actHila[t,pmax,emax,emp,tismin,k]+wt*self.actHila[t,pmax,emax,emp,tismax,k])))
-            
+            apx1=(1-wp2)*((1-wp)*((1-we)*(self.actHila[t,pmin,emin,emp,tismax,p2min,k])+we*(self.actHila[t,pmin,emax,emp,tismax,p2min,k]))+\
+                            wp*((1-we)*(self.actHila[t,pmax,emin,emp,tismax,p2min,k])+we*(self.actHila[t,pmax,emax,emp,tismax,p2min,k])))+\
+                    wp2*((1-wp)*((1-we)*(self.actHila[t,pmin,emin,emp,tismax,p2max,k])+we*(self.actHila[t,pmin,emax,emp,tismax,p2max,k]))+\
+                           wp*((1-we)*(self.actHila[t,pmax,emin,emp,tismax,p2max,k])+we*(self.actHila[t,pmax,emax,emp,tismax,p2max,k])))
+            V[k]=max(0,apx1)
             
         act=int(np.argmax(V))
         maxV=np.max(V)
@@ -217,21 +233,23 @@ class DynProgLifecycle(Lifecycle):
             for el in range(self.n_elake):
                 for p in range(self.n_palkka): 
                     for tis in range(self.n_tis):
-                        palkka=self.map_palkka(p)
-                        elake=self.map_elake(el)
-                        time_in_state=self.map_tis(tis)
+                        for pnext in range(self.n_palkka): 
+                            palkka=self.map_palkka(p)
+                            palkka_next=self.map_palkka(pnext)
+                            elake=self.map_elake(el)
+                            time_in_state=self.map_tis(tis)
 
-                        # hetken t tila (emp,prev,elake,palkka). Lasketaan palkkio+gamma*U, jos ei vaihda tilaa
-                        rts,Sps=self.get_rewards_continuous((emp,elake,palkka,age,time_in_state),act_set)
+                            # hetken t tila (emp,prev,elake,palkka). Lasketaan palkkio+gamma*U, jos ei vaihda tilaa
+                            rts,Sps=self.get_rewards_continuous((emp,elake,palkka,age,time_in_state,palkka_next),act_set)
                         
-                        for ind,a in enumerate(act_set):
-                            m=m+1
-                            #qr=qr+rts[ind]
-                            w=self.get_V(t+1,Sps[ind])
-                            #qw=qw+self.gamma*w
-                            self.actHila[t,p,el,emp,tis,a]=rts[ind]+self.gamma*w
+                            for ind,a in enumerate(act_set):
+                                m=m+1
+                                #qr=qr+rts[ind]
+                                w=self.get_V(t+1,Sps[ind])
+                                #qw=qw+self.gamma*w
+                                self.actHila[t,p,el,emp,tis,pnext,a]=rts[ind]+self.gamma*w
 
-                        self.Hila[t,p,el,emp,tis]=np.max(self.actHila[t,p,el,emp,tis,:])
+                            self.Hila[t,p,el,emp,tis,pnext]=np.max(self.actHila[t,p,el,emp,tis,pnext,:])
 
         if debug:
             self.print_actV(t)
@@ -357,10 +375,19 @@ class DynProgLifecycle(Lifecycle):
         print('ei töissä\n',self.Hila[t,:,:,0,0])
         print('eläke\n',self.Hila[t,:,:,2,0])
 
+    def get_diag(self,t,a):
+        sh=self.Hila.shape
+        h=np.zeros((sh[1],sh[2]))
+        for k in range(sh[1]):
+            for l in range(sh[2]):
+                h=self.Hila[t,k,l,a,l]
+                
+        return h
+    
     def plot_V(self,t):
-        self.plot_img(self.Hila[t,:,:,1,0],xlabel="Eläke",ylabel="Palkka",title='Töissä')
-        self.plot_img(self.Hila[t,:,:,0,0],xlabel="Eläke",ylabel="Palkka",title='Työttömänä')
-        self.plot_img(self.Hila[t,:,:,1,0]-self.Hila[t,:,:,0,0],xlabel="Eläke",ylabel="Palkka",title='Työssä-Työtön')
+        self.plot_img(self.get_diag(t,1),xlabel="Eläke",ylabel="Palkka",title='Töissä')
+        self.plot_img(self.get_diag(t,0),xlabel="Eläke",ylabel="Palkka",title='Työttömänä')
+        self.plot_img(self.get_diag(t,1)-self.get_diag(t,0),xlabel="Eläke",ylabel="Palkka",title='Työssä-Työtön')
 
     def print_actV(self,t):
         print('t=',t)

@@ -10,3 +10,9 @@ lifecycle_rl/__pycache__/*
 lifecycle_rl.egg-info/*
 *.pyc
 tmp/*
+paperin tulokset/results/*
+paperin tulokset/best/*
+tests/*
+perustulo/results/*
+perustulo/best/*
+perustulo/tmp/*

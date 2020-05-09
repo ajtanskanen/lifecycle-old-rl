@@ -36,7 +36,7 @@ class Lifecycle():
                     ansiopvraha_toe=None,perustulo=None,mortality=None,
                     randomness=None,include_putki=None,preferencenoise=None,
                     callback_minsteps=None,pinkslip=True,plotdebug=False,
-                    use_sigma_reduction=None,porrasta_putki=None,
+                    use_sigma_reduction=None,porrasta_putki=None,perustulomalli=None,
                     porrasta_1askel=None,porrasta_2askel=None,porrasta_3askel=None):
         '''
         Alusta muuttujat
@@ -103,7 +103,7 @@ class Lifecycle():
             
         if porrasta_putki is not None:
             self.porrasta_putki=porrasta_putki
-
+            
         if porrasta_1askel is not None:
             self.porrasta_1askel=porrasta_1askel
 
@@ -156,7 +156,8 @@ class Lifecycle():
                 'porrasta_putki': self.porrasta_putki, 'porrasta_1askel': self.porrasta_1askel,
                 'porrasta_2askel': self.porrasta_2askel, 'porrasta_3askel': self.porrasta_3askel,
                 'include_putki': self.include_putki, 'use_sigma_reduction': self.use_sigma_reduction,
-                'plotdebug': self.plotdebug, 'include_preferencenoise': self.include_preferencenoise}
+                'plotdebug': self.plotdebug, 'include_preferencenoise': self.include_preferencenoise,
+                'perustulomalli': perustulomalli}
             #self.n_acts = 4
             #if self.mortality:
             #    self.n_employment = 16
@@ -358,8 +359,8 @@ class Lifecycle():
                 env.seed(seed + rank)
                 env.env_seed(seed + rank + 100)
 
+            # monitor enables various things, not used by default
             #print('monitor=',use_monitor)
-
             #if use_monitor:
             #    env = Monitor(env, self.log_dir, allow_early_resets=True)
 
@@ -377,7 +378,7 @@ class Lifecycle():
         :param _globals: (dict)
         """
         #global n_steps, best_mean_reward
-        # Print stats every 1000 calls
+        # Print stats every 1000 calls, if needed
 
         min_steps=0
         mod_steps=1
@@ -385,13 +386,9 @@ class Lifecycle():
             hist_eps=self.callback_minsteps
         else:
             hist_eps=5000
-        #print(_locals, _globals)
         if (self.n_steps + 1) % mod_steps == 0 and self.n_steps > min_steps:
             # Evaluate policy training performance
             x, y = ts2xy(load_results(self.log_dir), 'timesteps')
-            #print(y[-hist_eps:])
-            #print('mean:',np.mean(y[-hist_eps:]))
-            #print(x,y)
             if len(x) >= hist_eps:
                 mean_reward = np.mean(y[-hist_eps:])
                 print(x[-1], 'timesteps', len(y), 'episodes') #, 'mean', mean_reward, 'out of', y[-hist_eps:])
@@ -413,7 +410,7 @@ class Lifecycle():
     def train(self,train=False,debug=False,steps=20000,cont=False,rlmodel='dqn',
                 save='saved/malli',pop=None,batch=1,max_grad_norm=0.5,learning_rate=0.25,
                 start_from=None,max_n_cpu=1000,plot=True,use_vecmonitor=False,
-                bestname='tmp/best2',use_callback=False,log_interval=100,verbose=1):
+                bestname='tmp/best2',use_callback=False,log_interval=100,verbose=1,plotdebug=False):
 
         self.best_mean_reward, self.n_steps = -np.inf, 0
 
@@ -492,6 +489,8 @@ class Lifecycle():
         if rlmodel is not None:
             self.rlmodel=rlmodel
             
+        print('simulate')
+            
         self.episodestats.reset(self.timestep,self.n_time,self.n_employment,self.n_pop,
                                 self.env,self.minimal,self.min_age,self.max_age,self.min_retirementage)
 
@@ -543,6 +542,14 @@ class Lifecycle():
                 if dones[k]:
                     terminal_state=infos[k]['terminal_observation']  
                     self.episodestats.add(pop_num[k],act[k],rewards[k],states[k],terminal_state,infos[k],debug=debug)
+                    
+                    # ensimmäinen havainto
+                    #self.episodestats.add(pop_num[k],0,0,terminal_state,newstate[k],None,debug=debug)
+                    
+                    #print('terminal',terminal_state)
+                    #print('terminal',infos[k])
+                    #print('new',newstate[k])
+                    #print('new',infos[k])
                     tqdm_e.update(1)
                     n+=1
                     tqdm_e.set_description("Pop " + str(n))
@@ -561,11 +568,11 @@ class Lifecycle():
         if False:
             return self.emp
    
-    def render(self,load=None):
+    def render(self,load=None,figname=None):
         if load is not None:
-            self.episodestats.render(load=load)
+            self.episodestats.render(load=load,figname=figname)
         else:
-            self.episodestats.render()
+            self.episodestats.render(figname=figname)
    
     def load_sim(self,load=None):
         self.episodestats.load_sim(load)
@@ -645,11 +652,11 @@ class Lifecycle():
         '''
         self.episodestats.compare_with(cc2.episodestats,label1=label1,label2=label2)
 
-    def run_results(self,steps1=100,steps2=100,pop=1_000,rlmodel='acktr',twostage=True,
+    def run_results(self,steps1=100,steps2=100,pop=1_000,rlmodel='acktr',twostage=False,
                save='saved/perusmalli',debug=False,simut='simut',results='results/simut_res',
                stats='results/simut_stats',deterministic=True,train=True,predict=True,
                batch1=1,batch2=100,cont=False,start_from=None,plot=False,callback_minsteps=None,
-               verbose=1):
+               verbose=1,plotdebug=None):
    
         '''
         run_results
@@ -670,21 +677,21 @@ class Lifecycle():
             if cont:
                 self.run_protocol(rlmodel=rlmodel,steps1=steps1,steps2=steps2,verbose=verbose,
                                   debug=debug,save=save,batch1=batch1,batch2=batch2,
-                                  cont=cont,start_from=start_from,twostage=twostage)
+                                  cont=cont,start_from=start_from,twostage=twostage,plotdebug=plotdebug)
             else:
                 self.run_protocol(rlmodel=rlmodel,steps1=steps1,steps2=steps2,verbose=verbose,
                                  debug=debug,batch1=batch1,batch2=batch2,cont=cont,
-                                 save=save,twostage=twostage)
+                                 save=save,twostage=twostage,plotdebug=plotdebug)
         if predict:
             #print('predict...')
-            self.predict_protocol(pop=pop,rlmodel=rlmodel,load=save,
+            self.predict_protocol(pop=pop,rlmodel=rlmodel,load=save,plotdebug=plotdebug,
                           debug=debug,deterministic=deterministic,results=results)
         if plot:
             self.render(load=results)
           
     def run_protocol(self,steps1=2_000_000,steps2=1_000_000,rlmodel='acktr',
-               debug=False,batch1=1,batch2=1000,cont=False,twostage=True,
-               start_from=None,save='best3',verbose=1):
+               debug=False,batch1=1,batch2=1000,cont=False,twostage=False,
+               start_from=None,save='best3',verbose=1,plotdebug=None):
         '''
         run_protocol
 
@@ -703,19 +710,19 @@ class Lifecycle():
             if cont:
                 self.train(steps=steps1,cont=cont,rlmodel=rlmodel,save=tmpname,batch=batch1,debug=debug,
                            start_from=start_from,use_callback=False,use_vecmonitor=False,
-                           log_interval=10,verbose=1)
+                           log_interval=10,verbose=1,plotdebug=plotdebug)
             else:
                 self.train(steps=steps1,cont=False,rlmodel=rlmodel,save=tmpname,batch=batch1,debug=debug,
-                           use_callback=False,use_vecmonitor=False,log_interval=1000,verbose=1)
+                           use_callback=False,use_vecmonitor=False,log_interval=1000,verbose=1,plotdebug=plotdebug)
 
         if twostage and steps2>0:
             print('phase 2')
             self.train(steps=steps2,cont=True,rlmodel=rlmodel,save=tmpname,
                        debug=debug,start_from=tmpname,batch=batch2,verbose=verbose,
-                       use_callback=True,use_vecmonitor=True,log_interval=1,bestname=save)
+                       use_callback=False,use_vecmonitor=False,log_interval=1,bestname=save,plotdebug=plotdebug)
 
     def predict_protocol(self,pop=1_00,rlmodel='acktr',results='results/simut_res',
-                         load='saved/malli',debug=False,deterministic=False):
+                         load='saved/malli',debug=False,deterministic=False,plotdebug=None):
         '''
         predict_protocol
 
@@ -765,15 +772,15 @@ class Lifecycle():
             
         self.episodestats.run_simstats(load,stats_results,n,startn=startn)
 
-    def render_distrib(self,stats_results='results/distrib_stats',plot=False):
-        self.episodestats.plot_simstats(stats_results)
+    def render_distrib(self,stats_results='results/distrib_stats',plot=False,figname=None):
+        self.episodestats.plot_simstats(stats_results,figname=figname)
 
         # gather results ...
         #if plot:
         #    print('plot')
             
-    def compare_distrib(self,filename1,filename2,n=1,label1='perus',label2='vaihtoehto'):
-        self.episodestats.compare_simstats(filename1,filename2,label1=label1,label2=label2)
+    def compare_distrib(self,filename1,filename2,n=1,label1='perus',label2='vaihtoehto',figname=None):
+        self.episodestats.compare_simstats(filename1,filename2,label1=label1,label2=label2,figname=figname)
 
         # gather results ...
         #if plot:
