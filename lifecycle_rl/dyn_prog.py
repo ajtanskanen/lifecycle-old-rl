@@ -44,14 +44,17 @@ class DynProgLifecycle(Lifecycle):
         # dynaamisen ohjelmoinnin parametrejä
         self.n_palkka = 50
         self.deltapalkka = 2000
-        self.n_elake = 20
-        self.deltaelake = 3000
-        self.n_tis = 3
+        self.n_palkka_future = 20
+        self.delta_palkka_future = 0.025
+        self.mid_palkka_future=10
+        self.n_elake = 40
+        self.deltaelake = 2000
+        self.n_tis = 5 # po 5
         self.deltatis = 1
 
     def init_grid(self):
-        self.Hila = np.zeros((self.n_time+2,self.n_palkka,self.n_elake,self.n_employment,self.n_tis,self.n_palkka))
-        self.actHila = np.zeros((self.n_time+2,self.n_palkka,self.n_elake,self.n_employment,self.n_tis,self.n_palkka,self.n_acts))        
+        self.Hila = np.zeros((self.n_time+2,self.n_palkka,self.n_elake,self.n_employment,self.n_tis,self.n_palkka_future))
+        self.actHila = np.zeros((self.n_time+2,self.n_palkka,self.n_elake,self.n_employment,self.n_tis,self.n_palkka_future,self.n_acts))        
 
     def map_elake(self,v):
         return self.hila_elake0+self.deltaelake*v # pitäisikö käyttää exp-hilaa?
@@ -85,6 +88,22 @@ class DynProgLifecycle(Lifecycle):
 
         return vmin,vmax,w
 
+    def map_palkka_future(self,v,palkka):
+        return (1.0+self.delta_palkka_future*(v-self.mid_palkka_future))*palkka
+
+    def inv_palkka_future(self,v,palkka):
+        if palkka>0:
+            vv=(v/palkka-1.0)/self.delta_palkka_future+self.mid_palkka_future
+            vmin=max(0,min(self.n_palkka_future-2,int(vv)))
+            vmax=vmin+1
+            w=vv-vmin
+        else:
+            vmin=0
+            vmax=1
+            w=0
+
+        return vmin,vmax,w
+
     def map_exp_palkka(self,v):
         return self.hila_palkka0+self.deltapalkka*(np.exp(v*self.exppalkkascale)-1)
 
@@ -98,7 +117,7 @@ class DynProgLifecycle(Lifecycle):
         return vmin,vmax,w
 
     def map_tis(self,v):
-        return v # pitäisikö käyttää exp-hilaa?
+        return v
 
     def inv_tis(self,v):
         if v>self.n_tis-1:
@@ -107,7 +126,6 @@ class DynProgLifecycle(Lifecycle):
             vmax=min(self.n_tis-1,v)
 
         return int(vmax)
-        #return int(vmax)
     
     # lineaarinen approksimaatio
     def get_V(self,t,s):
@@ -117,28 +135,18 @@ class DynProgLifecycle(Lifecycle):
         emp,elake,palkka,ika,time_in_state,next_wage=self.env.state_decode(s)
         emin,emax,we=self.inv_elake(elake)
         pmin,pmax,wp=self.inv_palkka(palkka)
-        p2min,p2max,wp2=self.inv_palkka(next_wage)        
+        p2min,p2max,wp2=self.inv_palkka_future(next_wage,palkka)        
         tismax=self.inv_tis(time_in_state)
         emp=int(emp)
         
-        #V=(1-wp)*((1-we)*((1-wt)*self.Hila[t,pmin,emin,emp,tismin]+wt*self.Hila[t,pmin,emin,emp,tismax])\
-        #             +we*((1-wt)*self.Hila[t,pmin,emax,emp,tismin]+wt*self.Hila[t,pmin,emax,emp,tismax]))+\
-        #      wp*((1-we)*((1-wt)*self.Hila[t,pmax,emin,emp,tismin]+wt*self.Hila[t,pmax,emin,emp,tismax])\
-        #             +we*((1-wt)*self.Hila[t,pmax,emax,emp,tismin]+wt*self.Hila[t,pmax,emax,emp,tismax]))
-
-        #V=(1-wp)*((1-we)*(self.Hila[t,pmin,emin,emp,tismax])\
-        #             +we*(self.Hila[t,pmin,emax,emp,tismax]))+\
-        #      wp*((1-we)*(self.Hila[t,pmax,emin,emp,tismax])\
-        #             +we*(self.Hila[t,pmax,emax,emp,tismax]))
-
-        V1=(1-wp2)*((1-wp)*((1-we)*(self.Hila[t,pmin,emin,emp,tismax,p2min])\
-                         +we*(self.Hila[t,pmin,emax,emp,tismax,p2min]))+\
-                  wp*((1-we)*(self.Hila[t,pmax,emin,emp,tismax,p2min])\
-                         +we*(self.Hila[t,pmax,emax,emp,tismax,p2min])))+\
-          wp2*((1-wp)*((1-we)*(self.Hila[t,pmin,emin,emp,tismax,p2max])\
-                         +we*(self.Hila[t,pmin,emax,emp,tismax,p2max]))+\
-                  wp*((1-we)*(self.Hila[t,pmax,emin,emp,tismax,p2max])\
-                         +we*(self.Hila[t,pmax,emax,emp,tismax,p2max])))                         
+        V1=(1-wp2)*((1-wp)*( (1-we)*(self.Hila[t,pmin,emin,emp,tismax,p2min])\
+                            +we*(self.Hila[t,pmin,emax,emp,tismax,p2min]))+\
+                    wp*(     (1-we)*(self.Hila[t,pmax,emin,emp,tismax,p2min])\
+                            +we*(self.Hila[t,pmax,emax,emp,tismax,p2min])))+\
+          wp2*(     (1-wp)*( (1-we)*(self.Hila[t,pmin,emin,emp,tismax,p2max])\
+                            +we*(self.Hila[t,pmin,emax,emp,tismax,p2max]))+\
+                    wp*(     (1-we)*(self.Hila[t,pmax,emin,emp,tismax,p2max])\
+                            +we*(self.Hila[t,pmax,emax,emp,tismax,p2max])))                         
 
         V=max(0,V1)
 
@@ -149,11 +157,10 @@ class DynProgLifecycle(Lifecycle):
         '''
         hae hilasta tilan s arvo hetkelle t
         '''
-        #print(s)
         emp,elake,palkka,ika,time_in_state,next_wage=self.env.state_decode(s)
         emin,emax,we=self.inv_elake(elake)
         pmin,pmax,wp=self.inv_palkka(palkka)
-        p2min,p2max,wp2=self.inv_palkka(next_wage)        
+        p2min,p2max,wp2=self.inv_palkka_future(next_wage,palkka)        
         tismax=self.inv_tis(time_in_state)
         emp=int(emp)
         tismax=int(tismax)
@@ -169,17 +176,14 @@ class DynProgLifecycle(Lifecycle):
                 n_emp=3
             
         for k in range(n_emp):
-            #print(t,pmin,emin,emp,tismax,k)
-            #V[k]=max(0,(1-wp)*((1-we)*(self.actHila[t,pmin,emin,emp,tismax,k])+we*(self.actHila[t,pmin,emax,emp,tismax,k]))+\
-            #               wp*((1-we)*(self.actHila[t,pmax,emin,emp,tismax,k])+we*(self.actHila[t,pmax,emax,emp,tismax,k])))
-            #V[k]=max(0,(1-wp)*((1-we)*((1-wt)*self.actHila[t,pmin,emin,emp,tismin,k]+wt*self.actHila[t,pmin,emin,emp,tismax,k])\
-            #                      +we*((1-wt)*self.actHila[t,pmin,emax,emp,tismin,k]+wt*self.actHila[t,pmin,emax,emp,tismax,k]))+\
-            #               wp*((1-we)*((1-wt)*self.actHila[t,pmax,emin,emp,tismin,k]+wt*self.actHila[t,pmax,emin,emp,tismax,k])\
-            #                      +we*((1-wt)*self.actHila[t,pmax,emax,emp,tismin,k]+wt*self.actHila[t,pmax,emax,emp,tismax,k])))
-            apx1=(1-wp2)*((1-wp)*((1-we)*(self.actHila[t,pmin,emin,emp,tismax,p2min,k])+we*(self.actHila[t,pmin,emax,emp,tismax,p2min,k]))+\
-                            wp*((1-we)*(self.actHila[t,pmax,emin,emp,tismax,p2min,k])+we*(self.actHila[t,pmax,emax,emp,tismax,p2min,k])))+\
-                    wp2*((1-wp)*((1-we)*(self.actHila[t,pmin,emin,emp,tismax,p2max,k])+we*(self.actHila[t,pmin,emax,emp,tismax,p2max,k]))+\
-                           wp*((1-we)*(self.actHila[t,pmax,emin,emp,tismax,p2max,k])+we*(self.actHila[t,pmax,emax,emp,tismax,p2max,k])))
+            apx1=(1-wp2)*((1-wp)*((1-we)*(self.actHila[t,pmin,emin,emp,tismax,p2min,k])
+                                  +we*(self.actHila[t,pmin,emax,emp,tismax,p2min,k]))+\
+                            wp*((1-we)*(self.actHila[t,pmax,emin,emp,tismax,p2min,k])
+                                  +we*(self.actHila[t,pmax,emax,emp,tismax,p2min,k])))+\
+                    wp2*((1-wp)*((1-we)*(self.actHila[t,pmin,emin,emp,tismax,p2max,k])
+                                    +we*(self.actHila[t,pmin,emax,emp,tismax,p2max,k]))+\
+                            wp*((1-we)*(self.actHila[t,pmax,emin,emp,tismax,p2max,k])
+                                    +we*(self.actHila[t,pmax,emax,emp,tismax,p2max,k])))
             V[k]=max(0,apx1)
             
         act=int(np.argmax(V))
@@ -233,9 +237,9 @@ class DynProgLifecycle(Lifecycle):
             for el in range(self.n_elake):
                 for p in range(self.n_palkka): 
                     for tis in range(self.n_tis):
-                        for pnext in range(self.n_palkka): 
+                        for pnext in range(self.n_palkka_future): 
                             palkka=self.map_palkka(p)
-                            palkka_next=self.map_palkka(pnext)
+                            palkka_next=self.map_palkka_future(pnext,palkka)
                             elake=self.map_elake(el)
                             time_in_state=self.map_tis(tis)
 
@@ -267,14 +271,12 @@ class DynProgLifecycle(Lifecycle):
 
         for age in range(self.max_age,self.min_age-1,-1):
             t=age-self.min_age
-            #print(t)
             self.backtrack(t)
             tqdm_e.set_description("Year " + str(t))
             tqdm_e.update(1)
 
         self.save_V(save)
-          
-        
+
     def simulate(self,debug=False,pop=1_000,save=None,load='dynamic_prog_V.h5'):
         '''
         Lasketaan työllisyysasteet ikäluokittain
@@ -299,9 +301,11 @@ class DynProgLifecycle(Lifecycle):
                 else:
                     act,maxV=self.get_actV(t,state)
                 
-                newstate,r,done,info=self.env.step(act)
-                #print(r,info['r'])
-                #r=info['r']
+                newstate,r,done,info=self.env.step(act,dynprog=False)
+                if debug:
+                    print(r,info['r'])
+                    #r=info['r']
+                    
                 self.episodestats.add(n,act,r,state,newstate,debug=debug,aveV=maxV)
                 state=newstate
                 
@@ -371,33 +375,43 @@ class DynProgLifecycle(Lifecycle):
 
     def print_V(self,t):
         print('t=',t)
-        print('töissä\n',self.Hila[t,:,:,1,0])
-        print('ei töissä\n',self.Hila[t,:,:,0,0])
-        print('eläke\n',self.Hila[t,:,:,2,0])
+        print('töissä\n',self.get_diag_V(t,1))
+        print('ei töissä\n',self.get_diag_V(t,0))
+        print('eläke\n',self.get_diag_V(t,2))
 
-    def get_diag(self,t,a):
+    def get_diag_V(self,t,a):
         sh=self.Hila.shape
         h=np.zeros((sh[1],sh[2]))
         for k in range(sh[1]):
             for l in range(sh[2]):
-                h=self.Hila[t,k,l,a,l]
+                h[k,l]=self.Hila[t,k,l,a,0,l]
+                
+        return h
+    
+    def get_diag_actV(self,t,emp,act):
+        sh=self.Hila.shape
+        h=np.zeros((sh[1],sh[2]))
+        for k in range(sh[1]):
+            for l in range(sh[2]):
+                # self.actHila = np.zeros((self.n_time+2,self.n_palkka,self.n_elake,self.n_employment,self.n_tis,self.n_palkka,self.n_acts))  
+                h[k,l]=self.actHila[t,k,l,emp,0,l,act]
                 
         return h
     
     def plot_V(self,t):
-        self.plot_img(self.get_diag(t,1),xlabel="Eläke",ylabel="Palkka",title='Töissä')
-        self.plot_img(self.get_diag(t,0),xlabel="Eläke",ylabel="Palkka",title='Työttömänä')
-        self.plot_img(self.get_diag(t,1)-self.get_diag(t,0),xlabel="Eläke",ylabel="Palkka",title='Työssä-Työtön')
+        self.plot_img(self.get_diag_V(t,1),xlabel="Eläke",ylabel="Palkka",title='Töissä')
+        self.plot_img(self.get_diag_V(t,0),xlabel="Eläke",ylabel="Palkka",title='Työttömänä')
+        self.plot_img(self.get_diag_V(t,1)-self.get_diag_V(t,0),xlabel="Eläke",ylabel="Palkka",title='Työssä-Työtön')
 
     def print_actV(self,t):
         print('t=',t)
         if t+self.min_age>self.min_retirementage:
-            print('eläke (act) pois\n{}\neläke (act) pysyy\n{}\n'.format(self.actHila[t,:,:,2,0,1],self.actHila[t,:,:,2,0,0]))
-            print('töissä (act) pois\n{}\ntöissä (act) pysyy\n{}\ntöissä (act) eläköityy\n{}\n'.format(self.actHila[t,:,:,1,0,1],self.actHila[t,:,:,1,0,0],self.actHila[t,:,:,1,0,2]))
-            print('ei töissä (act) pois\n{}\nei töissä (act) pysyy\n{}\nei töissä eläköityy\n{}\n'.format(self.actHila[t,:,:,0,0,1],self.actHila[t,:,:,0,0,0],self.actHila[t,:,:,0,0,2]))
+            print('eläke (act) pois\n{}\neläke (act) pysyy\n{}\n'.format(self.get_diag_actV(t,2,1),self.get_diag_actV(t,2,0)))
+            print('töissä (act) pois\n{}\ntöissä (act) pysyy\n{}\ntöissä (act) eläköityy\n{}\n'.format(self.get_diag_actV(t,1,1),self.get_diag_actV(t,1,0),self.get_diag_actV(t,1,2)))
+            print('ei töissä (act) pois\n{}\nei töissä (act) pysyy\n{}\nei töissä eläköityy\n{}\n'.format(self.get_diag_actV(t,0,1),self.get_diag_actV(t,0,0),self.get_diag_actV(t,0,2)))
         else:
-            print('töissä (act) pois\n',self.actHila[t,:,:,1,0,1],'\ntöissä (act) pysyy\n',self.actHila[t,:,:,1,0,0])
-            print('ei töissä (act) pois\n',self.actHila[t,:,:,0,0,1],'\nei töissä (act) pysyy\n',self.actHila[t,:,:,0,0,0])
+            print('töissä (act) pois\n',self.get_diag_actV(t,1,1),'\ntöissä (act) pysyy\n',self.get_diag_actV(t,1,0))
+            print('ei töissä (act) pois\n',self.get_diag_actV(t,0,1),'\nei töissä (act) pysyy\n',self.get_diag_actV(t,0,0))
         #print('töissä (act ero)\n',self.actHila[t,:,:,1,0,1]-self.actHila[t,:,:,1,0,0])
         #print('ei töissä (act ero)\n',self.actHila[t,:,:,0,0,1]-self.actHila[t,:,:,0,0,0])
 
@@ -417,40 +431,40 @@ class DynProgLifecycle(Lifecycle):
         self.plot_img(q,xlabel="Eläke",ylabel="Palkka",title='argmax')
 
     
-    def RL_simulate_V(self,age,emp=0,time_in_state=0,rlmodel='acktr',load='perus'):
-        self.episodestats_init()
-        
-        policy_kwargs,n_cpu,savename,loadname=self.get_multiprocess_env(rlmodel,load)
-
-        env = SubprocVecEnv([lambda: gym.make(self.environment,kwargs=self.gym_kwargs) for i in range(n_cpu)])
-        #env = DummyVecEnv([lambda: gym.make(self.environment,kwargs=self.gym_kwargs) for i in range(n_cpu)])
-
-        #print('predicting...')
-
-        if rlmodel=='a2c':
-            model = A2C.load(savename, env=env, verbose=1,gamma=self.gamma, policy_kwargs=policy_kwargs)
-        elif rlmodel=='acer':
-            model = ACER.load(savename, env=env, verbose=1,gamma=self.gamma, policy_kwargs=policy_kwargs)
-        elif rlmodel=='acktr':
-            model = ACKTR.load(savename, env=env, verbose=1,gamma=self.gamma, policy_kwargs=policy_kwargs)
-        else:        
-            model = DQN.load(savename, env=env, verbose=1,gamma=self.gamma, policy_kwargs=policy_kwargs)
-            
-        prev=0
-        toe=0
-        self.fake_act=np.zeros((self.n_elake,self.n_palkka))
-        for el in range(self.n_elake):
-            for p in range(self.n_palkka): 
-                palkka=self.map_palkka(p)
-                elake=self.map_elake(el)
-                if emp==2:
-                    state=self.env.state_encode(emp,elake,0,age,time_in_state)
-                elif emp==1:
-                    state=self.env.state_encode(emp,0,palkka,age,time_in_state)
-                else:
-                    state=self.env.state_encode(emp,0,palkka,age,time_in_state)
-
-                act, predstate = model.predict(state)
-                self.fake_act[el,p]=act
-                        
-        self.plot_img(self.fake_act,xlabel="Palkka",ylabel="Eläke",title="pred "+load+" action tilasta "+str(emp))
+#     def RL_simulate_V(self,age,emp=0,time_in_state=0,rlmodel='acktr',load='perus'):
+#         self.episodestats_init()
+#         
+#         policy_kwargs,n_cpu,savename,loadname=self.get_multiprocess_env(rlmodel,load)
+# 
+#         env = SubprocVecEnv([lambda: gym.make(self.environment,kwargs=self.gym_kwargs) for i in range(n_cpu)])
+#         #env = DummyVecEnv([lambda: gym.make(self.environment,kwargs=self.gym_kwargs) for i in range(n_cpu)])
+# 
+#         #print('predicting...')
+# 
+#         if rlmodel=='a2c':
+#             model = A2C.load(savename, env=env, verbose=1,gamma=self.gamma, policy_kwargs=policy_kwargs)
+#         elif rlmodel=='acer':
+#             model = ACER.load(savename, env=env, verbose=1,gamma=self.gamma, policy_kwargs=policy_kwargs)
+#         elif rlmodel=='acktr':
+#             model = ACKTR.load(savename, env=env, verbose=1,gamma=self.gamma, policy_kwargs=policy_kwargs)
+#         else:        
+#             model = DQN.load(savename, env=env, verbose=1,gamma=self.gamma, policy_kwargs=policy_kwargs)
+#             
+#         prev=0
+#         toe=0
+#         self.fake_act=np.zeros((self.n_elake,self.n_palkka))
+#         for el in range(self.n_elake):
+#             for p in range(self.n_palkka): 
+#                 palkka=self.map_palkka(p)
+#                 elake=self.map_elake(el)
+#                 if emp==2:
+#                     state=self.env.state_encode(emp,elake,0,age,time_in_state)
+#                 elif emp==1:
+#                     state=self.env.state_encode(emp,0,palkka,age,time_in_state)
+#                 else:
+#                     state=self.env.state_encode(emp,0,palkka,age,time_in_state)
+# 
+#                 act, predstate = model.predict(state)
+#                 self.fake_act[el,p]=act
+#                         
+#         self.plot_img(self.fake_act,xlabel="Palkka",ylabel="Eläke",title="pred "+load+" action tilasta "+str(emp))

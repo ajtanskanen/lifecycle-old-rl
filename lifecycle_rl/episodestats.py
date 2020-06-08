@@ -10,12 +10,13 @@
 import h5py
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 import seaborn as sns
 from scipy.stats import norm
 import locale
 from tabulate import tabulate
 import pandas as pd
-
+from tqdm import tqdm_notebook as tqdm
 
 locale.setlocale(locale.LC_ALL, 'fi_FI')
 
@@ -365,7 +366,6 @@ class EpisodeStats():
     def comp_virrat(self,popempstate=None,putki=True,tmtuki=True,laaja=False,outsider=False,ansiosid=True,tyott=False,kaikki=False,max_age=100):
         tyoll_virta=np.zeros((self.n_time,1))
         tyot_virta=np.zeros((self.n_time,1))
-        print('n_time=',self.n_time)
         unempset=[]
         empset=[]
         
@@ -550,7 +550,7 @@ class EpisodeStats():
         plt.axvline(x=500/(12*21.5),ls=lstyle,color=axvcolor)
         plt.text(510/(12*21.5),point,'500',rotation=90)                    
         
-    def plot_tyolldistribs(self,emp_distrib,tyoll_distrib,tyollistyneet=True,max=10):
+    def plot_tyolldistribs(self,emp_distrib,tyoll_distrib,tyollistyneet=True,max=10,figname=None):
         max_time=55
         nn_time = int(np.round((max_time)*self.inv_timestep))+1
         x=np.linspace(0,max_time,nn_time)
@@ -575,9 +575,12 @@ class EpisodeStats():
         ax.plot(x2[1:-1],scaled[1:])
         #ax.bar(x2[1:-1],scaled[1:],align='center',width=self.timestep)
         plt.xlim(0,max)
+        if figname is not None:
+            plt.savefig(figname+'tyollistyneetdistrib.eps', format='eps')
+            
         plt.show()        
 
-    def plot_tyolldistribs_both(self,emp_distrib,tyoll_distrib,max=10):
+    def plot_tyolldistribs_both(self,emp_distrib,tyoll_distrib,max=10,figname=None):
         max_time=50
         nn_time = int(np.round((max_time)*self.inv_timestep))+1
         x=np.linspace(0,max_time,nn_time)
@@ -595,11 +598,14 @@ class EpisodeStats():
         self.plot_vlines_unemp(point)
         ax.plot(x2[1:-1],scaled[1:],label='pois siirtyneiden osuus')
         ax.plot(x2[1:-1],scaled_tyoll[1:],label='työllistyneiden osuus')
-        ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
+        #ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
+        ax.legend()
         ax.set_ylabel('pois siirtyneiden osuus')
 
         plt.xlim(0,max)
         plt.ylim(0,0.8)
+        if figname is not None:
+            plt.savefig(figname+'tyolldistribs.eps', format='eps')
         plt.show()        
 
     def plot_tyolldistribs_both_bu(self,emp_distrib,tyoll_distrib,max=2):
@@ -630,7 +636,9 @@ class EpisodeStats():
         #plt.ylim(0,0.8)
         plt.show()        
 
-    def plot_compare_tyolldistribs(self,emp_distrib1,tyoll_distrib1,emp_distrib2,tyoll_distrib2,tyollistyneet=True,max=4,label1='perus',label2='vaihtoehto'):
+    def plot_compare_tyolldistribs(self,emp_distrib1,tyoll_distrib1,emp_distrib2,
+                tyoll_distrib2,tyollistyneet=True,max=4,label1='perus',label2='vaihtoehto',
+                figname=None):
         max_time=50
         nn_time = int(np.round((max_time)*self.inv_timestep))+1
         x=np.linspace(0,max_time,nn_time)
@@ -662,13 +670,17 @@ class EpisodeStats():
         else:
             ax.set_ylabel('pois siirtyneiden osuus')
         self.plot_vlines_unemp()
-        ax.plot(x1[1:-1],scaled1[1:],label=label1)
         ax.plot(x2[1:-1],scaled2[1:],label=label2)
-        ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
+        ax.plot(x1[1:-1],scaled1[1:],label=label1)
+        #ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
+        ax.legend()
         plt.xlim(0,max)
+        if figname is not None:
+            plt.savefig(figname+'comp_tyollistyneetdistrib.eps', format='eps')
+        
         plt.show()        
                 
-    def plot_unempdistribs(self,unemp_distrib,max=10):
+    def plot_unempdistribs(self,unemp_distrib,max=10,figname=None,miny=None,maxy=None):
         #fig,ax=plt.subplots()
         max_time=50
         nn_time = int(np.round((max_time)*self.inv_timestep))+1
@@ -682,6 +694,11 @@ class EpisodeStats():
         ax.plot(x[:-1],scaled)
         ax.set_yscale('log')
         plt.xlim(0,max)
+        if miny is not None:
+            plt.ylim(miny,maxy)
+        if figname is not None:
+            plt.savefig(figname+'unempdistribs.eps', format='eps')
+        
         plt.show()   
 
     def plot_unempdistribs_bu(self,unemp_distrib,max=2):
@@ -702,7 +719,8 @@ class EpisodeStats():
         plt.xlim(-max,0)
         plt.show()   
 
-    def plot_compare_unempdistribs(self,unemp_distrib1,unemp_distrib2,max=4,label2='none',label1='none',logy=True,diff=False):
+    def plot_compare_unempdistribs(self,unemp_distrib1,unemp_distrib2,max=4,
+            label2='none',label1='none',logy=True,diff=False,figname=None):
         #fig,ax=plt.subplots()
         max_time=50
         nn_time = int(np.round((max_time)*self.inv_timestep))+1
@@ -718,20 +736,24 @@ class EpisodeStats():
         scaled2=scaled2/np.sum(scaled2)
         fig,ax=plt.subplots()
         if not diff:
-            self.plot_vlines_unemp(0.9)
+            self.plot_vlines_unemp(0.5)
         ax.set_xlabel('Työttömyysjakson pituus [v]')
         ax.set_ylabel('Osuus')
         if diff:
             ax.plot(x[:-1],scaled1-scaled2,label=label1+'-'+label2)
         else:
-            ax.plot(x[:-1],scaled1,label=label1)
             ax.plot(x[:-1],scaled2,label=label2)
+            ax.plot(x[:-1],scaled1,label=label1)
         if logy and not diff:
             ax.set_yscale('log')
         if not diff:
             plt.ylim(1e-4,1.0)
-        ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
+        #ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
+        ax.legend()
         plt.xlim(0,max)
+        if figname is not None:
+            plt.savefig(figname+'comp_unempdistrib.eps', format='eps')
+        
         plt.show()   
 
     def plot_compare_virrat(self,virta1,virta2,min_time=25,max_time=65,label1='perus',label2='vaihtoehto',virta_label='työllisyys',ymin=None,ymax=None):
@@ -739,8 +761,8 @@ class EpisodeStats():
         
         demog,demog2=self.get_demog()
         
-        scaled1=virta1/self.alive*demog2
-        scaled2=virta2/self.alive*demog2
+        scaled1=virta1*demog2/self.n_pop #/self.alive
+        scaled2=virta2*demog2/self.n_pop #/self.alive
         
         fig,ax=plt.subplots()
         plt.xlim(min_time,max_time)
@@ -749,9 +771,8 @@ class EpisodeStats():
         ax.plot(x,scaled1,label=label1)
         ax.plot(x,scaled2,label=label2)
         ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
-        if ymin is not None:
-            if ymax is not None:
-                plt.ylim(ymin,ymax)
+        if ymin is not None and ymax is not None:
+            plt.ylim(ymin,ymax)
             
         plt.show()   
 
@@ -833,16 +854,24 @@ class EpisodeStats():
 
         return tyollisyysaste,osatyoaste,tyottomyysaste,ka_tyottomyysaste
 
-    def plot_outsider(self):
+    def plot_outsider(self,printtaa=True):
         x=np.linspace(self.min_age,self.max_age,self.n_time)
         fig,ax=plt.subplots()
         ax.plot(x,100*(self.empstate[:,11]+self.empstate[:,5]+self.empstate[:,6]+self.empstate[:,7])/self.alive[:,0],label='työvoiman ulkopuolella, ei opiskelija, sis. vanh.vapaat')
-        emp_statsratio=100*self.outsider_stats()
+        emp_statsratio=100*self.outsider_stats()    
         ax.plot(x,emp_statsratio,label='havainto')
         ax.set_xlabel('Ikä [v]')
         ax.set_ylabel('Osuus tilassa [%]')
         ax.legend()
         plt.show()
+        if printtaa:
+            print('yht',100*(self.empstate[:,11]+self.empstate[:,5]+self.empstate[:,6]+self.empstate[:,7])/self.alive[:,0])
+            nn=np.sum(self.galive[:,3:5],1,keepdims=True)
+            n=np.sum(100*(self.gempstate[:,5,3:5]+self.gempstate[:,6,3:5]+self.gempstate[:,7,3:5]),1,keepdims=True)/nn
+            mn=np.sum(self.galive[:,0:2],1,keepdims=True)
+            m=np.sum(100*(self.gempstate[:,5,0:2]+self.gempstate[:,6,0:2]+self.gempstate[:,7,0:2]),1,keepdims=True)/mn
+            print('naiset vv',n[1::4,0])
+            print('miehet vv',m[1::4,0])
 
     def plot_student(self):
         x=np.linspace(self.min_age,self.max_age,self.n_time)
@@ -924,10 +953,9 @@ class EpisodeStats():
         ax.set_xlabel('Ikä [v]')
         ax.set_ylabel('Osuus tilassa [%]')
         ax.legend()
-        plt.show()
-        
         if figname is not None:
             plt.savefig(figname+'tyollisyysaste.eps', format='eps')
+        plt.show()
 
         if not self.minimal:
             fig,ax=plt.subplots()
@@ -937,7 +965,10 @@ class EpisodeStats():
             plt.show()
 
         empstate_ratio=100*self.empstate/self.alive
-        self.plot_states(empstate_ratio,ylabel='Osuus tilassa [%]',stack=True)
+        if figname is not None:
+            self.plot_states(empstate_ratio,ylabel='Osuus tilassa [%]',stack=True,figname=figname+'_stack')
+        else:
+            self.plot_states(empstate_ratio,ylabel='Osuus tilassa [%]',stack=True)
 
         if not self.minimal:
             self.plot_states(empstate_ratio,ylabel='Osuus tilassa [%]',ylimit=20,stack=False)
@@ -946,7 +977,10 @@ class EpisodeStats():
             self.plot_states(empstate_ratio,ylabel='Osuus tilassa [%]',parent=True,stack=False)
             self.plot_states(empstate_ratio,ylabel='Osuus tilassa [%]',unemp=True,stack=False)
 
-        self.plot_states(empstate_ratio,ylabel='Osuus tilassa [%]',start_from=60,stack=True)
+        if figname is not None:
+            self.plot_states(empstate_ratio,ylabel='Osuus tilassa [%]',start_from=60,stack=True,figname=figname+'_stack60')
+        else:
+            self.plot_states(empstate_ratio,ylabel='Osuus tilassa [%]',start_from=60,stack=True)
 
     def plot_unemp(self,unempratio=True,figname=None,grayscale=True):
         '''
@@ -969,7 +1003,6 @@ class EpisodeStats():
         fig,ax=plt.subplots()
         ax.set_xlabel('Ikä [v]')
         ax.set_ylabel(ylabeli)
-        #print(labeli)
         ax.plot(x,unempratio_stat,ls='--',label='havainto')
         ax.plot(x,tyottomyysaste)
         if figname is not None:
@@ -1022,9 +1055,12 @@ class EpisodeStats():
             
         ax.set_xlabel('Ikä [v]')
         ax.set_ylabel(ylabeli)
-        ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
+        if False:
+            ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
+        else:
+            ax.legend()
         if figname is not None:
-            plt.savefig(figname+'tyollisyysaste_spk.eps', format='eps')
+            plt.savefig(figname+'tyottomyysaste_spk.eps', format='eps')
         plt.show()        
 
     def plot_parttime_ratio(self,greyscale=True,figname=None):
@@ -1067,7 +1103,10 @@ class EpisodeStats():
             
         ax.set_xlabel('Ikä [v]')
         ax.set_ylabel(ylabeli)
-        ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
+        if False:
+            ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
+        else:
+            ax.legend()
         if figname is not None:
             plt.savefig(figname+'osatyoaste_spk.eps', format='eps')
         plt.show()
@@ -1077,35 +1116,46 @@ class EpisodeStats():
         empstate_ratio=100*self.empstate/self.alive
         self.plot_states(empstate_ratio,ylabel='Osuus tilassa [%]',onlyunemp=True,stack=True)
 
-    def plot_group_emp(self):
+    def plot_group_emp(self,grayscale=True,figname=None):
         fig,ax=plt.subplots()
+        if grayscale:
+            lstyle='--'
+        else:
+            lstyle=''
+        
         for gender in range(2):
             if gender==0:
                 leg='Miehet'
                 gempstate=np.sum(self.gempstate[:,:,0:3],axis=2)
                 alive=np.zeros((self.galive.shape[0],1))
                 alive[:,0]=np.sum(self.galive[:,0:3],1)
-                lstyle='--'
+                color='darkgray'
             else:
                 gempstate=np.sum(self.gempstate[:,:,3:6],axis=2)
                 alive=np.zeros((self.galive.shape[0],1))
                 alive[:,0]=np.sum(self.galive[:,3:6],1)
                 leg='Naiset'
-                lstyle=''
+                color='black'
         
             tyollisyysaste,osatyoaste,tyottomyysaste,ka_tyottomyysaste=self.comp_empratios(gempstate,alive)
         
             x=np.linspace(self.min_age,self.max_age,self.n_time)
-            ax.plot(x,tyollisyysaste,ls=lstyle,label='työllisyysaste {}'.format(leg))
+            ax.plot(x,tyollisyysaste,color=color,label='työllisyysaste {}'.format(leg))
             #ax.plot(x,tyottomyysaste,label='työttömyys {}'.format(leg))
             
-        emp_statsratio=100*self.emp_stats(g=1)
-        ax.plot(x,emp_statsratio,label='havainto, naiset')
         emp_statsratio=100*self.emp_stats(g=2)
-        ax.plot(x,emp_statsratio,label='havainto, miehet')
+        ax.plot(x,emp_statsratio,ls=lstyle,color='darkgray',label='havainto, miehet')
+        emp_statsratio=100*self.emp_stats(g=1)
+        ax.plot(x,emp_statsratio,ls=lstyle,color='black',label='havainto, naiset')
         ax.set_xlabel('Ikä [v]')
         ax.set_ylabel('Osuus tilassa [%]')
-        ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
+        if False:
+            ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
+        else:
+            ax.legend()
+        if figname is not None:
+            plt.savefig(figname+'tyollisyysaste_spk.eps', format='eps')
+                
         plt.show()
 
     def plot_pensions(self):
@@ -1137,7 +1187,7 @@ class EpisodeStats():
 
     def plot_states(self,statistic,ylabel='',ylimit=None,show_legend=True,parent=False,unemp=False,no_ve=False,
                     start_from=None,stack=True,figname=None,yminlim=None,ymaxlim=None,
-                    onlyunemp=False):
+                    onlyunemp=False,reverse=False):
         if start_from is None:
             x=np.linspace(self.min_age,self.max_age,self.n_time)
         else:
@@ -1170,7 +1220,9 @@ class EpisodeStats():
         fig,ax=plt.subplots()
         if stack:
             pal=sns.color_palette("hls", self.n_employment)  # hls, husl, cubehelix
-            #alpha=0.8
+            pal=sns.light_palette("black", 8, reverse=True)
+            reverse=True
+            
             if parent:
                 if not self.minimal:
                     ax.stackplot(x,ura_mother,ura_dad,ura_kht,
@@ -1196,8 +1248,11 @@ class EpisodeStats():
                     ax.stackplot(x,ura_unemp,labels=('tyött'), colors=pal)
             else:
                 if not self.minimal:
-                    ax.stackplot(x,ura_emp,ura_osatyo,ura_vetyo,ura_veosatyo,ura_unemp,ura_tyomarkkinatuki,ura_pipe,ura_disab,ura_mother,ura_dad,ura_kht,ura_ret,ura_student,ura_outsider,ura_army,
-                        labels=('työssä','osatyö','ve+työ','ve+osatyö','työtön','tm-tuki','työttömyysputki','tk-eläke','äitiysvapaa','isyysvapaa','kh-tuki','vanhuuseläke','opiskelija','työvoiman ulkop.','armeijassa'), 
+                    #ax.stackplot(x,ura_emp,ura_osatyo,ura_vetyo,ura_veosatyo,ura_unemp,ura_tyomarkkinatuki,ura_pipe,ura_disab,ura_mother,ura_dad,ura_kht,ura_ret,ura_student,ura_outsider,ura_army,
+                    #    labels=('työssä','osatyö','ve+työ','ve+osatyö','työtön','tm-tuki','työttömyysputki','tk-eläke','äitiysvapaa','isyysvapaa','kh-tuki','vanhuuseläke','opiskelija','työvoiman ulkop.','armeijassa'), 
+                    #    colors=pal)
+                    ax.stackplot(x,ura_emp,ura_osatyo,ura_vetyo,ura_veosatyo,ura_unemp,ura_tyomarkkinatuki,ura_pipe,ura_ret,ura_disab,ura_mother,ura_dad,ura_kht,ura_student,ura_outsider,ura_army,
+                        labels=('työssä','osatyö','ve+työ','ve+osatyö','työtön','tm-tuki','työttömyysputki','vanhuuseläke','tk-eläke','äitiysvapaa','isyysvapaa','kh-tuki','opiskelija','työvoiman ulkop.','armeijassa'), 
                         colors=pal)
                 else:
                     ax.stackplot(x,ura_emp,ura_unemp,ura_ret,
@@ -1244,12 +1299,20 @@ class EpisodeStats():
         ax.set_xlabel('Ikä [v]')
         ax.set_ylabel(ylabel)
         if show_legend:
-            ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
+            if not reverse:
+                lgd=ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
+            else:
+                handles, labels = ax.get_legend_handles_labels()
+                lgd=ax.legend(handles[::-1], labels[::-1], bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
+            
         if ylimit is not None:
             ax.set_ylim([0,ylimit])  
         #fig.tight_layout()
-        if filename is not None:
-            plt.savefig(filename,bbox_inches='tight')
+        if figname is not None:
+            if show_legend:
+                plt.savefig(figname,bbox_inches='tight',bbox_extra_artists=(lgd,), format='eps')
+            else:
+                plt.savefig(figname,bbox_inches='tight', format='eps')
         plt.show()
 
     def plot_toe(self):    
@@ -1347,7 +1410,7 @@ class EpisodeStats():
         self.plot_ratiostates(self.stat_wage_reduction,ylabel='wage-reduction tilassa',stack=False,unemp=True)
         #self.plot_ratiostates(np.log(1.0+self.stat_wage_reduction),ylabel='log 5wage-reduction tilassa',stack=False)
 
-    def plot_distrib(self,label='',plot_emp=False,plot_bu=False,ansiosid=False,tmtuki=False,putki=False,outsider=False,max_age=500,laaja=False,max=4):
+    def plot_distrib(self,label='',plot_emp=False,plot_bu=False,ansiosid=False,tmtuki=False,putki=False,outsider=False,max_age=500,laaja=False,max=4,figname=None):
         unemp_distrib,emp_distrib,unemp_distrib_bu=self.comp_empdistribs(ansiosid=ansiosid,tmtuki=tmtuki,putki=putki,outsider=outsider,max_age=max_age,laaja=laaja)
         tyoll_distrib,tyoll_distrib_bu=self.comp_tyollistymisdistribs(ansiosid=ansiosid,tmtuki=tmtuki,putki=putki,outsider=outsider,max_age=max_age,laaja=laaja)
         if plot_emp:
@@ -1355,18 +1418,20 @@ class EpisodeStats():
         if plot_bu:
             self.plot_unempdistribs_bu(unemp_distrib_bu)
         else:
-            self.plot_unempdistribs(unemp_distrib)
+            self.plot_unempdistribs(unemp_distrib,figname=figname)
         #self.plot_tyolldistribs(unemp_distrib,tyoll_distrib,tyollistyneet=False)     
         if plot_bu:
             self.plot_tyolldistribs_both_bu(unemp_distrib_bu,tyoll_distrib_bu,max=max)
         else:
-            self.plot_tyolldistribs_both(unemp_distrib,tyoll_distrib,max=max)
+            self.plot_tyolldistribs_both(unemp_distrib,tyoll_distrib,max=max,figname=figname)
 
     def plot_stats(self,greyscale=True,figname=None):
         
         if greyscale:
             plt.style.use('grayscale')
             plt.rcParams['figure.facecolor'] = 'white' # Or any suitable colour...
+
+        self.plot_emp(figname=figname)
             
         q=self.comp_budget(scale=True)
         q_stat=self.stat_budget_2018()
@@ -1379,6 +1444,9 @@ class EpisodeStats():
                            
         print('Rahavirrat skaalattuna väestötasolle')
         print(tabulate(df, headers='keys', tablefmt='psql', floatfmt=",.2f"))
+        
+        if not self.minimal:
+            self.plot_outsider()
         
         print('Keskikestot käytettyjen ansiosidonnaisten päivärahojen mukaan')
         keskikesto=self.comp_unemp_durations()
@@ -1397,20 +1465,9 @@ class EpisodeStats():
         self.plot_unemp(unempratio=False)
         self.plot_unemp_shares()
         if not self.minimal:
-            self.plot_group_emp()
+            self.plot_group_emp(figname=figname)
         self.plot_parttime_ratio(figname=figname)
         self.plot_sal()
-        
-        self.plot_distrib(label='Jakauma ansiosidonnainen+tmtuki+putki, no max age',ansiosid=True,tmtuki=True,putki=True,outsider=False)
-        self.plot_distrib(label='Jakauma ansiosidonnainen+tmtuki+putki, jakso päättynyt ennen 50v ikää',ansiosid=True,tmtuki=True,putki=True,outsider=False,max_age=50)
-        #self.plot_distrib(label='Jakauma ansiosidonnainen+tmtuki+putki, jakso päättynyt ennen 50v ikää, jäljellä oleva aika',plot_bu=True,ansiosid=True,tmtuki=True,putki=True,outsider=False,max_age=50)
-        self.plot_distrib(label='Jakauma ansiosidonnainen+putki, jakso päättynyt ennen 50v ikää, jäljellä oleva aika',plot_bu=False,ansiosid=True,tmtuki=False,putki=True,outsider=False,max_age=50)
-        #self.plot_distrib(label='Jakauma ansiosidonnainen+tmtuki ilman putkea',ansiosid=True,tmtuki=True,putki=False,outsider=False)
-        #self.plot_distrib(label='Jakauma ansiosidonnainen+tmtuki ilman putkea, max Ikä 50v',ansiosid=True,tmtuki=True,putki=False,outsider=False,max_age=50)
-        self.plot_distrib(label='Jakauma tmtuki',ansiosid=False,tmtuki=True,putki=False,outsider=False)
-        #self.plot_distrib(label='Jakauma työvoiman ulkopuoliset',ansiosid=False,tmtuki=False,putki=False,outsider=True)
-        #self.plot_distrib(label='Jakauma laaja (ansiosidonnainen+tmtuki+putki+ulkopuoliset)',laaja=True)
-
         if not self.minimal:
             self.plot_outsider()
             self.plot_student()
@@ -1426,6 +1483,17 @@ class EpisodeStats():
             self.plot_toe()
             self.plot_oof()
             self.plot_wage_reduction()
+        
+        self.plot_distrib(label='Jakauma ansiosidonnainen+tmtuki+putki, no max age',ansiosid=True,tmtuki=True,putki=True,outsider=False)
+        self.plot_distrib(label='Jakauma ansiosidonnainen+tmtuki+putki, jakso päättynyt ennen 50v ikää',ansiosid=True,tmtuki=True,putki=True,outsider=False,max_age=50,figname=figname)
+        #self.plot_distrib(label='Jakauma ansiosidonnainen+tmtuki+putki, jakso päättynyt ennen 50v ikää, jäljellä oleva aika',plot_bu=True,ansiosid=True,tmtuki=True,putki=True,outsider=False,max_age=50)
+        self.plot_distrib(label='Jakauma ansiosidonnainen+putki, jakso päättynyt ennen 50v ikää, jäljellä oleva aika',plot_bu=False,ansiosid=True,tmtuki=False,putki=True,outsider=False,max_age=50)
+        #self.plot_distrib(label='Jakauma ansiosidonnainen+tmtuki ilman putkea',ansiosid=True,tmtuki=True,putki=False,outsider=False)
+        #self.plot_distrib(label='Jakauma ansiosidonnainen+tmtuki ilman putkea, max Ikä 50v',ansiosid=True,tmtuki=True,putki=False,outsider=False,max_age=50)
+        self.plot_distrib(label='Jakauma tmtuki',ansiosid=False,tmtuki=True,putki=False,outsider=False)
+        #self.plot_distrib(label='Jakauma työvoiman ulkopuoliset',ansiosid=False,tmtuki=False,putki=False,outsider=True)
+        #self.plot_distrib(label='Jakauma laaja (ansiosidonnainen+tmtuki+putki+ulkopuoliset)',laaja=True)
+
             
     def plot_final(self):
         
@@ -1800,8 +1868,8 @@ class EpisodeStats():
 
         tyoll_osuus1,htv_osuus1,tyot_osuus1,kokotyo_osuus1,osatyo_osuus1=self.comp_employed(self.empstate)
         tyoll_osuus2,htv_osuus2,tyot_osuus2,kokotyo_osuus2,osatyo_osuus2=self.comp_employed(cc2.empstate)
-        htv1,tyoll1,haj1,tyollaste1,tyolliset1=self.comp_tyollisyys_stats(self.empstate/self.n_pop,scale_time=True,start=s,end=e)
-        htv2,tyoll2,haj2,tyollaste2,tyolliset2=self.comp_tyollisyys_stats(cc2.empstate/cc2.n_pop,scale_time=True,start=s,end=e)
+        htv1,tyoll1,haj1,tyollaste1,tyolliset1,osatyolliset1,kokotyolliset1,osata1,kokota1=self.comp_tyollisyys_stats(self.empstate/self.n_pop,scale_time=True,start=s,end=e,full=True)
+        htv2,tyoll2,haj2,tyollaste2,tyolliset2,osatyolliset2,kokotyolliset2,osata2,kokota2=self.comp_tyollisyys_stats(cc2.empstate/cc2.n_pop,scale_time=True,start=s,end=e,full=True)
         ansiosid_osuus1,tm_osuus1=self.comp_employed_detailed(self.empstate)
         ansiosid_osuus2,tm_osuus2=self.comp_employed_detailed(cc2.empstate)
         
@@ -1857,10 +1925,14 @@ class EpisodeStats():
         ax.plot(x,100*tm_osuus1,label='tm-tuki, '+label1)
         ax.legend()
         plt.show()
-
+        
         print('Työllisyysvaikutus {:.0f}-{:.0f}-vuotiaisiin noin {:.0f} htv ja {:.0f} työllistä'.format(s,e,htv1-htv2,tyoll1-tyoll2))
-        print('Työllisiä {:.0f} vs {:.0f}'.format(htv1,htv2))
+        print('- kokoaikaisiin {:.0f}-{:.0f}-vuotiailla noin {:.0f} työllistä ({:.0f} vs {:.0f})'.format(s,e,(kokotyolliset1-kokotyolliset2),kokotyolliset1,kokotyolliset2))
+        print('- osa-aikaisiin {:.0f}-{:.0f}-vuotiailla noin {:.0f} työllistä ({:.0f} vs {:.0f})'.format(s,e,(osatyolliset1-osatyolliset2),osatyolliset1,osatyolliset2))
+        print('Työllisiä {:.0f} vs {:.0f} htv'.format(htv1,htv2))
         print('Työllisyysastevaikutus {:.0f}-{:.0f}-vuotiailla noin {:.2f} prosenttia ({:.2f} vs {:.2f})'.format(s,e,(tyollaste1-tyollaste2)*100,tyollaste1*100,tyollaste2*100))
+        print('- kokoaikaisiin {:.0f}-{:.0f}-vuotiailla noin {:.2f} prosenttia ({:.2f} vs {:.2f})'.format(s,e,(kokota1-kokota2)*100,kokota1*100,kokota2*100))
+        print('- osa-aikaisiin {:.0f}-{:.0f}-vuotiailla noin {:.2f} prosenttia ({:.2f} vs {:.2f})'.format(s,e,(osata1-osata2)*100,osata1*100,osata2*100))
         
         # epävarmuus
         delta=1.96*1.0/np.sqrt(self.n_pop)
@@ -2007,7 +2079,7 @@ class EpisodeStats():
 
         return demog,demog2
         
-    def comp_tyollisyys_stats(self,emp,scale_time=True,start=20.25,end=63.5):
+    def comp_tyollisyys_stats(self,emp,scale_time=True,start=20.25,end=63.5,full=False):
         demog,demog2=self.get_demog()
               
         if scale_time:
@@ -2018,15 +2090,22 @@ class EpisodeStats():
         min_cage=self.map_age(start)
         max_cage=self.map_age(end)+1
         
-        tyollosuus,htvosuus,_,_,_=self.comp_employed(emp)
+        tyollosuus,htvosuus,tyot_osuus,kokotyo_osuus,osatyo_osuus=self.comp_employed(emp)
         
         htv=np.round(scale*np.sum(demog2[min_cage:max_cage]*htvosuus[min_cage:max_cage]))
         tyollvaikutus=np.round(scale*np.sum(demog2[min_cage:max_cage]*tyollosuus[min_cage:max_cage]))
+        osatyollvaikutus=np.round(scale*np.sum(demog2[min_cage:max_cage]*osatyo_osuus[min_cage:max_cage]))
+        kokotyollvaikutus=np.round(scale*np.sum(demog2[min_cage:max_cage]*kokotyo_osuus[min_cage:max_cage]))
         haj=np.mean(np.std(tyollosuus[min_cage:max_cage]))
         
         tyollaste=tyollvaikutus/(np.sum(demog2[min_cage:max_cage])*scale)
+        osatyollaste=osatyollvaikutus/(np.sum(demog2[min_cage:max_cage])*scale)
+        kokotyollaste=kokotyollvaikutus/(np.sum(demog2[min_cage:max_cage])*scale)
             
-        return htv,tyollvaikutus,haj,tyollaste,tyollosuus
+        if full:
+            return htv,tyollvaikutus,haj,tyollaste,tyollosuus,osatyollvaikutus,kokotyollvaikutus,osatyollaste,kokotyollaste
+        else:
+            return htv,tyollvaikutus,haj,tyollaste,tyollosuus
 
     def comp_state_stats(self,state,scale_time=True,start=20.25,end=63.5):
         demog,demog2=self.get_demog()
@@ -2055,7 +2134,7 @@ class SimStats(EpisodeStats):
         Laskee statistiikat ajoista
         '''
         
-        print('run_simstats...')
+        print('computing simulation statistics...')
         #n=self.load_hdf(results+'_simut','n')
         e_rate=np.zeros((n,self.n_time))
         agg_htv=np.zeros(n)
@@ -2120,6 +2199,8 @@ class SimStats(EpisodeStats):
             x=np.linspace(self.min_age,self.max_age,self.n_time)
             ax.plot(x,100*tyolliset_base,alpha=0.9,lw=2.0)
 
+        tqdm_e = tqdm(range(int(n)), desc='Sim', leave=True, unit=" ")
+
         for i in range(startn+1,n): 
             self.load_sim(results+'_'+str(100+i))
             empstate=self.empstate/self.n_pop
@@ -2169,6 +2250,7 @@ class SimStats(EpisodeStats):
             unemp_lastdur0=self.comp_unemp_durations_v2(return_q=False)
             unemp_dur[i,:,:]=unemp_dur0[:,:]
             unemp_lastdur[i,:,:]=unemp_lastdur0[:,:]
+            tqdm_e.set_description("Pop " + str(n))
 
         self.save_simstats(save,agg_htv,agg_tyoll,agg_rew,\
                             emp_tyolliset,emp_tyolliset_osuus,\
@@ -2308,8 +2390,9 @@ class SimStats(EpisodeStats):
         self.plot_unemp_durdistribs(unemp_lastdur)
 
         #self.plot_compare_empdistribs(emp_distrib1,emp_distrib2,label='vaihtoehto')
-        self.plot_unempdistribs(unemp_distrib1)
-        self.plot_tyolldistribs(unemp_distrib1,tyoll_distrib1,tyollistyneet=True)
+        self.plot_unempdistribs(unemp_distrib1,figname=figname,max=10,miny=1e-5,maxy=2)
+        #self.plot_tyolldistribs(unemp_distrib1,tyoll_distrib1,tyollistyneet=True,figname=figname)
+        self.plot_tyolldistribs_both(unemp_distrib1,tyoll_distrib1,max=4,figname=figname)
 
     def get_simstats(self,filename1,plot=False,use_mean=False):
         agg_htv,agg_tyoll,agg_rew,emp_tyolliset,emp_tyolliset_osuus,\
@@ -2368,11 +2451,15 @@ class SimStats(EpisodeStats):
         else:
             return m_best,m_median,s_emp,median_htv,u_tmtuki,u_ansiosid,h_median,mn_median
 
-    def compare_simstats(self,filename1,filename2,label1='perus',label2='vaihtoehto',figname=None):
+    def compare_simstats(self,filename1,filename2,label1='perus',label2='vaihtoehto',figname=None,greyscale=True):
         m_best1,m_median1,s_emp1,median_htv1,u_tmtuki1,u_ansiosid1,h_median1,mn_median1=self.get_simstats(filename1)
         _,m_mean1,s_emp1,mean_htv1,u_tmtuki1,u_ansiosid1,h_mean1,mn_mean1=self.get_simstats(filename1,use_mean=True)
         m_best2,m_median2,s_emp2,median_htv2,u_tmtuki2,u_ansiosid2,h_median2,mn_median2=self.get_simstats(filename2)
         _,m_mean2,s_emp2,mean_htv2,u_tmtuki2,u_ansiosid2,h_mean2,mn_mean2=self.get_simstats(filename2,use_mean=True)
+
+        if greyscale:
+            plt.style.use('grayscale')
+            plt.rcParams['figure.facecolor'] = 'white' # Or any suitable colour...
         
         print('Vaikutus mediaanityöllisyyteen {:.0f} htv ({:.0f} vs {:.0f})'.format(median_htv2-median_htv1,median_htv2,median_htv1))
         print('Vaikutus keskiarvotyöllisyyteen {:.0f} htv ({:.0f} vs {:.0f})'.format(mean_htv2-mean_htv1,mean_htv2,mean_htv1))
@@ -2462,8 +2549,8 @@ class SimStats(EpisodeStats):
         self.plot_compare_unemp_durdistribs(kestot1,kestot2,viimkesto1,viimkesto2,label1='',label2='')
         
         #self.plot_compare_empdistribs(emp_distrib1,emp_distrib2,label='vaihtoehto')
-        self.plot_compare_unempdistribs(unemp_distrib1,unemp_distrib2,label1=label1,label2=label2)
-        self.plot_compare_tyolldistribs(unemp_distrib1,tyoll_distrib1,unemp_distrib2,tyoll_distrib2,tyollistyneet=True,label1=label1,label2=label2)
+        self.plot_compare_unempdistribs(unemp_distrib1,unemp_distrib2,label1=label1,label2=label2,figname=figname)
+        self.plot_compare_tyolldistribs(unemp_distrib1,tyoll_distrib1,unemp_distrib2,tyoll_distrib2,tyollistyneet=True,label1=label1,label2=label2,figname=figname)
         self.plot_compare_virtadistribs(tyoll_virta1,tyoll_virta2,tyot_virta1,tyot_virta2,tyot_virta_ansiosid1,tyot_virta_ansiosid2,tyot_virta_tm1,tyot_virta_tm2,label1=label1,label2=label2)
 
     def save_simstats(self,filename,agg_htv,agg_tyoll,agg_rew,emp_tyolliset,emp_tyolliset_osuus,\
@@ -2573,6 +2660,7 @@ class SimStats(EpisodeStats):
 
     def plot_compare_csvirta(self,m1,m2,lbl):
         nc1=np.reshape(np.cumsum(m1),m1.shape)
+        print(m1.shape,np.cumsum(m1).shape)
         nc2=np.reshape(np.cumsum(m2),m1.shape)
         fig,ax=plt.subplots()
         x=np.linspace(self.min_age,self.max_age,self.n_time)
@@ -2588,25 +2676,29 @@ class SimStats(EpisodeStats):
         plt.show()
 
     def plot_compare_virtadistribs(self,tyoll_virta1,tyoll_virta2,tyot_virta1,tyot_virta2,tyot_virta_ansiosid1,tyot_virta_ansiosid2,tyot_virta_tm1,tyot_virta_tm2,label1='',label2=''):
-        m1=np.mean(tyoll_virta1,axis=1,keepdims=True)
-        m2=np.mean(tyoll_virta2,axis=1,keepdims=True)
-        #print(m1.shape,tyoll_virta1.shape)
-        self.plot_compare_virrat(m1,m2,virta_label='työllisyys',label1=label1,label2=label2,ymin=0,ymax=3000)
+        #print(tyoll_virta1.shape)
+        m1=np.mean(tyoll_virta1,axis=0,keepdims=True).transpose()
+        m2=np.mean(tyoll_virta2,axis=0,keepdims=True).transpose()
+        plt.plot(m1)
+        plt.plot(m2)
+        plt.show()
+        self.plot_compare_virrat(m1,m2,virta_label='työllisyys',label1=label1,label2=label2,ymin=0,ymax=5000)
         self.plot_compare_csvirta(m1,m2,'cumsum työllisyysvirta')
 
-        m1=np.mean(tyot_virta1,axis=1,keepdims=True)
-        m2=np.mean(tyot_virta2,axis=1,keepdims=True)
+        m1=np.mean(tyot_virta1,axis=0,keepdims=True).transpose()
+        m2=np.mean(tyot_virta2,axis=0,keepdims=True).transpose()
         self.plot_compare_virrat(m1,m2,virta_label='työttömyys',label1=label1,label2=label2)
         self.plot_compare_csvirta(m1,m2,'cumsum työttömyysvirta')
 
-        m1=np.mean(tyot_virta_ansiosid1,axis=1,keepdims=True)
-        m2=np.mean(tyot_virta_ansiosid2,axis=1,keepdims=True)
+        m1=np.mean(tyot_virta_ansiosid1,axis=0,keepdims=True).transpose()
+        m2=np.mean(tyot_virta_ansiosid2,axis=0,keepdims=True).transpose()
         self.plot_compare_virrat(m1,m2,virta_label='ei-tm-työttömyys',label1=label1,label2=label2)
-        m1=np.mean(tyot_virta_tm1,axis=1,keepdims=True)
-        m2=np.mean(tyot_virta_tm2,axis=1,keepdims=True)
+        m1=np.mean(tyot_virta_tm1,axis=0,keepdims=True).transpose()
+        m2=np.mean(tyot_virta_tm2,axis=0,keepdims=True).transpose()
         self.plot_compare_virrat(m1,m2,virta_label='tm-työttömyys',label1=label1,label2=label2)
-        n1=np.mean(tyoll_virta1,axis=1,keepdims=True)-np.mean(tyot_virta1,axis=1,keepdims=True)
-        n2=np.mean(tyoll_virta2,axis=1,keepdims=True)-np.mean(tyot_virta2,axis=1,keepdims=True)
+        n1=(np.mean(tyoll_virta1,axis=0,keepdims=True)-np.mean(tyot_virta1,axis=0,keepdims=True)).transpose()
+        n2=(np.mean(tyoll_virta2,axis=0,keepdims=True)-np.mean(tyot_virta2,axis=0,keepdims=True)).transpose()
+        #print(n1.shape,tyoll_virta1.shape)
         self.plot_compare_virrat(n1,n2,virta_label='netto',label1=label1,label2=label2,ymin=-1000,ymax=1000)
         self.plot_compare_csvirta(n1,n2,'cumsum nettovirta')
 

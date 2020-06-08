@@ -37,7 +37,8 @@ class Lifecycle():
                     randomness=None,include_putki=None,preferencenoise=None,
                     callback_minsteps=None,pinkslip=True,plotdebug=False,
                     use_sigma_reduction=None,porrasta_putki=None,perustulomalli=None,
-                    porrasta_1askel=None,porrasta_2askel=None,porrasta_3askel=None):
+                    porrasta_1askel=None,porrasta_2askel=None,porrasta_3askel=None,
+                    osittainen_perustulo=None):
         '''
         Alusta muuttujat
         '''
@@ -71,6 +72,7 @@ class Lifecycle():
         self.porrasta_1askel=True
         self.porrasta_2askel=True
         self.porrasta_3askel=True
+        self.osittainen_perustulo=True
 
         if callback_minsteps is not None:
             self.callback_minsteps=callback_minsteps
@@ -118,6 +120,8 @@ class Lifecycle():
             
         if preferencenoise is not None:
             self.include_preferencenoise=preferencenoise
+        if osittainen_perustulo is not None:
+            self.osittainen_perustulo=osittainen_perustulo
 
         if env is not None:
             self.environment=env
@@ -157,7 +161,7 @@ class Lifecycle():
                 'porrasta_2askel': self.porrasta_2askel, 'porrasta_3askel': self.porrasta_3askel,
                 'include_putki': self.include_putki, 'use_sigma_reduction': self.use_sigma_reduction,
                 'plotdebug': self.plotdebug, 'include_preferencenoise': self.include_preferencenoise,
-                'perustulomalli': perustulomalli}
+                'perustulomalli': perustulomalli,'osittainen_perustulo':self.osittainen_perustulo}
             #self.n_acts = 4
             #if self.mortality:
             #    self.n_employment = 16
@@ -751,11 +755,10 @@ class Lifecycle():
     
         self.n_pop=pop
 
-        results1=results+'_v'
         # repeat simulation n times
         for num in range(startn,n):
-            bestname2=save+'_v'+str(100+num)
-            results2=results1+'_'+str(100+num)
+            bestname2=save+'_'+str(100+num)
+            results2=results+'_'+str(100+num)
             print('computing {}'.format(num))
         
             self.run_results(steps1=steps1,steps2=steps2,pop=pop,rlmodel=rlmodel,
@@ -764,7 +767,7 @@ class Lifecycle():
                batch1=batch1,batch2=batch2,cont=cont,start_from=start_from,plot=False,
                callback_minsteps=callback_minsteps,verbose=verbose)
 
-        self.render_distrib(load=results1,n=n,stats_results=stats_results)
+        #self.render_distrib(load=results,n=n,stats_results=stats_results)
             
     def comp_distribs(self,load=None,n=1,startn=0,stats_results='results/distrib_stats'):
         if load is None:
