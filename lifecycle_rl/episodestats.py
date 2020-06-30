@@ -982,7 +982,7 @@ class EpisodeStats():
         else:
             self.plot_states(empstate_ratio,ylabel='Osuus tilassa [%]',start_from=60,stack=True)
 
-    def plot_unemp(self,unempratio=True,figname=None,grayscale=True):
+    def plot_unemp(self,unempratio=True,figname=None,grayscale=False):
         '''
         Plottaa työttömyysaste (unempratio=True) tai työttömien osuus väestöstö (False)
         '''
@@ -1040,7 +1040,7 @@ class EpisodeStats():
         if grayscale:
             lstyle='--'
         else:
-            lsstyle=''            
+            lstyle=''            
             
         if unempratio:
             ax.plot(x,100*self.unempratio_stats(g=1),ls=lstyle,label='havainto, naiset')
@@ -1116,7 +1116,7 @@ class EpisodeStats():
         empstate_ratio=100*self.empstate/self.alive
         self.plot_states(empstate_ratio,ylabel='Osuus tilassa [%]',onlyunemp=True,stack=True)
 
-    def plot_group_emp(self,grayscale=True,figname=None):
+    def plot_group_emp(self,grayscale=False,figname=None):
         fig,ax=plt.subplots()
         if grayscale:
             lstyle='--'
@@ -1795,7 +1795,7 @@ class EpisodeStats():
 
         #self.plot_stats(5)
         self.plot_stats(figname=figname)
-        #self.plot_reward()   
+        self.plot_reward()   
 
     def stat_budget_2018(self,scale=False):
         q={}
@@ -1854,7 +1854,7 @@ class EpisodeStats():
 
         return q
 
-    def compare_with(self,cc2,label2='perus',label1='vaihtoehto',grayscale=True):
+    def compare_with(self,cc2,label2='perus',label1='vaihtoehto',grayscale=False):
         if grayscale:
             plt.style.use('grayscale')
             plt.rcParams['figure.facecolor'] = 'white' # Or any suitable colour...
@@ -2289,7 +2289,7 @@ class SimStats(EpisodeStats):
         putkessa=np.median(np.asarray(putki))
         return putkessa
         
-    def plot_simstats(self,filename,grayscale=True,figname=None):
+    def plot_simstats(self,filename,grayscale=False,figname=None):
         agg_htv,agg_tyoll,agg_rew,emp_tyolliset,emp_tyolliset_osuus,\
             emp_tyottomat,emp_tyottomat_osuus,emp_htv,emps,best_rew,best_emp,emps=self.load_simstats(filename)
 

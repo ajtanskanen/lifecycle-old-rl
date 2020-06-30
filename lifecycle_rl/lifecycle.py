@@ -13,9 +13,11 @@ from gym import spaces, logger, utils, error
 from gym.utils import seeding
 import numpy as np
 from fin_benefits import Benefits
+import matplotlib.pyplot as plt
 import gym_unemployment
 import h5py
 import tensorflow as tf
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 from tqdm import tqdm_notebook as tqdm
 import os
 from . episodestats import EpisodeStats, SimStats
@@ -233,7 +235,9 @@ class Lifecycle():
 
     def setup_rlmodel(self,rlmodel,loadname,env,batch,policy_kwargs,learning_rate,
                       max_grad_norm,cont,tensorboard=True,verbose=1,n_cpu=1):
-
+        '''
+        Alustaa RL-mallin ajoa varten
+        '''
         batch=max(1,int(np.ceil(batch/n_cpu)))
         
         full_tensorboard_log=True
@@ -415,6 +419,9 @@ class Lifecycle():
                 save='saved/malli',pop=None,batch=1,max_grad_norm=0.5,learning_rate=0.25,
                 start_from=None,max_n_cpu=1000,plot=True,use_vecmonitor=False,
                 bestname='tmp/best2',use_callback=False,log_interval=100,verbose=1,plotdebug=False):
+        '''
+        Opetusrutiini
+        '''
 
         self.best_mean_reward, self.n_steps = -np.inf, 0
 
@@ -450,10 +457,10 @@ class Lifecycle():
             if False:
                 env = DummyVecEnv([lambda: gym.make(self.environment,kwargs=self.gym_kwargs) for i in range(n_cpu)])
 
-        #normalize=False
-        #if normalize:
-        #    normalize_kwargs={}
-        #    env = VecNormalize(env, **normalize_kwargs)
+        normalize=False
+        if normalize:
+            normalize_kwargs={}
+            env = VecNormalize(env, **normalize_kwargs)
 
         model=self.setup_rlmodel(self.rlmodel,start_from,env,batch,policy_kwargs,learning_rate,
                                     max_grad_norm,cont,verbose=verbose,n_cpu=n_cpu)
@@ -479,6 +486,58 @@ class Lifecycle():
         val=f.get(nimi).value
         f.close()
         return val
+        
+    def setup_model(self,debug=False,rlmodel='acktr',plot=True,load=None,pop=None,
+                 max_grad_norm=0.5,learning_rate=0.25,deterministic=False):
+
+        if pop is not None:
+            self.n_pop=pop
+
+        if load is not None:
+            self.loadname=load
+
+        if rlmodel is not None:
+            self.rlmodel=rlmodel
+            
+        print('simulate')
+            
+        self.episodestats.reset(self.timestep,self.n_time,self.n_employment,self.n_pop,
+                                self.env,self.minimal,self.min_age,self.max_age,self.min_retirementage)
+
+        print('simulating ',self.loadname)
+
+        # multiprocess environment
+        policy_kwargs,n_cpu=self.get_multiprocess_env(rlmodel,debug=debug)
+
+        nonvec=False
+        if nonvec:
+            env=self.env
+            #env.seed(4567)
+            #env.env_seed(4567)
+        else:
+            env = SubprocVecEnv([lambda: self.make_env(self.environment, i, self.gym_kwargs) for i in range(n_cpu)])
+            #env = SubprocVecEnv([lambda: gym.make(self.environment,kwargs=self.gym_kwargs) for i in range(n_cpu)])
+            #env = DummyVecEnv([lambda: gym.make(self.environment,kwargs=self.gym_kwargs) for i in range(n_cpu)])
+
+        normalize=False
+        if normalize:
+            normalize_kwargs={}
+            env = VecNormalize(env, **normalize_kwargs)
+            
+        print('predicting...')
+
+        if self.rlmodel=='a2c':
+            model = A2C.load(load, env=env, verbose=1,gamma=self.gamma, policy_kwargs=policy_kwargs)
+        elif self.rlmodel=='acer':
+            model = ACER.load(load, env=env, verbose=1,gamma=self.gamma, policy_kwargs=policy_kwargs)
+        elif self.rlmodel=='acktr' or self.rlmodel=='small_acktr' or self.rlmodel=='lnacktr' or self.rlmodel=='small_lnacktr':
+            model = ACKTR.load(load, env=env, verbose=1,gamma=self.gamma, policy_kwargs=policy_kwargs)
+        elif self.rlmodel=='trpo':
+            model = TRPO.load(load, env=env, verbose=1,gamma=self.gamma, policy_kwargs=policy_kwargs)
+        else:
+            model = DQN.load(load, env=env, verbose=1,gamma=self.gamma,prioritized_replay=True,policy_kwargs=policy_kwargs)
+
+        return model,env
 
     def simulate(self,debug=False,rlmodel='acktr',plot=True,load=None,pop=None,
                  max_grad_norm=0.5,learning_rate=0.25,
@@ -660,7 +719,7 @@ class Lifecycle():
                save='saved/perusmalli',debug=False,simut='simut',results='results/simut_res',
                stats='results/simut_stats',deterministic=True,train=True,predict=True,
                batch1=1,batch2=100,cont=False,start_from=None,plot=False,callback_minsteps=None,
-               verbose=1,plotdebug=None):
+               verbose=1,plotdebug=None,max_grad_norm=0.5,learning_rate=0.25):
    
         '''
         run_results
@@ -681,11 +740,13 @@ class Lifecycle():
             if cont:
                 self.run_protocol(rlmodel=rlmodel,steps1=steps1,steps2=steps2,verbose=verbose,
                                   debug=debug,save=save,batch1=batch1,batch2=batch2,
-                                  cont=cont,start_from=start_from,twostage=twostage,plotdebug=plotdebug)
+                                  cont=cont,start_from=start_from,twostage=twostage,plotdebug=plotdebug,
+                                  max_grad_norm=max_grad_norm,learning_rate=learning_rate)
             else:
                 self.run_protocol(rlmodel=rlmodel,steps1=steps1,steps2=steps2,verbose=verbose,
                                  debug=debug,batch1=batch1,batch2=batch2,cont=cont,
-                                 save=save,twostage=twostage,plotdebug=plotdebug)
+                                 save=save,twostage=twostage,plotdebug=plotdebug,
+                                 max_grad_norm=max_grad_norm,learning_rate=learning_rate)
         if predict:
             #print('predict...')
             self.predict_protocol(pop=pop,rlmodel=rlmodel,load=save,plotdebug=plotdebug,
@@ -695,7 +756,7 @@ class Lifecycle():
           
     def run_protocol(self,steps1=2_000_000,steps2=1_000_000,rlmodel='acktr',
                debug=False,batch1=1,batch2=1000,cont=False,twostage=False,
-               start_from=None,save='best3',verbose=1,plotdebug=None):
+               start_from=None,save='best3',verbose=1,plotdebug=None,max_grad_norm=0.5,learning_rate=0.25):
         '''
         run_protocol
 
@@ -714,16 +775,18 @@ class Lifecycle():
             if cont:
                 self.train(steps=steps1,cont=cont,rlmodel=rlmodel,save=tmpname,batch=batch1,debug=debug,
                            start_from=start_from,use_callback=False,use_vecmonitor=False,
-                           log_interval=10,verbose=1,plotdebug=plotdebug)
+                           log_interval=10,verbose=1,plotdebug=plotdebug,max_grad_norm=max_grad_norm,learning_rate=learning_rate)
             else:
                 self.train(steps=steps1,cont=False,rlmodel=rlmodel,save=tmpname,batch=batch1,debug=debug,
-                           use_callback=False,use_vecmonitor=False,log_interval=1000,verbose=1,plotdebug=plotdebug)
+                           use_callback=False,use_vecmonitor=False,log_interval=1000,verbose=1,plotdebug=plotdebug,
+                           max_grad_norm=max_grad_norm,learning_rate=learning_rate)
 
         if twostage and steps2>0:
             print('phase 2')
             self.train(steps=steps2,cont=True,rlmodel=rlmodel,save=tmpname,
                        debug=debug,start_from=tmpname,batch=batch2,verbose=verbose,
-                       use_callback=False,use_vecmonitor=False,log_interval=1,bestname=save,plotdebug=plotdebug)
+                       use_callback=False,use_vecmonitor=False,log_interval=1,bestname=save,plotdebug=plotdebug,
+                       max_grad_norm=max_grad_norm,learning_rate=learning_rate)
 
     def predict_protocol(self,pop=1_00,rlmodel='acktr',results='results/simut_res',
                          load='saved/malli',debug=False,deterministic=False,plotdebug=None):
@@ -785,6 +848,92 @@ class Lifecycle():
     def compare_distrib(self,filename1,filename2,n=1,label1='perus',label2='vaihtoehto',figname=None):
         self.episodestats.compare_simstats(filename1,filename2,label1=label1,label2=label2,figname=figname)
 
-        # gather results ...
-        #if plot:
-        #    print('plot')            
+    def plot_RL_act(self,t,rlmodel='acktr',load='perus',debug=True,deterministic=True,
+                        n_palkka=80,deltapalkka=1000,n_elake=40,deltaelake=1500,
+                        hila_palkka0=0,hila_elake0=0):
+        model,env=self.setup_model(rlmodel=rlmodel,load=load,debug=debug)
+        RL_unemp=self.RL_simulate_V(model,env,t,emp=0,deterministic=deterministic,n_palkka=n_palkka,deltapalkka=deltapalkka,n_elake=n_elake,deltaelake=deltaelake,
+                        hila_palkka0=hila_palkka0,hila_elake0=hila_elake0)
+        RL_emp=self.RL_simulate_V(model,env,t,emp=1,deterministic=deterministic,n_palkka=n_palkka,deltapalkka=deltapalkka,n_elake=n_elake,deltaelake=deltaelake,
+                        hila_palkka0=hila_palkka0,hila_elake0=hila_elake0)
+        self.plot_img(RL_emp,xlabel="Eläke",ylabel="Palkka",title='Töissä')
+        self.plot_img(RL_unemp,xlabel="Eläke",ylabel="Palkka",title='Työttömänä')
+        self.plot_img(RL_emp-RL_unemp,xlabel="Eläke",ylabel="Palkka",title='Työssä-Työtön')
+
+    def get_RL_act(self,t,emp=0,time_in_state=0,rlmodel='acktr',load='perus',debug=True,deterministic=True,
+                        n_palkka=80,deltapalkka=1000,n_elake=40,deltaelake=1500,
+                        hila_palkka0=0,hila_elake0=0):
+        model,env=self.setup_model(rlmodel=rlmodel,load=load,debug=debug)
+        return self.RL_simulate_V(model,env,t,emp=emp,deterministic=deterministic,time_in_state=time_in_state,
+                        n_palkka=n_palkka,deltapalkka=deltapalkka,n_elake=n_elake,deltaelake=deltaelake,
+                        hila_palkka0=hila_palkka0,hila_elake0=hila_elake0)
+
+    def plot_img(self,img,xlabel="Eläke",ylabel="Palkka",title="Employed"):
+        fig, ax = plt.subplots()
+        im = ax.imshow(img)
+        heatmap = plt.pcolor(img) 
+        plt.colorbar(heatmap)        
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel(ylabel)
+        plt.title(title)
+        plt.show()
+        
+    def plot_twoimg(self,img1,img2,xlabel="Eläke",ylabel="Palkka",title1="Employed",title2="Employed"):
+        fig, axs = plt.subplots(ncols=2)
+        im0 = axs[0].imshow(img1)
+        #heatmap = plt.pcolor(img1) 
+        divider0 = make_axes_locatable(axs[0])
+        cax0 = divider0.append_axes("right", size="20%", pad=0.05)
+        cbar0 = plt.colorbar(im0, cax=cax0)
+        axs[0].set_xlabel(xlabel)
+        axs[0].set_ylabel(ylabel)
+        axs[0].set_title(title1)
+        im1 = axs[1].imshow(img2)
+        divider1 = make_axes_locatable(axs[1])
+        cax1 = divider1.append_axes("right", size="20%", pad=0.05)
+        cbar1 = plt.colorbar(im1, cax=cax1)
+        #heatmap = plt.pcolor(img2) 
+        axs[1].set_xlabel(xlabel)
+        axs[1].set_ylabel(ylabel)
+        axs[1].set_title(title2)
+        #plt.colorbar(heatmap)        
+        plt.subplots_adjust(wspace=0.3)
+        plt.show()
+        
+    def filter_act(self,act,state):
+        employment_status,pension,old_wage,age,time_in_state,next_wage=self.env.state_decode(state)
+        if age<self.min_retirementage:
+            if act==2:
+                act=0
+        
+        return act
+
+    def RL_simulate_V(self,model,env,age,emp=0,time_in_state=0,deterministic=True,
+                        n_palkka=80,deltapalkka=1000,n_elake=40,deltaelake=1500,
+                        hila_palkka0=0,hila_elake0=0):
+        # dynaamisen ohjelmoinnin parametrejä
+        def map_elake(v):
+            return hila_elake0+deltaelake*v # pitäisikö käyttää exp-hilaa?
+
+        def map_palkka(v):
+            return hila_palkka0+deltapalkka*v # pitäisikö käyttää exp-hilaa?
+    
+        prev=0
+        toe=0
+        fake_act=np.zeros((n_palkka,n_elake))
+        for el in range(n_elake):
+            for p in range(n_palkka): 
+                palkka=map_palkka(p)
+                elake=map_elake(el)
+                if emp==2:
+                    state=self.env.state_encode(emp,elake,0,age,time_in_state,0)
+                elif emp==1:
+                    state=self.env.state_encode(emp,elake,palkka,age,time_in_state,palkka)
+                else:
+                    state=self.env.state_encode(emp,elake,palkka,age,time_in_state,palkka)
+
+                act, predstate = model.predict(state,deterministic=deterministic)
+                act=self.filter_act(act,state)
+                fake_act[p,el]=act
+                 
+        return fake_act
