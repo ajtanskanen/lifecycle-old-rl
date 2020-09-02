@@ -40,7 +40,8 @@ class Lifecycle():
                     callback_minsteps=None,pinkslip=True,plotdebug=False,
                     use_sigma_reduction=None,porrasta_putki=None,perustulomalli=None,
                     porrasta_1askel=None,porrasta_2askel=None,porrasta_3askel=None,
-                    osittainen_perustulo=None):
+                    osittainen_perustulo=None,gamma=None,exploration=None,exploration_ratio=None,
+                    year=2018):
         '''
         Alusta muuttujat
         '''
@@ -52,6 +53,7 @@ class Lifecycle():
         self.max_retirementage=68
         self.n_pop = 1000
         self.callback_minsteps = 1_000
+        self.year=year
 
         # apumuuttujia
         self.n_age = self.max_age-self.min_age+1
@@ -99,6 +101,15 @@ class Lifecycle():
         if include_putki is not None:
             self.include_putki=include_putki
 
+        self.exploration=False
+        self.exploration_ratio=0.10
+
+        if exploration is not None:
+            self.exploration=exploration
+            
+        if exploration_ratio is not None:
+            self.exploration_ratio=exploration_ratio
+
         if ansiopvraha_kesto400 is not None:
             self.ansiopvraha_kesto400=ansiopvraha_kesto400
 
@@ -110,6 +121,9 @@ class Lifecycle():
             
         if porrasta_1askel is not None:
             self.porrasta_1askel=porrasta_1askel
+
+        if gamma is not None:
+            self.gamma=gamma
 
         if porrasta_2askel is not None:
             self.porrasta_2askel=porrasta_2askel
@@ -128,7 +142,7 @@ class Lifecycle():
         if env is not None:
             self.environment=env
             
-        self.use_sigma_reduction=False
+        self.use_sigma_reduction=True
         if use_sigma_reduction is not None:
             self.use_sigma_reduction=use_sigma_reduction
 
@@ -142,7 +156,8 @@ class Lifecycle():
             self.minimal=True
             self.gym_kwargs={'step': self.timestep,'gamma':self.gamma,
                 'min_age': self.min_age, 'max_age': self.max_age,
-                'min_retirementage': self.min_retirementage, 'max_retirementage':self.max_retirementage}
+                'min_retirementage': self.min_retirementage, 'max_retirementage':self.max_retirementage,
+                'reset_exploration_go': self.exploration,'reset_exploration_ratio': self.exploration_ratio}
             #self.n_employment = 3
             #self.n_acts = 3
         else:
@@ -177,6 +192,7 @@ class Lifecycle():
         os.makedirs(self.tenb_dir, exist_ok=True)
         os.makedirs("saved/", exist_ok=True)
         os.makedirs("results/", exist_ok=True)
+        os.makedirs("best/", exist_ok=True)
 
         self.env = gym.make(self.environment,kwargs=self.gym_kwargs)
         self.n_employment,self.n_acts=self.env.get_n_states()
@@ -432,7 +448,7 @@ class Lifecycle():
         self.bestname=bestname
 
         self.episodestats.reset(self.timestep,self.n_time,self.n_employment,self.n_pop,
-                                self.env,self.minimal,self.min_age,self.max_age,self.min_retirementage)
+                                self.env,self.minimal,self.min_age,self.max_age,self.min_retirementage,self.year)
 
         # multiprocess environment
         policy_kwargs,n_cpu=self.get_multiprocess_env(self.rlmodel,debug=debug)  
@@ -444,18 +460,21 @@ class Lifecycle():
             print('use_vecmonitor',use_vecmonitor)
             print('use_callback',use_callback)
 
+        gkwargs=self.gym_kwargs.copy()
+        gkwargs.update({'train':True})
+        
         nonvec=False
         if nonvec:
             env=self.env
         else:
             if use_vecmonitor:
-                env = SubprocVecEnv([lambda: self.make_env(self.environment, i, self.gym_kwargs, use_monitor=False) for i in range(n_cpu)])
+                env = SubprocVecEnv([lambda: self.make_env(self.environment, i, gkwargs, use_monitor=False) for i in range(n_cpu)])
                 env = VecMonitor(env,filename=self.log_dir+'monitor.csv')
             else:
-                env = SubprocVecEnv([lambda: self.make_env(self.environment, i, self.gym_kwargs, use_monitor=use_callback) for i in range(n_cpu)])
+                env = SubprocVecEnv([lambda: self.make_env(self.environment, i, gkwargs, use_monitor=use_callback) for i in range(n_cpu)])
 
             if False:
-                env = DummyVecEnv([lambda: gym.make(self.environment,kwargs=self.gym_kwargs) for i in range(n_cpu)])
+                env = DummyVecEnv([lambda: gym.make(self.environment,kwargs=gkwargs) for i in range(n_cpu)])
 
         normalize=False
         if normalize:
@@ -555,7 +574,7 @@ class Lifecycle():
         print('simulate')
             
         self.episodestats.reset(self.timestep,self.n_time,self.n_employment,self.n_pop,
-                                self.env,self.minimal,self.min_age,self.max_age,self.min_retirementage)
+                                self.env,self.minimal,self.min_age,self.max_age,self.min_retirementage,self.year)
 
         print('simulating ',self.loadname)
 
@@ -630,6 +649,9 @@ class Lifecycle():
 
         if False:
             return self.emp
+   
+    def get_reward(self):
+        return self.episodestats.get_reward()
    
     def render(self,load=None,figname=None):
         if load is not None:
@@ -848,6 +870,14 @@ class Lifecycle():
     def compare_distrib(self,filename1,filename2,n=1,label1='perus',label2='vaihtoehto',figname=None):
         self.episodestats.compare_simstats(filename1,filename2,label1=label1,label2=label2,figname=figname)
 
+    def plot_rewdist(self,age=20,sum=False,all=False):
+        t=self.map_age(age)
+        self.episodestats.plot_rewdist(t=t,sum=sum,all=all)
+
+    def plot_saldist(self,age=20,sum=False,all=False,n=10):
+        t=self.map_age(age)
+        self.episodestats.plot_saldist(t=t,sum=sum,all=all,n=n)
+
     def plot_RL_act(self,t,rlmodel='acktr',load='perus',debug=True,deterministic=True,
                         n_palkka=80,deltapalkka=1000,n_elake=40,deltaelake=1500,
                         hila_palkka0=0,hila_elake0=0):
@@ -937,3 +967,18 @@ class Lifecycle():
                 fake_act[p,el]=act
                  
         return fake_act
+        
+    def L2error(self,pred):
+        '''
+        Laskee L2-virheen havaittuun työllisyysasteen L2-virhe/vuosi tasossa
+        Käytetään optimoinnissa
+        '''
+        ep=Epsisodestats()
+        baseline=ep.emp_stats()
+        pred=1
+        L2=(baseline-ep)**2/len(baseline)
+        
+        return L2
+        
+    def get_results(self):
+        pass

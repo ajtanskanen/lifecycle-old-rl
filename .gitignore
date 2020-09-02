@@ -10,6 +10,10 @@ lifecycle_rl/__pycache__/*
 lifecycle_rl.egg-info/*
 *.pyc
 tmp/*
+v2/tmp/*
+v2/.ipynb_checkpoints/*
+v2/saved/*
+v2/results/*
 paperin tulokset/results/*
 paperin tulokset/best/*
 tests/*

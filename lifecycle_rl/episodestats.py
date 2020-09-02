@@ -21,22 +21,27 @@ from tqdm import tqdm_notebook as tqdm
 locale.setlocale(locale.LC_ALL, 'fi_FI')
 
 class EpisodeStats():
-    def __init__(self,timestep,n_time,n_emps,n_pop,env,minimal,min_age,max_age,min_retirementage):
-        self.reset(timestep,n_time,n_emps,n_pop,env,minimal,min_age,max_age,min_retirementage)
+    def __init__(self,timestep,n_time,n_emps,n_pop,env,minimal,min_age,max_age,min_retirementage,year=2018,version=2):
+        self.reset(timestep,n_time,n_emps,n_pop,env,minimal,min_age,max_age,min_retirementage,year,version=version)
 
-    def reset(self,timestep,n_time,n_emps,n_pop,env,minimal,min_age,max_age,min_retirementage):
+    def reset(self,timestep,n_time,n_emps,n_pop,env,minimal,min_age,max_age,min_retirementage,year,version=2):
         self.min_age=min_age
         self.max_age=max_age
         self.min_retirementage=min_retirementage
         self.minimal=minimal
+        self.version=version
         self.n_employment=n_emps
         self.n_time=n_time
         self.timestep=timestep # 0.25 = 3kk askel
-        self.inv_timestep=int(np.round(1/self.timestep)) # pitöisi olla kokonaisluku
+        self.inv_timestep=int(np.round(1/self.timestep)) # pitää olla kokonaisluku
         self.n_pop=n_pop
+        self.year=year
         self.env=env
         
         if self.minimal:
+            self.version=0
+        
+        if self.version==0:
             self.n_groups=1
         else:
             self.n_groups=6
@@ -48,6 +53,7 @@ class EpisodeStats():
         self.alive=np.zeros((self.n_time,1))
         self.galive=np.zeros((self.n_time,self.n_groups))
         self.rewstate=np.zeros((self.n_time,n_emps))
+        self.poprewstate=np.zeros((self.n_time,self.n_pop))
         self.salaries_emp=np.zeros((self.n_time,n_emps))
         self.actions=np.zeros((self.n_time,self.n_pop))
         self.popempstate=np.zeros((self.n_time,self.n_pop))
@@ -86,31 +92,46 @@ class EpisodeStats():
         self.infostats_sairauspaivaraha=np.zeros((self.n_time,1))
         self.infostats_toimeentulotuki=np.zeros((self.n_time,1))
         self.infostats_tulot_netto=np.zeros((self.n_time,1))
+        self.infostats_pinkslip=np.zeros((self.n_time,n_emps))
+        self.infostats_chilren18_emp=np.zeros((self.n_time,n_emps))
+        self.infostats_chilren7_emp=np.zeros((self.n_time,n_emps))
+        self.infostats_chilren18=np.zeros((self.n_time,1))
+        self.infostats_chilren7=np.zeros((self.n_time,1))
 
     def add(self,n,act,r,state,newstate,q=None,debug=False,plot=False,aveV=None): 
-        if self.minimal:
+        if self.version==0:
             emp,_,_,a,_,_=self.env.state_decode(state) # current employment state
             newemp,_,newsal,a2,tis,next_wage=self.env.state_decode(newstate)
             g=0
             bu=0
-        else:
+        elif self.version==1:
+            # v1
             emp,_,_,_,a,_,_,_,_,_,_,_,_,_=self.env.state_decode(state) # current employment state
-            newemp,g,newpen,newsal,a2,tis,paidpens,pink,toe,ura,oof,bu,wr,pr=self.env.state_decode(newstate)
+            newemp,g,newpen,newsal,a2,tis,paidpens,pink,toe,ura,oof,bu,wr,p=self.env.state_decode(newstate)
+        else: 
+            # v2
+            emp,_,_,_,a,_,_,_,_,_,_,_,_,_,_,_,_,_,_=self.env.state_decode(state) # current employment state
+            newemp,g,newpen,newsal,a2,tis,paidpens,pink,toe,ura,oof,bu,wr,pr,upr,uw,uwr,c7,c18=self.env.state_decode(newstate)
     
-        t=int(np.round((a2-self.min_age)*self.inv_timestep))
+        t=int(np.round((a2-self.min_age)*self.inv_timestep))-1
         
         if a2>a and newemp>=0: # new state is not reset (age2>age)
             if a2>self.min_retirementage and newemp==3:
                 newemp=2
-            self.empstate[t,newemp]+=1
-            self.alive[t]+=1
-            self.rewstate[t,newemp]+=r
-            self.actions[t,n]=act
-            self.popempstate[t,n]=newemp
-            self.salaries[t,n]=newsal
-            self.salaries_emp[t,newemp]+=newsal
-            self.time_in_state[t,newemp]+=tis
-            if not self.minimal:
+            if self.version>0:
+                self.empstate[t,newemp]+=1
+                self.alive[t]+=1
+                self.rewstate[t,newemp]+=r
+                #if self.poprewstate[t,n]>0:
+                #    print(t,n)
+            
+                self.poprewstate[t,n]=r
+                self.actions[t,n]=act
+                self.popempstate[t,n]=newemp
+                self.salaries[t,n]=newsal
+                self.salaries_emp[t,newemp]+=newsal
+                self.time_in_state[t,newemp]+=tis
+                self.infostats_pinkslip[t,newemp]+=pink
                 self.gempstate[t,newemp,g]+=1
                 self.stat_wage_reduction[t,newemp]+=wr
                 self.galive[t,g]+=1
@@ -146,12 +167,13 @@ class EpisodeStats():
                 self.empstate[t,newemp]+=1
                 self.alive[t]+=1
                 self.rewstate[t,newemp]+=r
+                self.poprewstate[t,n]=r
                 self.actions[t,n]=act
                 self.popempstate[t,n]=newemp
                 self.salaries[t,n]=newsal
                 self.salaries_emp[t,newemp]+=newsal
                 self.time_in_state[t,newemp]+=tis
-                if not self.minimal:
+                if self.version>0:
                     self.gempstate[t,newemp,g]+=1
                     self.stat_wage_reduction[t,newemp]+=wr
                     self.galive[t,g]+=1
@@ -701,6 +723,52 @@ class EpisodeStats():
         
         plt.show()   
 
+    def plot_saldist(self,t=0,sum=False,all=False,n=10):
+        if all:
+            fig,ax=plt.subplots()
+            for t in range(1,self.n_time-1,5):
+                scaled,x=np.histogram(self.salaries[t,:])
+                x2=0.5*(x[1:]+x[0:-1])
+                ax.plot(x2,scaled,label=t)
+            plt.legend()
+            plt.show()
+        else:
+            if sum:
+                scaled,x=np.histogram(np.sum(self.salaries,axis=0))
+                x2=0.5*(x[1:]+x[0:-1])
+                plt.plot(x2,scaled)
+            else:
+                fig,ax=plt.subplots()
+                for t in range(t,t+n,1):
+                    scaled,x=np.histogram(self.salaries[t,:])
+                    x2=0.5*(x[1:]+x[0:-1])
+                    ax.plot(x2,scaled,label=t)
+                plt.legend()
+                plt.show()
+
+    def plot_rewdist(self,t=0,sum=False,all=False):
+        if all:
+            fig,ax=plt.subplots()
+            for t in range(1,self.n_time-1,5):
+                scaled,x=np.histogram(self.poprewstate[t,:])
+                x2=0.5*(x[1:]+x[0:-1])
+                ax.plot(x2,scaled,label=t)
+            plt.legend()
+            plt.show()
+        else:
+            if sum:
+                scaled,x=np.histogram(np.sum(self.poprewstate,axis=0))
+                x2=0.5*(x[1:]+x[0:-1])
+                plt.plot(x2,scaled)
+            else:
+                fig,ax=plt.subplots()
+                for t in range(t,t+10,1):
+                    scaled,x=np.histogram(self.poprewstate[t,:])
+                    x2=0.5*(x[1:]+x[0:-1])
+                    ax.plot(x2,scaled,label=t)
+                plt.legend()
+                plt.show()
+
     def plot_unempdistribs_bu(self,unemp_distrib,max=2):
         #fig,ax=plt.subplots()
         max_time=50
@@ -781,7 +849,7 @@ class EpisodeStats():
         retired=emp[:,2]
         unemployed=emp[:,0]
 
-        if not self.minimal:
+        if self.version>0:
             disabled=emp[:,3]
             piped=emp[:,4]
             mother=emp[:,5]
@@ -822,7 +890,7 @@ class EpisodeStats():
         retired=emp[:,2,g]
         unemployed=emp[:,0,g]
 
-        if not self.minimal:
+        if self.version>0:
             disabled=emp[:,3,g]
             piped=emp[:,4,g]
             mother=emp[:,5,g]
@@ -865,14 +933,25 @@ class EpisodeStats():
         ax.legend()
         plt.show()
         if printtaa:
-            print('yht',100*(self.empstate[:,11]+self.empstate[:,5]+self.empstate[:,6]+self.empstate[:,7])/self.alive[:,0])
+            #print('yht',100*(self.empstate[:,11]+self.empstate[:,5]+self.empstate[:,6]+self.empstate[:,7])/self.alive[:,0])
             nn=np.sum(self.galive[:,3:5],1,keepdims=True)
             n=np.sum(100*(self.gempstate[:,5,3:5]+self.gempstate[:,6,3:5]+self.gempstate[:,7,3:5]),1,keepdims=True)/nn
             mn=np.sum(self.galive[:,0:2],1,keepdims=True)
             m=np.sum(100*(self.gempstate[:,5,0:2]+self.gempstate[:,6,0:2]+self.gempstate[:,7,0:2]),1,keepdims=True)/mn
-            print('naiset vv',n[1::4,0])
-            print('miehet vv',m[1::4,0])
+            #print('naiset vv',n[1::4,0])
+            #print('miehet vv',m[1::4,0])
 
+    def plot_pinkslip(self):
+        x=np.linspace(self.min_age,self.max_age,self.n_time)
+        fig,ax=plt.subplots()
+        ax.plot(x,100*self.infostats_pinkslip[:,0]/self.empstate[:,0],label='irtisanottu ansiosidonnaisella')
+        ax.plot(x,100*self.infostats_pinkslip[:,4]/self.empstate[:,4],label='irtisanottu putkessa')
+        ax.plot(x,100*self.infostats_pinkslip[:,13]/self.empstate[:,13],label='irtisanottu työmarkkinatuella')
+        ax.set_xlabel('Ikä [v]')
+        ax.set_ylabel('Irtisanottujen osuus tilassa [%]')
+        ax.legend()
+        plt.show()
+        
     def plot_student(self):
         x=np.linspace(self.min_age,self.max_age,self.n_time)
         fig,ax=plt.subplots()
@@ -957,7 +1036,7 @@ class EpisodeStats():
             plt.savefig(figname+'tyollisyysaste.eps', format='eps')
         plt.show()
 
-        if not self.minimal:
+        if self.version>0:
             fig,ax=plt.subplots()
             ax.stackplot(x,osatyoaste,100-osatyoaste,
                         labels=('osatyössä','kokoaikaisessa työssä')) #, colors=pal) pal=sns.color_palette("hls", self.n_employment)  # hls, husl, cubehelix
@@ -970,10 +1049,8 @@ class EpisodeStats():
         else:
             self.plot_states(empstate_ratio,ylabel='Osuus tilassa [%]',stack=True)
 
-        if not self.minimal:
+        if self.version>0:
             self.plot_states(empstate_ratio,ylabel='Osuus tilassa [%]',ylimit=20,stack=False)
-
-        if not self.minimal:
             self.plot_states(empstate_ratio,ylabel='Osuus tilassa [%]',parent=True,stack=False)
             self.plot_states(empstate_ratio,ylabel='Osuus tilassa [%]',unemp=True,stack=False)
 
@@ -1040,7 +1117,7 @@ class EpisodeStats():
         if grayscale:
             lstyle='--'
         else:
-            lstyle=''            
+            lstyle='--'            
             
         if unempratio:
             ax.plot(x,100*self.unempratio_stats(g=1),ls=lstyle,label='havainto, naiset')
@@ -1121,7 +1198,7 @@ class EpisodeStats():
         if grayscale:
             lstyle='--'
         else:
-            lstyle=''
+            lstyle='--'
         
         for gender in range(2):
             if gender==0:
@@ -1159,11 +1236,11 @@ class EpisodeStats():
         plt.show()
 
     def plot_pensions(self):
-        if not self.minimal:
+        if self.version>0:
             self.plot_ratiostates(self.stat_pension,ylabel='Tuleva eläke [e/v]',stack=False)
 
     def plot_career(self):    
-        if not self.minimal:
+        if self.version>0:
             self.plot_ratiostates(self.stat_tyoura,ylabel='Työuran pituus [v]',stack=False)
 
     def plot_ratiostates(self,statistic,ylabel='',ylimit=None, show_legend=True, parent=False,\
@@ -1187,7 +1264,7 @@ class EpisodeStats():
 
     def plot_states(self,statistic,ylabel='',ylimit=None,show_legend=True,parent=False,unemp=False,no_ve=False,
                     start_from=None,stack=True,figname=None,yminlim=None,ymaxlim=None,
-                    onlyunemp=False,reverse=False):
+                    onlyunemp=False,reverse=False,grayscale=False):
         if start_from is None:
             x=np.linspace(self.min_age,self.max_age,self.n_time)
         else:
@@ -1200,7 +1277,7 @@ class EpisodeStats():
         ura_emp=statistic[:,1]
         ura_ret=statistic[:,2]
         ura_unemp=statistic[:,0]
-        if not self.minimal:
+        if self.version>0:
             ura_disab=statistic[:,3]
             ura_pipe=statistic[:,4]
             ura_mother=statistic[:,5]
@@ -1219,22 +1296,24 @@ class EpisodeStats():
 
         fig,ax=plt.subplots()
         if stack:
-            pal=sns.color_palette("hls", self.n_employment)  # hls, husl, cubehelix
-            pal=sns.light_palette("black", 8, reverse=True)
+            if grayscale:
+                pal=sns.light_palette("black", 8, reverse=True)
+            else:
+                pal=sns.color_palette("hls", self.n_employment)  # hls, husl, cubehelix
             reverse=True
             
             if parent:
-                if not self.minimal:
+                if self.version>0:
                     ax.stackplot(x,ura_mother,ura_dad,ura_kht,
                         labels=('äitiysvapaa','isyysvapaa','khtuki'), colors=pal)
             elif unemp:
-                if not self.minimal:
+                if self.version>0:
                     ax.stackplot(x,ura_unemp,ura_pipe,ura_student,ura_outsider,ura_tyomarkkinatuki,
                         labels=('tyött','putki','opiskelija','ulkona','tm-tuki'), colors=pal)
                 else:
                     ax.stackplot(x,ura_unemp,labels=('tyött'), colors=pal)
             elif onlyunemp:
-                if not self.minimal:
+                if self.version>0:
                     #urasum=np.nansum(statistic[:,[0,4,11,13]],axis=1)/100
                     urasum=np.nansum(statistic[:,[0,4,13]],axis=1)/100
                     osuus=(1.0-np.array([0.84,0.68,0.62,0.58,0.57,0.55,0.53,0.50,0.29]))*100
@@ -1247,7 +1326,7 @@ class EpisodeStats():
                 else:
                     ax.stackplot(x,ura_unemp,labels=('tyött'), colors=pal)
             else:
-                if not self.minimal:
+                if self.version>0:
                     #ax.stackplot(x,ura_emp,ura_osatyo,ura_vetyo,ura_veosatyo,ura_unemp,ura_tyomarkkinatuki,ura_pipe,ura_disab,ura_mother,ura_dad,ura_kht,ura_ret,ura_student,ura_outsider,ura_army,
                     #    labels=('työssä','osatyö','ve+työ','ve+osatyö','työtön','tm-tuki','työttömyysputki','tk-eläke','äitiysvapaa','isyysvapaa','kh-tuki','vanhuuseläke','opiskelija','työvoiman ulkop.','armeijassa'), 
                     #    colors=pal)
@@ -1268,13 +1347,13 @@ class EpisodeStats():
                 ax.set_ylim(yminlim,ymaxlim)
         else:
             if parent:
-                if not self.minimal:
+                if self.version>0:
                     ax.plot(x,ura_mother,label='äitiysvapaa')
                     ax.plot(x,ura_dad,label='isyysvapaa')
                     ax.plot(x,ura_kht,label='khtuki')
             elif unemp:
                 ax.plot(x,ura_unemp,label='tyött')
-                if not self.minimal:
+                if self.version>0:
                     ax.plot(x,ura_tyomarkkinatuki,label='tm-tuki')
                     ax.plot(x,ura_student,label='student')
                     ax.plot(x,ura_outsider,label='outsider')
@@ -1283,7 +1362,7 @@ class EpisodeStats():
                 ax.plot(x,ura_unemp,label='tyött')
                 ax.plot(x,ura_ret,label='eläke')
                 ax.plot(x,ura_emp,label='työ')
-                if not self.minimal:
+                if self.version>0:
                     ax.plot(x,ura_disab,label='tk')
                     ax.plot(x,ura_pipe,label='putki')
                     ax.plot(x,ura_tyomarkkinatuki,label='tm-tuki')
@@ -1316,12 +1395,12 @@ class EpisodeStats():
         plt.show()
 
     def plot_toe(self):    
-        if not self.minimal:
+        if self.version>0:
             self.plot_ratiostates(self.stat_toe,'työssäolo-ehdon pituus 28 kk aikana [v]',stack=False)
             
     def plot_oof(self):
         # oof-dataa ei lasketa
-        #if not self.minimal:
+        #if self.version>0:
         #    self.plot_ratiostates(self.out_of_work,'Poissa työstö [v]',stack=False)
         return
 
@@ -1400,10 +1479,16 @@ class EpisodeStats():
         ax.set_xlabel('Aika')
         ax.set_ylabel('Koko reward tilassa')
         ax.legend()
-        plt.show()  
-
-        rr=np.sum(total_reward)/self.n_pop
-        print('yhteensä reward {r}'.format(r=rr))
+        plt.show() 
+        
+    def comp_total_reward(self): 
+        total_reward=np.sum(self.rewstate)
+        rr=total_reward/self.n_pop
+        print('total rew1 {} rew2 {}'.format(total_reward,np.sum(self.poprewstate)))
+        print('ave rew1 {} rew2 {}'.format(rr,np.mean(np.sum(self.poprewstate,axis=0))))
+        print('shape rew2 {} pop {} alive {}'.format(self.poprewstate.shape,self.n_pop,self.alive[0]))
+        
+        return rr
 
     def plot_wage_reduction(self):
         self.plot_ratiostates(self.stat_wage_reduction,ylabel='wage-reduction tilassa',stack=False)
@@ -1425,27 +1510,30 @@ class EpisodeStats():
         else:
             self.plot_tyolldistribs_both(unemp_distrib,tyoll_distrib,max=max,figname=figname)
 
-    def plot_stats(self,greyscale=True,figname=None):
+    def plot_stats(self,greyscale=False,figname=None):
         
         if greyscale:
             plt.style.use('grayscale')
             plt.rcParams['figure.facecolor'] = 'white' # Or any suitable colour...
 
-        self.plot_emp(figname=figname)
-            
-        q=self.comp_budget(scale=True)
-        q_stat=self.stat_budget_2018()
+        #self.comp_total_reward()
+        #self.plot_rewdist()
 
-        df1 = pd.DataFrame.from_dict(q,orient='index',columns=['e/v'])
-        df2 = pd.DataFrame.from_dict(q_stat,orient='index',columns=['toteuma'])
-        df=df1.copy()
-        df['toteuma']=df2['toteuma']
-        df['ero']=df1['e/v']-df2['toteuma']
+        self.plot_emp(figname=figname)
+
+        if self.version>0:            
+            q=self.comp_budget(scale=True)
+            q_stat=self.stat_budget_2018()
+            df1 = pd.DataFrame.from_dict(q,orient='index',columns=['e/v'])
+            df2 = pd.DataFrame.from_dict(q_stat,orient='index',columns=['toteuma'])
+            df=df1.copy()
+            df['toteuma']=df2['toteuma']
+            df['ero']=df1['e/v']-df2['toteuma']
                            
-        print('Rahavirrat skaalattuna väestötasolle')
-        print(tabulate(df, headers='keys', tablefmt='psql', floatfmt=",.2f"))
+            print('Rahavirrat skaalattuna väestötasolle')
+            print(tabulate(df, headers='keys', tablefmt='psql', floatfmt=",.2f"))
         
-        if not self.minimal:
+        if self.version>0:
             self.plot_outsider()
         
         print('Keskikestot käytettyjen ansiosidonnaisten päivärahojen mukaan')
@@ -1459,16 +1547,18 @@ class EpisodeStats():
         print(tabulate(df, headers='keys', tablefmt='psql', floatfmt=",.2f"))
         
         self.plot_emp(figname=figname)
-        if not self.minimal:
+        if self.version>0:
             print('Lisäpäivillä on {:.0f} henkilöä'.format(self.count_putki()))
         self.plot_unemp(unempratio=True,figname=figname)
         self.plot_unemp(unempratio=False)
         self.plot_unemp_shares()
-        if not self.minimal:
+        if self.version>0:
             self.plot_group_emp(figname=figname)
-        self.plot_parttime_ratio(figname=figname)
+            self.plot_parttime_ratio(figname=figname)
+            
         self.plot_sal()
-        if not self.minimal:
+        if self.version>0:
+            self.plot_pinkslip()
             self.plot_outsider()
             self.plot_student()
             self.plot_army()
@@ -1486,13 +1576,15 @@ class EpisodeStats():
         
         self.plot_distrib(label='Jakauma ansiosidonnainen+tmtuki+putki, no max age',ansiosid=True,tmtuki=True,putki=True,outsider=False)
         self.plot_distrib(label='Jakauma ansiosidonnainen+tmtuki+putki, jakso päättynyt ennen 50v ikää',ansiosid=True,tmtuki=True,putki=True,outsider=False,max_age=50,figname=figname)
-        #self.plot_distrib(label='Jakauma ansiosidonnainen+tmtuki+putki, jakso päättynyt ennen 50v ikää, jäljellä oleva aika',plot_bu=True,ansiosid=True,tmtuki=True,putki=True,outsider=False,max_age=50)
-        self.plot_distrib(label='Jakauma ansiosidonnainen+putki, jakso päättynyt ennen 50v ikää, jäljellä oleva aika',plot_bu=False,ansiosid=True,tmtuki=False,putki=True,outsider=False,max_age=50)
-        #self.plot_distrib(label='Jakauma ansiosidonnainen+tmtuki ilman putkea',ansiosid=True,tmtuki=True,putki=False,outsider=False)
-        #self.plot_distrib(label='Jakauma ansiosidonnainen+tmtuki ilman putkea, max Ikä 50v',ansiosid=True,tmtuki=True,putki=False,outsider=False,max_age=50)
-        self.plot_distrib(label='Jakauma tmtuki',ansiosid=False,tmtuki=True,putki=False,outsider=False)
-        #self.plot_distrib(label='Jakauma työvoiman ulkopuoliset',ansiosid=False,tmtuki=False,putki=False,outsider=True)
-        #self.plot_distrib(label='Jakauma laaja (ansiosidonnainen+tmtuki+putki+ulkopuoliset)',laaja=True)
+        
+        if self.version>0:
+            #self.plot_distrib(label='Jakauma ansiosidonnainen+tmtuki+putki, jakso päättynyt ennen 50v ikää, jäljellä oleva aika',plot_bu=True,ansiosid=True,tmtuki=True,putki=True,outsider=False,max_age=50)
+            self.plot_distrib(label='Jakauma ansiosidonnainen+putki, jakso päättynyt ennen 50v ikää, jäljellä oleva aika',plot_bu=False,ansiosid=True,tmtuki=False,putki=True,outsider=False,max_age=50)
+            #self.plot_distrib(label='Jakauma ansiosidonnainen+tmtuki ilman putkea',ansiosid=True,tmtuki=True,putki=False,outsider=False)
+            #self.plot_distrib(label='Jakauma ansiosidonnainen+tmtuki ilman putkea, max Ikä 50v',ansiosid=True,tmtuki=True,putki=False,outsider=False,max_age=50)
+            self.plot_distrib(label='Jakauma tmtuki',ansiosid=False,tmtuki=True,putki=False,outsider=False)
+            #self.plot_distrib(label='Jakauma työvoiman ulkopuoliset',ansiosid=False,tmtuki=False,putki=False,outsider=True)
+            #self.plot_distrib(label='Jakauma laaja (ansiosidonnainen+tmtuki+putki+ulkopuoliset)',laaja=True)
 
             
     def plot_final(self):
@@ -1508,12 +1600,12 @@ class EpisodeStats():
         print(tabulate(df, headers='keys', tablefmt='psql', floatfmt=",.2f"))
         
         self.plot_emp()
-        if not self.minimal:
+        if self.version>0:
             print('Lisäpäivillä on {:.0f} henkilöä'.format(self.count_putki()))
         self.plot_unemp(unempratio=True)
         self.plot_unemp(unempratio=False)
         self.plot_unemp_shares()
-        if not self.minimal:
+        if self.version>0:
             self.plot_group_emp()
         self.plot_parttime_ratio()
         self.plot_sal()
@@ -1528,7 +1620,7 @@ class EpisodeStats():
         #self.plot_distrib(label='Jakauma työvoiman ulkopuoliset',ansiosid=False,tmtuki=False,putki=False,outsider=True)
         #self.plot_distrib(label='Jakauma laaja (ansiosidonnainen+tmtuki+putki+ulkopuoliset)',laaja=True)
 
-        if not self.minimal:
+        if self.version>0:
             self.plot_outsider()
             self.plot_student()
             self.plot_army()
@@ -1567,12 +1659,18 @@ class EpisodeStats():
         työssä olevien osuus väestöstö
         Lähde: Tilastokeskus
         '''
-        if g==0: # kaikki
-            emp=np.array([0.461,0.545,0.567,0.599,0.645,0.678,0.706,0.728,0.740,0.752,0.758,0.769,0.776,0.781,0.787,0.795,0.801,0.807,0.809,0.820,0.820,0.829,0.831,0.833,0.832,0.828,0.827,0.824,0.822,0.817,0.815,0.813,0.807,0.802,0.796,0.788,0.772,0.763,0.752,0.728,0.686,0.630,0.568,0.382,0.217,0.142,0.106,0.086,0.011,0.003,0.002])
-        elif g==1: # naiset
-            emp=np.array([ 0.554,0.567,0.584,0.621,0.666,0.685,0.702,0.723,0.727,0.734,0.741,0.749,0.753,0.762,0.768,0.777,0.788,0.793,0.798,0.813,0.816,0.827,0.832,0.834,0.835,0.835,0.833,0.836,0.833,0.831,0.828,0.827,0.824,0.821,0.815,0.812,0.798,0.791,0.779,0.758,0.715,0.664,0.596,0.400,0.220,0.136,0.098,0.079,0.011,0.004,0.002 ])
-        else: # miehet
-            emp=np.array([ 0.374,0.524,0.550,0.579,0.626,0.671,0.710,0.733,0.752,0.769,0.774,0.788,0.798,0.800,0.805,0.812,0.814,0.820,0.819,0.826,0.824,0.831,0.831,0.831,0.828,0.821,0.822,0.813,0.811,0.803,0.803,0.798,0.790,0.783,0.776,0.764,0.746,0.735,0.723,0.696,0.656,0.596,0.539,0.362,0.214,0.148,0.115,0.094,0.012,0.002,0.002 ])
+        if self.year==2018:
+            if g==0: # kaikki
+                emp=np.array([0.461,0.545,0.567,0.599,0.645,0.678,0.706,0.728,0.740,0.752,0.758,0.769,0.776,0.781,0.787,0.795,0.801,0.807,0.809,0.820,0.820,0.829,0.831,0.833,0.832,0.828,0.827,0.824,0.822,0.817,0.815,0.813,0.807,0.802,0.796,0.788,0.772,0.763,0.752,0.728,0.686,0.630,0.568,0.382,0.217,0.142,0.106,0.086,0.011,0.003,0.002])
+            elif g==1: # naiset
+                emp=np.array([ 0.554,0.567,0.584,0.621,0.666,0.685,0.702,0.723,0.727,0.734,0.741,0.749,0.753,0.762,0.768,0.777,0.788,0.793,0.798,0.813,0.816,0.827,0.832,0.834,0.835,0.835,0.833,0.836,0.833,0.831,0.828,0.827,0.824,0.821,0.815,0.812,0.798,0.791,0.779,0.758,0.715,0.664,0.596,0.400,0.220,0.136,0.098,0.079,0.011,0.004,0.002 ])
+            else: # miehet
+                emp=np.array([ 0.374,0.524,0.550,0.579,0.626,0.671,0.710,0.733,0.752,0.769,0.774,0.788,0.798,0.800,0.805,0.812,0.814,0.820,0.819,0.826,0.824,0.831,0.831,0.831,0.828,0.821,0.822,0.813,0.811,0.803,0.803,0.798,0.790,0.783,0.776,0.764,0.746,0.735,0.723,0.696,0.656,0.596,0.539,0.362,0.214,0.148,0.115,0.094,0.012,0.002,0.002 ])
+        else: # 2019, päivitä
+            if g==1:
+                ratio=np.array([0.014412417,0.017866162,0.019956194,0.019219484,0.022074491,0.022873602,0.024247334,0.025981477,0.025087389,0.023162522,0.025013013,0.023496079,0.025713399,0.025633996,0.028251301,0.028930719,0.028930188,0.030955287,0.031211716,0.030980726,0.035395247,0.03522291,0.035834422,0.036878386,0.040316277,0.044732619,0.046460599,0.050652725,0.054797849,0.057018324,0.0627497,0.067904263,0.072840649,0.079978222,0.083953327,0.092811744,0.106671337,0.119490669,0.129239815,0.149503982,0.179130081,0.20749958,0.22768029,0.142296259,0.135142865,0.010457403,0,0,0,0,0])
+            else:
+                ratio=np.array([0.0121151,0.0152247,0.0170189,0.0200570,0.0196213,0.0208018,0.0215082,0.0223155,0.0220908,0.0213913,0.0214263,0.0242843,0.0240043,0.0240721,0.0259648,0.0263371,0.0284309,0.0270143,0.0286249,0.0305952,0.0318945,0.0331264,0.0350743,0.0368707,0.0401613,0.0431067,0.0463718,0.0487914,0.0523801,0.0569297,0.0596571,0.0669273,0.0713361,0.0758116,0.0825295,0.0892805,0.1047429,0.1155854,0.1336167,0.1551418,0.1782882,0.2106220,0.2291799,0.1434176,0.1301574,0.0110726,0,0,0,0,0])
 
         return self.map_ratios(emp)
         
@@ -1582,10 +1680,16 @@ class EpisodeStats():
         Työkyvyttömyyselökkeellö olevien osuus väestöstö
         Lähde: ETK
         '''
-        if g==1:
-            ratio=np.array([0.014412417,0.017866162,0.019956194,0.019219484,0.022074491,0.022873602,0.024247334,0.025981477,0.025087389,0.023162522,0.025013013,0.023496079,0.025713399,0.025633996,0.028251301,0.028930719,0.028930188,0.030955287,0.031211716,0.030980726,0.035395247,0.03522291,0.035834422,0.036878386,0.040316277,0.044732619,0.046460599,0.050652725,0.054797849,0.057018324,0.0627497,0.067904263,0.072840649,0.079978222,0.083953327,0.092811744,0.106671337,0.119490669,0.129239815,0.149503982,0.179130081,0.20749958,0.22768029,0.142296259,0.135142865,0.010457403,0,0,0,0,0])
-        else:
-            ratio=np.array([0.0121151,0.0152247,0.0170189,0.0200570,0.0196213,0.0208018,0.0215082,0.0223155,0.0220908,0.0213913,0.0214263,0.0242843,0.0240043,0.0240721,0.0259648,0.0263371,0.0284309,0.0270143,0.0286249,0.0305952,0.0318945,0.0331264,0.0350743,0.0368707,0.0401613,0.0431067,0.0463718,0.0487914,0.0523801,0.0569297,0.0596571,0.0669273,0.0713361,0.0758116,0.0825295,0.0892805,0.1047429,0.1155854,0.1336167,0.1551418,0.1782882,0.2106220,0.2291799,0.1434176,0.1301574,0.0110726,0,0,0,0,0])
+        if self.year==2018:
+            if g==1:
+                ratio=np.array([0.014412417,0.017866162,0.019956194,0.019219484,0.022074491,0.022873602,0.024247334,0.025981477,0.025087389,0.023162522,0.025013013,0.023496079,0.025713399,0.025633996,0.028251301,0.028930719,0.028930188,0.030955287,0.031211716,0.030980726,0.035395247,0.03522291,0.035834422,0.036878386,0.040316277,0.044732619,0.046460599,0.050652725,0.054797849,0.057018324,0.0627497,0.067904263,0.072840649,0.079978222,0.083953327,0.092811744,0.106671337,0.119490669,0.129239815,0.149503982,0.179130081,0.20749958,0.22768029,0.142296259,0.135142865,0.010457403,0,0,0,0,0])
+            else:
+                ratio=np.array([0.0121151,0.0152247,0.0170189,0.0200570,0.0196213,0.0208018,0.0215082,0.0223155,0.0220908,0.0213913,0.0214263,0.0242843,0.0240043,0.0240721,0.0259648,0.0263371,0.0284309,0.0270143,0.0286249,0.0305952,0.0318945,0.0331264,0.0350743,0.0368707,0.0401613,0.0431067,0.0463718,0.0487914,0.0523801,0.0569297,0.0596571,0.0669273,0.0713361,0.0758116,0.0825295,0.0892805,0.1047429,0.1155854,0.1336167,0.1551418,0.1782882,0.2106220,0.2291799,0.1434176,0.1301574,0.0110726,0,0,0,0,0])
+        else: # 2019, päivitä
+            if g==1:
+                ratio=np.array([0.014412417,0.017866162,0.019956194,0.019219484,0.022074491,0.022873602,0.024247334,0.025981477,0.025087389,0.023162522,0.025013013,0.023496079,0.025713399,0.025633996,0.028251301,0.028930719,0.028930188,0.030955287,0.031211716,0.030980726,0.035395247,0.03522291,0.035834422,0.036878386,0.040316277,0.044732619,0.046460599,0.050652725,0.054797849,0.057018324,0.0627497,0.067904263,0.072840649,0.079978222,0.083953327,0.092811744,0.106671337,0.119490669,0.129239815,0.149503982,0.179130081,0.20749958,0.22768029,0.142296259,0.135142865,0.010457403,0,0,0,0,0])
+            else:
+                ratio=np.array([0.0121151,0.0152247,0.0170189,0.0200570,0.0196213,0.0208018,0.0215082,0.0223155,0.0220908,0.0213913,0.0214263,0.0242843,0.0240043,0.0240721,0.0259648,0.0263371,0.0284309,0.0270143,0.0286249,0.0305952,0.0318945,0.0331264,0.0350743,0.0368707,0.0401613,0.0431067,0.0463718,0.0487914,0.0523801,0.0569297,0.0596571,0.0669273,0.0713361,0.0758116,0.0825295,0.0892805,0.1047429,0.1155854,0.1336167,0.1551418,0.1782882,0.2106220,0.2291799,0.1434176,0.1301574,0.0110726,0,0,0,0,0])
             
         return self.map_ratios(ratio)
         
@@ -1594,12 +1698,20 @@ class EpisodeStats():
         Opiskelijoiden osuus väestöstö
         Lähde: Tilastokeskus
         '''
-        if g==0: # kaikki
-            emp_ratio=np.array([0.261,0.279,0.272,0.242,0.195,0.155,0.123,0.098,0.082,0.070,0.062,0.054,0.048,0.045,0.041,0.039,0.035,0.033,0.031,0.027,0.025,0.024,0.022,0.019,0.018,0.017,0.017,0.016,0.015,0.014,0.013,0.011,0.010,0.009,0.009,0.008,0.008,0.006,0.005,0.004,0.003,0.003,0.002,0.002,0.002,0.002,0.002,0.001,0.001,0.001,0.001])
-        elif g==1: # naiset
-            emp_ratio=np.array([0.283,0.290,0.271,0.231,0.184,0.151,0.124,0.100,0.089,0.079,0.069,0.062,0.058,0.055,0.052,0.050,0.044,0.040,0.038,0.034,0.031,0.029,0.027,0.024,0.023,0.021,0.021,0.019,0.017,0.016,0.015,0.012,0.011,0.011,0.011,0.009,0.008,0.007,0.005,0.005,0.003,0.002,0.002,0.002,0.002,0.002,0.002,0.001,0.001,0.001,0.001 ])
-        else: # miehet
-            emp_ratio=np.array([0.240,0.269,0.273,0.252,0.207,0.159,0.122,0.096,0.076,0.062,0.056,0.047,0.037,0.035,0.031,0.029,0.027,0.026,0.023,0.021,0.019,0.019,0.017,0.015,0.015,0.014,0.013,0.013,0.013,0.011,0.010,0.010,0.009,0.007,0.008,0.007,0.007,0.006,0.005,0.004,0.003,0.003,0.002,0.002,0.002,0.002,0.001,0.001,0.001,0.002,0.001 ])
+        if self.year==2018:
+            if g==0: # kaikki
+                emp_ratio=np.array([0.261,0.279,0.272,0.242,0.195,0.155,0.123,0.098,0.082,0.070,0.062,0.054,0.048,0.045,0.041,0.039,0.035,0.033,0.031,0.027,0.025,0.024,0.022,0.019,0.018,0.017,0.017,0.016,0.015,0.014,0.013,0.011,0.010,0.009,0.009,0.008,0.008,0.006,0.005,0.004,0.003,0.003,0.002,0.002,0.002,0.002,0.002,0.001,0.001,0.001,0.001])
+            elif g==1: # naiset
+                emp_ratio=np.array([0.283,0.290,0.271,0.231,0.184,0.151,0.124,0.100,0.089,0.079,0.069,0.062,0.058,0.055,0.052,0.050,0.044,0.040,0.038,0.034,0.031,0.029,0.027,0.024,0.023,0.021,0.021,0.019,0.017,0.016,0.015,0.012,0.011,0.011,0.011,0.009,0.008,0.007,0.005,0.005,0.003,0.002,0.002,0.002,0.002,0.002,0.002,0.001,0.001,0.001,0.001 ])
+            else: # miehet
+                emp_ratio=np.array([0.240,0.269,0.273,0.252,0.207,0.159,0.122,0.096,0.076,0.062,0.056,0.047,0.037,0.035,0.031,0.029,0.027,0.026,0.023,0.021,0.019,0.019,0.017,0.015,0.015,0.014,0.013,0.013,0.013,0.011,0.010,0.010,0.009,0.007,0.008,0.007,0.007,0.006,0.005,0.004,0.003,0.003,0.002,0.002,0.002,0.002,0.001,0.001,0.001,0.002,0.001 ])
+        else: # 2019, päivitä
+            if g==0: # kaikki
+                emp_ratio=np.array([0.261,0.279,0.272,0.242,0.195,0.155,0.123,0.098,0.082,0.070,0.062,0.054,0.048,0.045,0.041,0.039,0.035,0.033,0.031,0.027,0.025,0.024,0.022,0.019,0.018,0.017,0.017,0.016,0.015,0.014,0.013,0.011,0.010,0.009,0.009,0.008,0.008,0.006,0.005,0.004,0.003,0.003,0.002,0.002,0.002,0.002,0.002,0.001,0.001,0.001,0.001])
+            elif g==1: # naiset
+                emp_ratio=np.array([0.283,0.290,0.271,0.231,0.184,0.151,0.124,0.100,0.089,0.079,0.069,0.062,0.058,0.055,0.052,0.050,0.044,0.040,0.038,0.034,0.031,0.029,0.027,0.024,0.023,0.021,0.021,0.019,0.017,0.016,0.015,0.012,0.011,0.011,0.011,0.009,0.008,0.007,0.005,0.005,0.003,0.002,0.002,0.002,0.002,0.002,0.002,0.001,0.001,0.001,0.001 ])
+            else: # miehet
+                emp_ratio=np.array([0.240,0.269,0.273,0.252,0.207,0.159,0.122,0.096,0.076,0.062,0.056,0.047,0.037,0.035,0.031,0.029,0.027,0.026,0.023,0.021,0.019,0.019,0.017,0.015,0.015,0.014,0.013,0.013,0.013,0.011,0.010,0.010,0.009,0.007,0.008,0.007,0.007,0.006,0.005,0.004,0.003,0.003,0.002,0.002,0.002,0.002,0.001,0.001,0.001,0.002,0.001 ])
 
         return self.map_ratios(emp_ratio)
         
@@ -1608,12 +1720,20 @@ class EpisodeStats():
         Armeijassa olevien osuus väestöstö
         Lähde: Tilastokeskus
         '''
-        if g==0: # kaikki
-            emp_ratio=np.array([0.048,0.009,0.004,0.002,0.001,0.001,0.001,0.001,0.000,0.000,0.000,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0   ])
-        elif g==1: # naiset
-            emp_ratio=np.array([0.004,0.002,0.001,0.001,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0   ])
-        else: # miehet
-            emp_ratio=np.array([0.089,0.015,0.006,0.004,0.002,0.002,0.001,0.001,0.001,0.001,0.000,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0   ])
+        if self.year==2018:
+            if g==0: # kaikki
+                emp_ratio=np.array([0.048,0.009,0.004,0.002,0.001,0.001,0.001,0.001,0.000,0.000,0.000,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0   ])
+            elif g==1: # naiset
+                emp_ratio=np.array([0.004,0.002,0.001,0.001,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0   ])
+            else: # miehet
+                emp_ratio=np.array([0.089,0.015,0.006,0.004,0.002,0.002,0.001,0.001,0.001,0.001,0.000,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0   ])
+        else: # 2019, päivitä
+            if g==0: # kaikki
+                emp_ratio=np.array([0.048,0.009,0.004,0.002,0.001,0.001,0.001,0.001,0.000,0.000,0.000,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0   ])
+            elif g==1: # naiset
+                emp_ratio=np.array([0.004,0.002,0.001,0.001,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0   ])
+            else: # miehet
+                emp_ratio=np.array([0.089,0.015,0.006,0.004,0.002,0.002,0.001,0.001,0.001,0.001,0.000,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0   ])
 
         return self.map_ratios(emp_ratio)
         
@@ -1622,13 +1742,21 @@ class EpisodeStats():
         Työelömön ulkopuolella olevien osuus väestöstö
         Lähde: Tilastokeskus
         '''
-        if g==0: # kaikki
-            emp_ratio=np.array([ 0.115,0.070,0.065,0.066,0.066,0.069,0.073,0.075,0.077,0.079,0.079,0.079,0.076,0.075,0.072,0.067,0.065,0.063,0.062,0.057,0.055,0.050,0.048,0.048,0.047,0.046,0.045,0.044,0.042,0.044,0.042,0.043,0.042,0.043,0.043,0.044,0.045,0.045,0.045,0.044,0.044,0.040,0.038,0.022,0.010,0.007,0.004,0.004,0.004,0.004,0.004 ])
-        elif g==1: # naiset
-            emp_ratio=np.array([ 0.077,0.066,0.068,0.072,0.074,0.082,0.089,0.092,0.098,0.099,0.101,0.098,0.098,0.093,0.088,0.082,0.076,0.074,0.071,0.065,0.061,0.053,0.049,0.049,0.046,0.045,0.044,0.041,0.042,0.041,0.040,0.039,0.040,0.040,0.041,0.041,0.042,0.042,0.042,0.043,0.044,0.041,0.039,0.023,0.012,0.007,0.005,0.004,0.004,0.004,0.004 ])
-        else: # miehet
-            emp_ratio=np.array([ 0.151,0.074,0.063,0.060,0.057,0.057,0.057,0.059,0.058,0.059,0.059,0.061,0.056,0.057,0.058,0.053,0.054,0.052,0.053,0.051,0.050,0.046,0.047,0.046,0.047,0.046,0.047,0.046,0.042,0.046,0.044,0.046,0.045,0.047,0.044,0.046,0.047,0.048,0.048,0.045,0.044,0.039,0.037,0.021,0.009,0.007,0.004,0.004,0.005,0.003,0.004 ])
-
+        if self.year==2018:
+            if g==0: # kaikki
+                emp_ratio=np.array([ 0.115,0.070,0.065,0.066,0.066,0.069,0.073,0.075,0.077,0.079,0.079,0.079,0.076,0.075,0.072,0.067,0.065,0.063,0.062,0.057,0.055,0.050,0.048,0.048,0.047,0.046,0.045,0.044,0.042,0.044,0.042,0.043,0.042,0.043,0.043,0.044,0.045,0.045,0.045,0.044,0.044,0.040,0.038,0.022,0.010,0.007,0.004,0.004,0.004,0.004,0.004 ])
+            elif g==1: # naiset
+                emp_ratio=np.array([ 0.077,0.066,0.068,0.072,0.074,0.082,0.089,0.092,0.098,0.099,0.101,0.098,0.098,0.093,0.088,0.082,0.076,0.074,0.071,0.065,0.061,0.053,0.049,0.049,0.046,0.045,0.044,0.041,0.042,0.041,0.040,0.039,0.040,0.040,0.041,0.041,0.042,0.042,0.042,0.043,0.044,0.041,0.039,0.023,0.012,0.007,0.005,0.004,0.004,0.004,0.004 ])
+            else: # miehet
+                emp_ratio=np.array([ 0.151,0.074,0.063,0.060,0.057,0.057,0.057,0.059,0.058,0.059,0.059,0.061,0.056,0.057,0.058,0.053,0.054,0.052,0.053,0.051,0.050,0.046,0.047,0.046,0.047,0.046,0.047,0.046,0.042,0.046,0.044,0.046,0.045,0.047,0.044,0.046,0.047,0.048,0.048,0.045,0.044,0.039,0.037,0.021,0.009,0.007,0.004,0.004,0.005,0.003,0.004 ])
+        else: # 2019, päivitä
+            if g==0: # kaikki
+                emp_ratio=np.array([ 0.115,0.070,0.065,0.066,0.066,0.069,0.073,0.075,0.077,0.079,0.079,0.079,0.076,0.075,0.072,0.067,0.065,0.063,0.062,0.057,0.055,0.050,0.048,0.048,0.047,0.046,0.045,0.044,0.042,0.044,0.042,0.043,0.042,0.043,0.043,0.044,0.045,0.045,0.045,0.044,0.044,0.040,0.038,0.022,0.010,0.007,0.004,0.004,0.004,0.004,0.004 ])
+            elif g==1: # naiset
+                emp_ratio=np.array([ 0.077,0.066,0.068,0.072,0.074,0.082,0.089,0.092,0.098,0.099,0.101,0.098,0.098,0.093,0.088,0.082,0.076,0.074,0.071,0.065,0.061,0.053,0.049,0.049,0.046,0.045,0.044,0.041,0.042,0.041,0.040,0.039,0.040,0.040,0.041,0.041,0.042,0.042,0.042,0.043,0.044,0.041,0.039,0.023,0.012,0.007,0.005,0.004,0.004,0.004,0.004 ])
+            else: # miehet
+                emp_ratio=np.array([ 0.151,0.074,0.063,0.060,0.057,0.057,0.057,0.059,0.058,0.059,0.059,0.061,0.056,0.057,0.058,0.053,0.054,0.052,0.053,0.051,0.050,0.046,0.047,0.046,0.047,0.046,0.047,0.046,0.042,0.046,0.044,0.046,0.045,0.047,0.044,0.046,0.047,0.048,0.048,0.045,0.044,0.039,0.037,0.021,0.009,0.007,0.004,0.004,0.005,0.003,0.004 ])
+        
         return self.map_ratios(emp_ratio)
         
     def tyotjakso_stats(self):
@@ -1639,15 +1767,24 @@ class EpisodeStats():
         
     def pensioner_stats(self,g=0):
         '''
-        Elökkeellö olevien osuus väestöstö
+        Eläkkeellä olevien osuus väestöstö
         Lähde: Tilastokeskus
         '''
-        if g==0: # kaikki
-            emp_ratio=np.array([ 0.011,0.014,0.016,0.016,0.018,0.019,0.019,0.021,0.020,0.019,0.020,0.021,0.022,0.022,0.024,0.024,0.025,0.025,0.026,0.026,0.029,0.029,0.030,0.031,0.034,0.037,0.039,0.042,0.045,0.047,0.052,0.056,0.060,0.065,0.070,0.076,0.088,0.098,0.110,0.128,0.159,0.196,0.277,0.533,0.741,0.849,0.888,0.908,0.983,0.992,0.993 ])
-        elif g==1: # naiset
-            emp_ratio=np.array([ 0.010,0.013,0.014,0.016,0.016,0.017,0.018,0.018,0.018,0.018,0.017,0.020,0.020,0.020,0.022,0.021,0.023,0.022,0.023,0.024,0.025,0.026,0.027,0.029,0.031,0.034,0.036,0.038,0.041,0.044,0.047,0.052,0.055,0.058,0.062,0.066,0.077,0.085,0.097,0.111,0.142,0.177,0.258,0.518,0.735,0.855,0.896,0.916,0.983,0.991,0.992 ])
-        else: # miehet
-            emp_ratio=np.array([ 0.012,0.016,0.018,0.017,0.019,0.020,0.021,0.023,0.022,0.021,0.022,0.021,0.024,0.024,0.026,0.026,0.026,0.028,0.028,0.027,0.032,0.032,0.033,0.033,0.036,0.041,0.042,0.045,0.049,0.051,0.056,0.060,0.065,0.072,0.078,0.086,0.099,0.112,0.123,0.144,0.178,0.216,0.297,0.549,0.748,0.843,0.880,0.901,0.982,0.993,0.993 ])
+        if self.year==2018:
+            if g==0: # kaikki
+                emp_ratio=np.array([ 0.011,0.014,0.016,0.016,0.018,0.019,0.019,0.021,0.020,0.019,0.020,0.021,0.022,0.022,0.024,0.024,0.025,0.025,0.026,0.026,0.029,0.029,0.030,0.031,0.034,0.037,0.039,0.042,0.045,0.047,0.052,0.056,0.060,0.065,0.070,0.076,0.088,0.098,0.110,0.128,0.159,0.196,0.277,0.533,0.741,0.849,0.888,0.908,0.983,0.992,0.993 ])
+            elif g==1: # naiset
+                emp_ratio=np.array([ 0.010,0.013,0.014,0.016,0.016,0.017,0.018,0.018,0.018,0.018,0.017,0.020,0.020,0.020,0.022,0.021,0.023,0.022,0.023,0.024,0.025,0.026,0.027,0.029,0.031,0.034,0.036,0.038,0.041,0.044,0.047,0.052,0.055,0.058,0.062,0.066,0.077,0.085,0.097,0.111,0.142,0.177,0.258,0.518,0.735,0.855,0.896,0.916,0.983,0.991,0.992 ])
+            else: # miehet
+                emp_ratio=np.array([ 0.012,0.016,0.018,0.017,0.019,0.020,0.021,0.023,0.022,0.021,0.022,0.021,0.024,0.024,0.026,0.026,0.026,0.028,0.028,0.027,0.032,0.032,0.033,0.033,0.036,0.041,0.042,0.045,0.049,0.051,0.056,0.060,0.065,0.072,0.078,0.086,0.099,0.112,0.123,0.144,0.178,0.216,0.297,0.549,0.748,0.843,0.880,0.901,0.982,0.993,0.993 ])
+        else: # 2019, päivitä
+            if g==0: # kaikki
+                emp_ratio=np.array([ 0.011,0.014,0.016,0.016,0.018,0.019,0.019,0.021,0.020,0.019,0.020,0.021,0.022,0.022,0.024,0.024,0.025,0.025,0.026,0.026,0.029,0.029,0.030,0.031,0.034,0.037,0.039,0.042,0.045,0.047,0.052,0.056,0.060,0.065,0.070,0.076,0.088,0.098,0.110,0.128,0.159,0.196,0.277,0.533,0.741,0.849,0.888,0.908,0.983,0.992,0.993 ])
+            elif g==1: # naiset
+                emp_ratio=np.array([ 0.010,0.013,0.014,0.016,0.016,0.017,0.018,0.018,0.018,0.018,0.017,0.020,0.020,0.020,0.022,0.021,0.023,0.022,0.023,0.024,0.025,0.026,0.027,0.029,0.031,0.034,0.036,0.038,0.041,0.044,0.047,0.052,0.055,0.058,0.062,0.066,0.077,0.085,0.097,0.111,0.142,0.177,0.258,0.518,0.735,0.855,0.896,0.916,0.983,0.991,0.992 ])
+            else: # miehet
+                emp_ratio=np.array([ 0.012,0.016,0.018,0.017,0.019,0.020,0.021,0.023,0.022,0.021,0.022,0.021,0.024,0.024,0.026,0.026,0.026,0.028,0.028,0.027,0.032,0.032,0.033,0.033,0.036,0.041,0.042,0.045,0.049,0.051,0.056,0.060,0.065,0.072,0.078,0.086,0.099,0.112,0.123,0.144,0.178,0.216,0.297,0.549,0.748,0.843,0.880,0.901,0.982,0.993,0.993 ])
+        
 
         return self.map_ratios(emp_ratio)
         
@@ -1657,12 +1794,21 @@ class EpisodeStats():
         Lähde: Tilastokeskus
         '''
         emp_ratio=np.zeros(self.n_time)
-        if g==0:
-            emp_ratio=np.array([0.104,0.083,0.077,0.075,0.075,0.078,0.078,0.078,0.080,0.080,0.081,0.077,0.079,0.078,0.076,0.075,0.074,0.072,0.074,0.070,0.071,0.068,0.069,0.069,0.069,0.072,0.072,0.074,0.076,0.078,0.078,0.078,0.081,0.081,0.082,0.084,0.087,0.087,0.089,0.097,0.108,0.131,0.115,0.062,0.030,0,0,0,0,0,0])
-        elif g==1: # naiset
-            emp_ratio=np.array([ 0.073,0.063,0.062,0.060,0.060,0.065,0.066,0.066,0.069,0.070,0.072,0.071,0.071,0.070,0.071,0.070,0.069,0.070,0.070,0.065,0.066,0.064,0.065,0.064,0.065,0.065,0.066,0.066,0.068,0.067,0.070,0.070,0.069,0.071,0.071,0.072,0.074,0.076,0.076,0.083,0.097,0.116,0.105,0.057,0.031,0  ,0  ,0  ,0  ,0  ,0   ])
-        else: # miehet
-            emp_ratio=np.array([ 0.133,0.102,0.091,0.089,0.089,0.091,0.089,0.089,0.091,0.089,0.089,0.083,0.085,0.085,0.080,0.081,0.080,0.075,0.077,0.075,0.074,0.072,0.073,0.074,0.074,0.078,0.076,0.083,0.085,0.089,0.087,0.086,0.092,0.091,0.094,0.096,0.101,0.099,0.102,0.110,0.120,0.146,0.125,0.066,0.028,0  ,0  ,0  ,0  ,0  ,0   ])
+        if self.year==2018:
+            if g==0:
+                emp_ratio=np.array([0.104,0.083,0.077,0.075,0.075,0.078,0.078,0.078,0.080,0.080,0.081,0.077,0.079,0.078,0.076,0.075,0.074,0.072,0.074,0.070,0.071,0.068,0.069,0.069,0.069,0.072,0.072,0.074,0.076,0.078,0.078,0.078,0.081,0.081,0.082,0.084,0.087,0.087,0.089,0.097,0.108,0.131,0.115,0.062,0.030,0,0,0,0,0,0])
+            elif g==1: # naiset
+                emp_ratio=np.array([ 0.073,0.063,0.062,0.060,0.060,0.065,0.066,0.066,0.069,0.070,0.072,0.071,0.071,0.070,0.071,0.070,0.069,0.070,0.070,0.065,0.066,0.064,0.065,0.064,0.065,0.065,0.066,0.066,0.068,0.067,0.070,0.070,0.069,0.071,0.071,0.072,0.074,0.076,0.076,0.083,0.097,0.116,0.105,0.057,0.031,0  ,0  ,0  ,0  ,0  ,0   ])
+            else: # miehet
+                emp_ratio=np.array([ 0.133,0.102,0.091,0.089,0.089,0.091,0.089,0.089,0.091,0.089,0.089,0.083,0.085,0.085,0.080,0.081,0.080,0.075,0.077,0.075,0.074,0.072,0.073,0.074,0.074,0.078,0.076,0.083,0.085,0.089,0.087,0.086,0.092,0.091,0.094,0.096,0.101,0.099,0.102,0.110,0.120,0.146,0.125,0.066,0.028,0  ,0  ,0  ,0  ,0  ,0   ])
+        else: # 2019, päivitä
+            if g==0:
+                emp_ratio=np.array([0.104,0.083,0.077,0.075,0.075,0.078,0.078,0.078,0.080,0.080,0.081,0.077,0.079,0.078,0.076,0.075,0.074,0.072,0.074,0.070,0.071,0.068,0.069,0.069,0.069,0.072,0.072,0.074,0.076,0.078,0.078,0.078,0.081,0.081,0.082,0.084,0.087,0.087,0.089,0.097,0.108,0.131,0.115,0.062,0.030,0,0,0,0,0,0])
+            elif g==1: # naiset
+                emp_ratio=np.array([ 0.073,0.063,0.062,0.060,0.060,0.065,0.066,0.066,0.069,0.070,0.072,0.071,0.071,0.070,0.071,0.070,0.069,0.070,0.070,0.065,0.066,0.064,0.065,0.064,0.065,0.065,0.066,0.066,0.068,0.067,0.070,0.070,0.069,0.071,0.071,0.072,0.074,0.076,0.076,0.083,0.097,0.116,0.105,0.057,0.031,0  ,0  ,0  ,0  ,0  ,0   ])
+            else: # miehet
+                emp_ratio=np.array([ 0.133,0.102,0.091,0.089,0.089,0.091,0.089,0.089,0.091,0.089,0.089,0.083,0.085,0.085,0.080,0.081,0.080,0.075,0.077,0.075,0.074,0.072,0.073,0.074,0.074,0.078,0.076,0.083,0.085,0.089,0.087,0.086,0.092,0.091,0.094,0.096,0.101,0.099,0.102,0.110,0.120,0.146,0.125,0.066,0.028,0  ,0  ,0  ,0  ,0  ,0   ])
+        
         return self.map_ratios(emp_ratio)
 
     def unempratio_stats(self,g=0):
@@ -1678,48 +1824,52 @@ class EpisodeStats():
     def save_sim(self,filename):
         f = h5py.File(filename, 'w')
         ftype='float64'
-        dset = f.create_dataset('n_pop', data=self.n_pop, dtype=ftype)
-        dset = f.create_dataset('empstate', data=self.empstate, dtype=ftype)
-        dset = f.create_dataset('gempstate', data=self.gempstate, dtype=ftype)
-        dset = f.create_dataset('deceiced', data=self.deceiced, dtype=ftype)
-        dset = f.create_dataset('rewstate', data=self.rewstate, dtype=ftype)
-        dset = f.create_dataset('salaries_emp', data=self.salaries_emp, dtype=ftype)
-        dset = f.create_dataset('actions', data=self.actions, dtype=ftype)
-        dset = f.create_dataset('alive', data=self.alive, dtype=ftype)
-        dset = f.create_dataset('galive', data=self.galive, dtype=ftype)
-        dset = f.create_dataset('siirtyneet', data=self.siirtyneet, dtype=ftype)
-        dset = f.create_dataset('pysyneet', data=self.pysyneet, dtype=ftype)
-        dset = f.create_dataset('salaries', data=self.salaries, dtype=ftype)
-        dset = f.create_dataset('aveV', data=self.aveV, dtype=ftype)
-        dset = f.create_dataset('time_in_state', data=self.time_in_state, dtype=ftype)
-        dset = f.create_dataset('stat_tyoura', data=self.stat_tyoura, dtype=ftype)
-        dset = f.create_dataset('stat_toe', data=self.stat_toe, dtype=ftype)
-        dset = f.create_dataset('stat_pension', data=self.stat_pension, dtype=ftype)
-        dset = f.create_dataset('stat_paidpension', data=self.stat_paidpension, dtype=ftype)
-        dset = f.create_dataset('stat_unemp_len', data=self.stat_unemp_len, dtype=ftype)
-        dset = f.create_dataset('popempstate', data=self.popempstate, dtype=ftype)
-        dset = f.create_dataset('stat_wage_reduction', data=self.stat_wage_reduction, dtype=ftype)
-        dset = f.create_dataset('popunemprightleft', data=self.popunemprightleft, dtype=ftype)
-        dset = f.create_dataset('popunemprightused', data=self.popunemprightused, dtype=ftype)
-        dset = f.create_dataset('infostats_taxes', data=self.infostats_taxes, dtype=ftype)
-        dset = f.create_dataset('infostats_etuustulo', data=self.infostats_etuustulo, dtype=ftype)
-        dset = f.create_dataset('infostats_perustulo', data=self.infostats_perustulo, dtype=ftype)
-        dset = f.create_dataset('infostats_palkkatulo', data=self.infostats_palkkatulo, dtype=ftype)
-        dset = f.create_dataset('infostats_ansiopvraha', data=self.infostats_ansiopvraha, dtype=ftype)
-        dset = f.create_dataset('infostats_asumistuki', data=self.infostats_asumistuki, dtype=ftype)
-        dset = f.create_dataset('infostats_valtionvero', data=self.infostats_valtionvero, dtype=ftype)
-        dset = f.create_dataset('infostats_kunnallisvero', data=self.infostats_kunnallisvero, dtype=ftype)
-        dset = f.create_dataset('infostats_ptel', data=self.infostats_ptel, dtype=ftype)
-        dset = f.create_dataset('infostats_tyotvakmaksu', data=self.infostats_tyotvakmaksu, dtype=ftype)
-        dset = f.create_dataset('infostats_tyoelake', data=self.infostats_tyoelake, dtype=ftype)
-        dset = f.create_dataset('infostats_kokoelake', data=self.infostats_kokoelake, dtype=ftype)
-        dset = f.create_dataset('infostats_opintotuki', data=self.infostats_opintotuki, dtype=ftype)
-        dset = f.create_dataset('infostats_isyyspaivaraha', data=self.infostats_isyyspaivaraha, dtype=ftype)
-        dset = f.create_dataset('infostats_aitiyspaivaraha', data=self.infostats_aitiyspaivaraha, dtype=ftype)
-        dset = f.create_dataset('infostats_kotihoidontuki', data=self.infostats_kotihoidontuki, dtype=ftype)
-        dset = f.create_dataset('infostats_sairauspaivaraha', data=self.infostats_sairauspaivaraha, dtype=ftype)
-        dset = f.create_dataset('infostats_toimeentulotuki', data=self.infostats_toimeentulotuki, dtype=ftype)
-        dset = f.create_dataset('infostats_tulot_netto', data=self.infostats_tulot_netto, dtype=ftype)
+        _ = f.create_dataset('version', data=self.version, dtype=ftype)
+        _ = f.create_dataset('n_pop', data=self.n_pop, dtype=ftype)
+        _ = f.create_dataset('empstate', data=self.empstate, dtype=ftype)
+        _ = f.create_dataset('gempstate', data=self.gempstate, dtype=ftype)
+        _ = f.create_dataset('deceiced', data=self.deceiced, dtype=ftype)
+        _ = f.create_dataset('rewstate', data=self.rewstate, dtype=ftype)
+        _ = f.create_dataset('salaries_emp', data=self.salaries_emp, dtype=ftype)
+        _ = f.create_dataset('actions', data=self.actions, dtype=ftype)
+        _ = f.create_dataset('alive', data=self.alive, dtype=ftype)
+        _ = f.create_dataset('galive', data=self.galive, dtype=ftype)
+        _ = f.create_dataset('siirtyneet', data=self.siirtyneet, dtype=ftype)
+        _ = f.create_dataset('pysyneet', data=self.pysyneet, dtype=ftype)
+        _ = f.create_dataset('salaries', data=self.salaries, dtype=ftype)
+        _ = f.create_dataset('aveV', data=self.aveV, dtype=ftype)
+        _ = f.create_dataset('time_in_state', data=self.time_in_state, dtype=ftype)
+        _ = f.create_dataset('stat_tyoura', data=self.stat_tyoura, dtype=ftype)
+        _ = f.create_dataset('stat_toe', data=self.stat_toe, dtype=ftype)
+        _ = f.create_dataset('stat_pension', data=self.stat_pension, dtype=ftype)
+        _ = f.create_dataset('stat_paidpension', data=self.stat_paidpension, dtype=ftype)
+        _ = f.create_dataset('stat_unemp_len', data=self.stat_unemp_len, dtype=ftype)
+        _ = f.create_dataset('popempstate', data=self.popempstate, dtype=ftype)
+        _ = f.create_dataset('stat_wage_reduction', data=self.stat_wage_reduction, dtype=ftype)
+        _ = f.create_dataset('popunemprightleft', data=self.popunemprightleft, dtype=ftype)
+        _ = f.create_dataset('popunemprightused', data=self.popunemprightused, dtype=ftype)
+        _ = f.create_dataset('infostats_taxes', data=self.infostats_taxes, dtype=ftype)
+        _ = f.create_dataset('infostats_etuustulo', data=self.infostats_etuustulo, dtype=ftype)
+        _ = f.create_dataset('infostats_perustulo', data=self.infostats_perustulo, dtype=ftype)
+        _ = f.create_dataset('infostats_palkkatulo', data=self.infostats_palkkatulo, dtype=ftype)
+        _ = f.create_dataset('infostats_ansiopvraha', data=self.infostats_ansiopvraha, dtype=ftype)
+        _ = f.create_dataset('infostats_asumistuki', data=self.infostats_asumistuki, dtype=ftype)
+        _ = f.create_dataset('infostats_valtionvero', data=self.infostats_valtionvero, dtype=ftype)
+        _ = f.create_dataset('infostats_kunnallisvero', data=self.infostats_kunnallisvero, dtype=ftype)
+        _ = f.create_dataset('infostats_ptel', data=self.infostats_ptel, dtype=ftype)
+        _ = f.create_dataset('infostats_tyotvakmaksu', data=self.infostats_tyotvakmaksu, dtype=ftype)
+        _ = f.create_dataset('infostats_tyoelake', data=self.infostats_tyoelake, dtype=ftype)
+        _ = f.create_dataset('infostats_kokoelake', data=self.infostats_kokoelake, dtype=ftype)
+        _ = f.create_dataset('infostats_opintotuki', data=self.infostats_opintotuki, dtype=ftype)
+        _ = f.create_dataset('infostats_isyyspaivaraha', data=self.infostats_isyyspaivaraha, dtype=ftype)
+        _ = f.create_dataset('infostats_aitiyspaivaraha', data=self.infostats_aitiyspaivaraha, dtype=ftype)
+        _ = f.create_dataset('infostats_kotihoidontuki', data=self.infostats_kotihoidontuki, dtype=ftype)
+        _ = f.create_dataset('infostats_sairauspaivaraha', data=self.infostats_sairauspaivaraha, dtype=ftype)
+        _ = f.create_dataset('infostats_toimeentulotuki', data=self.infostats_toimeentulotuki, dtype=ftype)
+        _ = f.create_dataset('infostats_tulot_netto', data=self.infostats_tulot_netto, dtype=ftype)
+        _ = f.create_dataset('poprewstate', data=self.poprewstate, dtype=ftype)
+        _ = f.create_dataset('infostats_pinkslip', data=self.infostats_pinkslip, dtype=ftype)
+        
         f.close()
 
     def save_to_hdf(self,filename,nimi,arr,dtype):
@@ -1735,11 +1885,19 @@ class EpisodeStats():
         
     def load_sim(self,filename,n_pop=None):
         f = h5py.File(filename, 'r')
+        
+        if 'version' in f.keys():
+            self.version=f.get('version').value
+        else:
+            self.version=1
 
         self.empstate=f.get('empstate').value
         self.gempstate=f.get('gempstate').value
         self.deceiced=f.get('deceiced').value
         self.rewstate=f.get('rewstate').value
+        if 'poprewstate' in f.keys():
+            self.poprewstate=f.get('poprewstate').value
+        
         self.salaries_emp=f.get('salaries_emp').value
         self.actions=f.get('actions').value
         self.alive=f.get('alive').value
@@ -1779,6 +1937,14 @@ class EpisodeStats():
             self.infostats_sairauspaivaraha=f.get('infostats_sairauspaivaraha').value
             self.infostats_toimeentulotuki=f.get('infostats_toimeentulotuki').value
             self.infostats_tulot_netto=f.get('infostats_tulot_netto').value
+
+        if 'infostats_pinkslip' in f.keys(): # older runs do not have these
+            self.infostats_pinkslip=f.get('infostats_pinkslip').value      
+            
+        if 'infostats_chilren7' in f.keys(): # older runs do not have these
+            self.infostats_chilren7=f.get('infostats_chilren7').value      
+        if 'infostats_chilren18' in f.keys(): # older runs do not have these
+            self.infostats_chilren18=f.get('infostats_chilren18').value      
         
         if 'n_pop' in f:
             self.n_pop=int(f.get('n_pop').value)
@@ -1788,7 +1954,7 @@ class EpisodeStats():
             self.n_pop=n_pop
             
         f.close()
-
+        
     def render(self,load=None,figname=None):
         if load is not None:
             self.load_sim(load)
@@ -1899,7 +2065,7 @@ class EpisodeStats():
         diff_emp=diff_emp*100
         ax.plot(x,100*(tyot_osuus1-tyot_osuus2),label='työttömyys')
         ax.plot(x,100*(kokotyo_osuus1-kokotyo_osuus2),label='kokoaikatyö')
-        if not self.minimal:
+        if self.version>0:
             ax.plot(x,100*(osatyo_osuus1-osatyo_osuus2),label='osa-aikatyö')
             ax.plot(x,100*(tyolliset1-tyolliset2),label='työ yhteensä')
             ax.plot(x,100*(htv_osuus1-htv_osuus2),label='htv yhteensä')
@@ -2061,6 +2227,7 @@ class EpisodeStats():
         return ansiosid_osuus,tm_osuus
             
     def get_demog(self):
+        # vuosi 2018
         demog=np.array([61663,63354,65939,68253,68543,71222,70675,71691,70202,70535, # 20-29 y
                         67315,68282,70431,72402,73839,73065,70040,69501,68857,69035, # 30-39 y
                         69661,69965,68429,65261,59498,61433,63308,65305,66580,71263, # 40-49 y
@@ -2123,10 +2290,7 @@ class EpisodeStats():
         return vaikutus
 
     def get_reward(self):
-        total_reward=np.sum(self.rewstate,axis=1)
-        rr=np.sum(total_reward)/self.n_pop
-        return rr
-
+        return np.sum(self.rewstate)/self.n_pop
     
 class SimStats(EpisodeStats):
     def run_simstats(self,results,save,n,plot=True,startn=0,max_age=54):
@@ -2343,7 +2507,7 @@ class SimStats(EpisodeStats):
             plt.savefig(figname+'tyollisyyshajonta.eps')
         plt.show()
 
-        if not self.minimal:
+        if self.version>0:
             x,y=self.fit_norm(diff_tyoll)
             fig,ax=plt.subplots()
             ax.set_xlabel('Poikkeama työllisyydessä [henkilöä]')
@@ -2433,7 +2597,7 @@ class SimStats(EpisodeStats):
             ax.hist(diff_htv)
             plt.show()
 
-            if not self.minimal:
+            if self.version>0:
                 fig,ax=plt.subplots()
                 ax.set_xlabel('Poikkeama työllisyydessä [henkilöä]')
                 ax.set_ylabel('Lukumäärä')
