@@ -45,7 +45,7 @@ class EpisodeStats():
             self.n_groups=1
         else:
             self.n_groups=6
-        
+            
         n_emps=self.n_employment
         self.empstate=np.zeros((self.n_time,n_emps))
         self.gempstate=np.zeros((self.n_time,n_emps,self.n_groups))
@@ -110,8 +110,8 @@ class EpisodeStats():
             newemp,g,newpen,newsal,a2,tis,paidpens,pink,toe,ura,oof,bu,wr,p=self.env.state_decode(newstate)
         else: 
             # v2
-            emp,_,_,_,a,_,_,_,_,_,_,_,_,_,_,_,_,_,_=self.env.state_decode(state) # current employment state
-            newemp,g,newpen,newsal,a2,tis,paidpens,pink,toe,ura,oof,bu,wr,pr,upr,uw,uwr,c7,c18=self.env.state_decode(newstate)
+            emp,_,_,_,a,_,_,_,_,_,_,_,_,_,_,_,_,_=self.env.state_decode(state) # current employment state
+            newemp,g,newpen,newsal,a2,tis,paidpens,pink,toe,ura,bu,wr,pr,upr,uw,uwr,c7,c18=self.env.state_decode(newstate)
     
         t=int(np.round((a2-self.min_age)*self.inv_timestep))-1
         
@@ -140,8 +140,7 @@ class EpisodeStats():
                 self.stat_pension[t,newemp]+=newpen
                 self.stat_paidpension[t,newemp]+=paidpens
                 self.stat_unemp_len[t,n]=tis
-                self.out_of_work[t,newemp]+=oof
-                self.popunemprightleft[t,n]=-self.env.unempright_left(newemp,tis,bu,a2,ura,oof)
+                self.popunemprightleft[t,n]=-self.env.unempright_left(newemp,tis,bu,a2,ura)
                 self.popunemprightused[t,n]=bu
                 if q is not None:
                     self.infostats_taxes[t]+=q['verot']*self.timestep*12
@@ -182,7 +181,6 @@ class EpisodeStats():
                     self.stat_pension[t,newemp]+=newpen
                     self.stat_paidpension[t,newemp]+=paidpens
                     self.stat_unemp_len[t,n]=tis
-                    self.out_of_work[t,newemp]+=oof
                     self.popunemprightleft[t,n]=0
                     self.popunemprightused[t,n]=0
             
@@ -640,7 +638,6 @@ class EpisodeStats():
             
         jaljella=np.cumsum(scaled0[::-1])[::-1] # jäljellä olevien summa
         #jaljella=np.cumsum(scaled0)
-        #print(jaljella,scaled)
         scaled=scaled/jaljella
         jaljella_tyoll=np.cumsum(scaled0[::-1])[::-1] # jäljellä olevien summa
         #jaljella_tyoll=np.cumsum(scaled0)
@@ -848,7 +845,7 @@ class EpisodeStats():
         employed=emp[:,1]
         retired=emp[:,2]
         unemployed=emp[:,0]
-
+        
         if self.version>0:
             disabled=emp[:,3]
             piped=emp[:,4]
@@ -1398,12 +1395,6 @@ class EpisodeStats():
         if self.version>0:
             self.plot_ratiostates(self.stat_toe,'työssäolo-ehdon pituus 28 kk aikana [v]',stack=False)
             
-    def plot_oof(self):
-        # oof-dataa ei lasketa
-        #if self.version>0:
-        #    self.plot_ratiostates(self.out_of_work,'Poissa työstö [v]',stack=False)
-        return
-
     def plot_sal(self):
         self.plot_ratiostates(self.salaries_emp,'Keskipalkka [e/v]',stack=False)
 
@@ -1571,7 +1562,6 @@ class EpisodeStats():
             self.plot_pensions()
             self.plot_career()
             self.plot_toe()
-            self.plot_oof()
             self.plot_wage_reduction()
         
         self.plot_distrib(label='Jakauma ansiosidonnainen+tmtuki+putki, no max age',ansiosid=True,tmtuki=True,putki=True,outsider=False)
@@ -1633,7 +1623,6 @@ class EpisodeStats():
             self.plot_pensions()
             self.plot_career()
             self.plot_toe()
-            self.plot_oof()
             self.plot_wage_reduction()            
 
     def plot_img(self,img,xlabel="eläke",ylabel="Palkka",title="Employed"):

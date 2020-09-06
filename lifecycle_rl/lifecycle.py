@@ -22,6 +22,12 @@ from tqdm import tqdm_notebook as tqdm
 import os
 from . episodestats import EpisodeStats, SimStats
 
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # or any {'0', '1', '2'}
+import warnings
+# https://stackoverflow.com/questions/15777951/how-to-suppress-pandas-future-warning
+warnings.simplefilter(action='ignore', category=FutureWarning)
+warnings.simplefilter(action='ignore', category=Warning)
+
 # use stable baselines
 from stable_baselines.common.vec_env import SubprocVecEnv,DummyVecEnv
 from stable_baselines import A2C, ACER, DQN, ACKTR #, TRPO
@@ -521,7 +527,7 @@ class Lifecycle():
         print('simulate')
             
         self.episodestats.reset(self.timestep,self.n_time,self.n_employment,self.n_pop,
-                                self.env,self.minimal,self.min_age,self.max_age,self.min_retirementage)
+                                self.env,self.minimal,self.min_age,self.max_age,self.min_retirementage,self.year)
 
         print('simulating ',self.loadname)
 

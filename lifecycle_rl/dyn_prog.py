@@ -467,7 +467,7 @@ class DynProgLifecycle(Lifecycle):
             self.n_pop=pop
 
         self.episodestats.reset(self.timestep,self.n_time,self.n_employment,self.n_pop,
-                                self.env,self.minimal,self.min_age,self.max_age,self.min_retirementage)
+                                self.env,self.minimal,self.min_age,self.max_age,self.min_retirementage,self.year)
         if load is not None:
             self.load_V(load)        
 
