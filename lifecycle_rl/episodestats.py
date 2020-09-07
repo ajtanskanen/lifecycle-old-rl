@@ -941,9 +941,9 @@ class EpisodeStats():
     def plot_pinkslip(self):
         x=np.linspace(self.min_age,self.max_age,self.n_time)
         fig,ax=plt.subplots()
-        ax.plot(x,100*self.infostats_pinkslip[:,0]/self.empstate[:,0],label='irtisanottu ansiosidonnaisella')
-        ax.plot(x,100*self.infostats_pinkslip[:,4]/self.empstate[:,4],label='irtisanottu putkessa')
-        ax.plot(x,100*self.infostats_pinkslip[:,13]/self.empstate[:,13],label='irtisanottu työmarkkinatuella')
+        ax.plot(x,100*self.infostats_pinkslip[:,0]/self.empstate[:,0],label='ansiosidonnaisella')
+        ax.plot(x,100*self.infostats_pinkslip[:,4]/self.empstate[:,4],label='putkessa')
+        ax.plot(x,100*self.infostats_pinkslip[:,13]/self.empstate[:,13],label='työmarkkinatuella')
         ax.set_xlabel('Ikä [v]')
         ax.set_ylabel('Irtisanottujen osuus tilassa [%]')
         ax.legend()
@@ -1523,6 +1523,17 @@ class EpisodeStats():
                            
             print('Rahavirrat skaalattuna väestötasolle')
             print(tabulate(df, headers='keys', tablefmt='psql', floatfmt=",.2f"))
+
+            q=self.comp_participants(scale=True)
+            q_stat=self.stat_participants_2018()
+            df1 = pd.DataFrame.from_dict(q,orient='index',columns=['kpl'])
+            df2 = pd.DataFrame.from_dict(q_stat,orient='index',columns=['toteuma'])
+            df=df1.copy()
+            df['toteuma']=df2['toteuma']
+            df['ero']=df1['kpl']-df2['toteuma']
+                           
+            print('Henkilöitä tiloissa skaalattuna väestötasolle')
+            print(tabulate(df, headers='keys', tablefmt='psql', floatfmt=",.0f"))
         
         if self.version>0:
             self.plot_outsider()
@@ -2006,6 +2017,36 @@ class EpisodeStats():
         q['toimeentulotuki']=np.sum(self.infostats_toimeentulotuki*scalex)
         q['perustulo']=np.sum(self.infostats_perustulo*scalex)
         q['tulot_netto']=np.sum(self.infostats_tulot_netto*scalex)
+
+        return q
+
+    def comp_participants(self,scale=False):
+        demog,demog2=self.get_demog()
+
+        scalex=demog2/self.n_pop
+        
+        q={}
+        q['palkansaajia']=np.sum(self.empstate[:,1])
+        q['ansiosidonnaisella']=np.sum(self.empstate[:,0]+self.empstate[:,4])
+        q['tmtuella']=np.sum(self.empstate[:,13])
+        q['isyysvapaalla']=np.sum(self.empstate[:,6])
+        q['kotihoidontuella']=np.sum(self.empstate[:,7])
+        q['vanhempainvapaalla']=np.sum(self.empstate[:,5])
+
+        return q
+
+    def stat_participants_2018(self,scale=False):
+        demog,demog2=self.get_demog()
+
+        scalex=demog2/self.n_pop
+        
+        q={}
+        q['palkansaajia']=2_204_000 # TK
+        q['ansiosidonnaisella']=116_972+27_157  # Kelan tilasto 31.12.2018
+        q['tmtuella']=189_780  # Kelan tilasto 31.12.2018
+        q['isyysvapaalla']=59_640 # Kelan tilasto 2018
+        q['kotihoidontuella']=95_757 # saajia Kelan tilasto 2018
+        q['vanhempainvapaalla']=84_387 # Kelan tilasto 2018
 
         return q
 

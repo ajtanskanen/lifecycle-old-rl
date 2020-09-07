@@ -162,6 +162,7 @@ class Lifecycle():
             self.minimal=True
             self.gym_kwargs={'step': self.timestep,'gamma':self.gamma,
                 'min_age': self.min_age, 'max_age': self.max_age,
+                'plotdebug': self.plotdebug, 
                 'min_retirementage': self.min_retirementage, 'max_retirementage':self.max_retirementage,
                 'reset_exploration_go': self.exploration,'reset_exploration_ratio': self.exploration_ratio}
             #self.n_employment = 3
@@ -184,7 +185,8 @@ class Lifecycle():
                 'porrasta_2askel': self.porrasta_2askel, 'porrasta_3askel': self.porrasta_3askel,
                 'include_putki': self.include_putki, 'use_sigma_reduction': self.use_sigma_reduction,
                 'plotdebug': self.plotdebug, 'include_preferencenoise': self.include_preferencenoise,
-                'perustulomalli': perustulomalli,'osittainen_perustulo':self.osittainen_perustulo}
+                'perustulomalli': perustulomalli,'osittainen_perustulo':self.osittainen_perustulo,
+                'reset_exploration_go': self.exploration,'reset_exploration_ratio': self.exploration_ratio}
             #self.n_acts = 4
             #if self.mortality:
             #    self.n_employment = 16
@@ -444,7 +446,7 @@ class Lifecycle():
         '''
         Opetusrutiini
         '''
-
+        
         self.best_mean_reward, self.n_steps = -np.inf, 0
 
         if pop is not None:
@@ -756,7 +758,7 @@ class Lifecycle():
         plot results if needed
         '''
         
-        if self.plotdebug:
+        if self.plotdebug or plotdebug:
             debug=True
    
         self.n_pop=pop
