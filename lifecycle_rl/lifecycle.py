@@ -749,7 +749,7 @@ class Lifecycle():
                save='saved/perusmalli',debug=False,simut='simut',results='results/simut_res',
                stats='results/simut_stats',deterministic=True,train=True,predict=True,
                batch1=1,batch2=100,cont=False,start_from=None,plot=False,callback_minsteps=None,
-               verbose=1,plotdebug=None,max_grad_norm=0.5,learning_rate=0.25):
+               verbose=1,plotdebug=None,max_grad_norm=0.5,learning_rate=0.25,log_interval=10):
    
         '''
         run_results
@@ -771,12 +771,12 @@ class Lifecycle():
                 self.run_protocol(rlmodel=rlmodel,steps1=steps1,steps2=steps2,verbose=verbose,
                                   debug=debug,save=save,batch1=batch1,batch2=batch2,
                                   cont=cont,start_from=start_from,twostage=twostage,plotdebug=plotdebug,
-                                  max_grad_norm=max_grad_norm,learning_rate=learning_rate)
+                                  max_grad_norm=max_grad_norm,learning_rate=learning_rate,log_interval=log_interval)
             else:
                 self.run_protocol(rlmodel=rlmodel,steps1=steps1,steps2=steps2,verbose=verbose,
                                  debug=debug,batch1=batch1,batch2=batch2,cont=cont,
                                  save=save,twostage=twostage,plotdebug=plotdebug,
-                                 max_grad_norm=max_grad_norm,learning_rate=learning_rate)
+                                 max_grad_norm=max_grad_norm,learning_rate=learning_rate,log_interval=log_interval)
         if predict:
             #print('predict...')
             self.predict_protocol(pop=pop,rlmodel=rlmodel,load=save,plotdebug=plotdebug,
@@ -785,7 +785,7 @@ class Lifecycle():
             self.render(load=results)
           
     def run_protocol(self,steps1=2_000_000,steps2=1_000_000,rlmodel='acktr',
-               debug=False,batch1=1,batch2=1000,cont=False,twostage=False,
+               debug=False,batch1=1,batch2=1000,cont=False,twostage=False,log_interval=10,
                start_from=None,save='best3',verbose=1,plotdebug=None,max_grad_norm=0.5,learning_rate=0.25):
         '''
         run_protocol
@@ -805,17 +805,17 @@ class Lifecycle():
             if cont:
                 self.train(steps=steps1,cont=cont,rlmodel=rlmodel,save=tmpname,batch=batch1,debug=debug,
                            start_from=start_from,use_callback=False,use_vecmonitor=False,
-                           log_interval=10,verbose=1,plotdebug=plotdebug,max_grad_norm=max_grad_norm,learning_rate=learning_rate)
+                           log_interval=log_interval,verbose=1,plotdebug=plotdebug,max_grad_norm=max_grad_norm,learning_rate=learning_rate)
             else:
                 self.train(steps=steps1,cont=False,rlmodel=rlmodel,save=tmpname,batch=batch1,debug=debug,
-                           use_callback=False,use_vecmonitor=False,log_interval=1000,verbose=1,plotdebug=plotdebug,
+                           use_callback=False,use_vecmonitor=False,log_interval=log_interval,verbose=1,plotdebug=plotdebug,
                            max_grad_norm=max_grad_norm,learning_rate=learning_rate)
 
         if twostage and steps2>0:
             print('phase 2')
             self.train(steps=steps2,cont=True,rlmodel=rlmodel,save=tmpname,
                        debug=debug,start_from=tmpname,batch=batch2,verbose=verbose,
-                       use_callback=False,use_vecmonitor=False,log_interval=1,bestname=save,plotdebug=plotdebug,
+                       use_callback=False,use_vecmonitor=False,log_interval=log_interval,bestname=save,plotdebug=plotdebug,
                        max_grad_norm=max_grad_norm,learning_rate=learning_rate)
 
     def predict_protocol(self,pop=1_00,rlmodel='acktr',results='results/simut_res',
@@ -834,7 +834,7 @@ class Lifecycle():
                save='saved/distrib_base_',debug=False,simut='simut',results='results/distrib_',
                deterministic=True,train=True,predict=True,batch1=1,batch2=100,cont=False,
                start_from=None,plot=False,twostage=False,callback_minsteps=None,
-               stats_results='results/distrib_stats',startn=None,verbose=1):
+               stats_results='results/distrib_stats',startn=None,verbose=1,learning_rate=0.25):
    
         '''
         run_verify
@@ -858,7 +858,7 @@ class Lifecycle():
                twostage=twostage,save=bestname2,debug=debug,simut=simut,results=results2,
                deterministic=deterministic,train=train,predict=predict,
                batch1=batch1,batch2=batch2,cont=cont,start_from=start_from,plot=False,
-               callback_minsteps=callback_minsteps,verbose=verbose)
+               callback_minsteps=callback_minsteps,verbose=verbose,learning_rate=learning_rate)
 
         #self.render_distrib(load=results,n=n,stats_results=stats_results)
             

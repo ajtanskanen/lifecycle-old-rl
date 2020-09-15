@@ -202,6 +202,17 @@ class EpisodeStats():
     
     def episodestats_exit(self):
         plt.close(self.episode_fig)
+        
+    def comp_gini(self):
+        '''
+        Laske Gini-kerroin populaatiolle
+        '''
+        income=np.sort(self.infostats_tulot_netto,axis=None)
+        n=len(income)
+        L=np.arange(n,0,-1)
+        A=np.sum(L*income)/np.sum(income)
+        G=(n+1-2*A)/2
+        return G
 
     def plot_ratiostats(self,t):
         '''
@@ -1526,14 +1537,22 @@ class EpisodeStats():
 
             q=self.comp_participants(scale=True)
             q_stat=self.stat_participants_2018()
-            df1 = pd.DataFrame.from_dict(q,orient='index',columns=['kpl'])
+            q_days=self.stat_days_2018()
+            df1 = pd.DataFrame.from_dict(q,orient='index',columns=['arvio (htv)'])
             df2 = pd.DataFrame.from_dict(q_stat,orient='index',columns=['toteuma'])
+            df3 = pd.DataFrame.from_dict(q_days,orient='index',columns=['htv_tot'])
+
             df=df1.copy()
-            df['toteuma']=df2['toteuma']
-            df['ero']=df1['kpl']-df2['toteuma']
+            df['toteuma (kpl)']=df2['toteuma']
+            df['toteuma (htv)']=df3['htv_tot']
+            df['ero (htv)']=df['arvio (htv)']-df['toteuma (htv)']
                            
             print('Henkilöitä tiloissa skaalattuna väestötasolle')
             print(tabulate(df, headers='keys', tablefmt='psql', floatfmt=",.0f"))
+        
+        G=self.comp_gini()
+        
+        print('Gini coefficient is {}'.format(G))
         
         if self.version>0:
             self.plot_outsider()
@@ -2036,6 +2055,9 @@ class EpisodeStats():
         return q
 
     def stat_participants_2018(self,scale=False):
+        '''
+        Lukumäärätiedot (EI HTV!)
+        '''
         demog,demog2=self.get_demog()
 
         scalex=demog2/self.n_pop
@@ -2045,8 +2067,28 @@ class EpisodeStats():
         q['ansiosidonnaisella']=116_972+27_157  # Kelan tilasto 31.12.2018
         q['tmtuella']=189_780  # Kelan tilasto 31.12.2018
         q['isyysvapaalla']=59_640 # Kelan tilasto 2018
-        q['kotihoidontuella']=95_757 # saajia Kelan tilasto 2018
+        q['kotihoidontuella']=42_042 # saajia Kelan tilasto 2018
         q['vanhempainvapaalla']=84_387 # Kelan tilasto 2018
+
+        return q
+
+    def stat_days_2018(self,scale=False):
+        '''
+        HTV-tiedot
+        '''
+        demog,demog2=self.get_demog()
+
+        scalex=demog2/self.n_pop
+        htv=6*52
+        htv_tt=21.5*12
+        
+        q={}
+        q['palkansaajia']=2_204_000 # TK
+        q['ansiosidonnaisella']=(30_676_200+7_553_200)/htv_tt  # Kelan tilasto 31.12.2018
+        q['tmtuella']=49_880_300/htv_tt   # Kelan tilasto 31.12.2018
+        q['isyysvapaalla']=1_424_000/htv # Kelan tilasto 2018
+        q['kotihoidontuella']=42_042  # saajia Kelan tilasto 2018
+        q['vanhempainvapaalla']=12_571_400/htv  # Kelan tilasto 2018, äideille
 
         return q
 

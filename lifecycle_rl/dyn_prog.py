@@ -578,13 +578,13 @@ class DynProgLifecycle(Lifecycle):
                 
         return h
     
-    def get_diag_actV(self,t,emp,act,tis=1):
+    def get_diag_actV(self,t,emp,act,time_in_state=1):
         sh=self.Hila.shape
         h=np.zeros((sh[1],sh[2]))
         for k in range(sh[1]):
             for l in range(sh[2]):
                 # self.actHila = np.zeros((self.n_time+2,self.n_palkka,self.n_elake,self.n_employment,self.n_tis,self.n_palkka,self.n_acts))  
-                h[k,l]=self.actHila[t,k,l,emp,tis,k,act]
+                h[k,l]=self.actHila[t,k,l,emp,time_in_state,k,act]
                 
         return h
     
@@ -594,16 +594,16 @@ class DynProgLifecycle(Lifecycle):
         self.plot_img(self.get_diag_V(t,0),xlabel="Eläke",ylabel="Palkka",title='Työttömänä')
         self.plot_img(self.get_diag_V(t,1)-self.get_diag_V(t,0),xlabel="Eläke",ylabel="Palkka",title='Työssä-Työtön')
 
-    def print_actV(self,age):
+    def print_actV(self,age,time_in_state=1):
         t=self.map_age(age)
         print('t={} age={}'.format(t,age))
         if age>self.min_retirementage:
-            print('eläke: pysyy\n{}\n'.format(self.get_diag_actV(t,2,0)))
-            print('töissä: pois töistä\n{}\ntöissä: pysyy\n{}\ntöissä: eläköityy\n{}\n'.format(self.get_diag_actV(t,1,1),self.get_diag_actV(t,1,0),self.get_diag_actV(t,1,2)))
-            print('ei töissä: töihin\n{}\nei töissä: pysyy\n{}\nei töissä: eläköityy\n{}\n'.format(self.get_diag_actV(t,0,1),self.get_diag_actV(t,0,0),self.get_diag_actV(t,0,2)))
+            print('eläke: pysyy\n{}\n'.format(self.get_diag_actV(t,2,0,time_in_state=time_in_state)))
+            print('töissä: pois töistä\n{}\ntöissä: pysyy\n{}\ntöissä: eläköityy\n{}\n'.format(self.get_diag_actV(t,1,1,time_in_state=time_in_state),self.get_diag_actV(t,1,0,time_in_state=time_in_state),self.get_diag_actV(t,1,2,time_in_state=time_in_state)))
+            print('ei töissä: töihin\n{}\nei töissä: pysyy\n{}\nei töissä: eläköityy\n{}\n'.format(self.get_diag_actV(t,0,1,time_in_state=time_in_state),self.get_diag_actV(t,0,0,time_in_state=time_in_state),self.get_diag_actV(t,0,2,time_in_state=time_in_state)))
         else:
-            print('töissä: pois töistä\n',self.get_diag_actV(t,1,1),'\ntöissä: pysyy\n',self.get_diag_actV(t,1,0))
-            print('ei töissä: töihin\n',self.get_diag_actV(t,0,1),'\nei töissä: pysyy\n',self.get_diag_actV(t,0,0))
+            print('töissä: pois töistä\n',self.get_diag_actV(t,1,1),'\ntöissä: pysyy\n',self.get_diag_actV(t,1,0,time_in_state=time_in_state))
+            print('ei töissä: töihin\n',self.get_diag_actV(t,0,1),'\nei töissä: pysyy\n',self.get_diag_actV(t,0,0,time_in_state=time_in_state))
 
     def print_act(self,age,time_in_state=0):
         print('age=',age)
@@ -628,7 +628,7 @@ class DynProgLifecycle(Lifecycle):
         self.plot_img(q1,xlabel="Eläke",ylabel="Palkka",title='Töissä')
         self.plot_img(q2,xlabel="Eläke",ylabel="Palkka",title='Työttömänä')
     
-    def get_act_q(self,age,emp=1,time_in_state=0):
+    def get_act_q(self,age,emp=1,time_in_state=0,debug=False):
         t=self.map_age(age)
         q=np.zeros((self.n_palkka,self.n_elake))
         for p in range(self.n_palkka): 
@@ -636,9 +636,13 @@ class DynProgLifecycle(Lifecycle):
                 palkka=self.map_palkka(p)
                 elake=self.map_elake(el)
 
-                q[p,el]=np.argmax(self.actHila[t,p,el,emp,time_in_state,p,:])
-
+                q[p,el]=int(np.argmax(self.actHila[t,p,el,emp,time_in_state,p,:]))
+                if debug:
+                    print('p {} e {} a {} q {}'.format(palkka,elake,q[p,el],self.actHila[t,p,el,emp,time_in_state,p,:]))
         return q
+
+    def print_q(self,age,emp=1,time_in_state=0):
+        _=self.get_act_q(age=age,emp=emp,time_in_state=time_in_state,debug=True)
 
     def compare_act(self,age,cc,time_in_state=0,rlmodel='small_acktr',load='saved/malli_perusmini99_nondet',
                     deterministic=True):

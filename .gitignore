@@ -20,3 +20,9 @@ tests/*
 perustulo/results/*
 perustulo/best/*
 perustulo/tmp/*
+*.eps
+best/*
+v2/best/*
+v2/*.eps
+best/toe12/*
+*.zip
