@@ -43,12 +43,12 @@ class DynProgLifecycle(Lifecycle):
         self.hila_elake0 = 0
         
         # dynaamisen ohjelmoinnin parametrejä
-        self.n_palkka = 10
+        self.n_palkka = 20
         self.deltapalkka = 100000/(self.n_palkka-1)
         self.n_palkka_future = 30 # 40
         self.delta_palkka_future = 0.15
         self.mid_palkka_future=5 # 20
-        self.n_elake = 10
+        self.n_elake = 20
         self.deltaelake = 80000/(self.n_elake-1)
         self.n_tis = 3 # ei vaikutusta palkkaan, joten 3 riittää
         self.deltatis = 1

@@ -352,11 +352,11 @@ class Lifecycle():
             elif rlmodel=='small_lnacktr' or rlmodel=='lnacktr':
                 from stable_baselines.common.policies import MlpLnLstmPolicy 
                 if tensorboard:
-                    model = ACKTR(MlpLnLstmPolicy, env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
+                    model = ACKTR(MlpLstmPolicy, env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
                                 tensorboard_log=self.tenb_dir, learning_rate=scaled_learning_rate, 
                                 policy_kwargs=policy_kwargs,max_grad_norm=max_grad_norm,full_tensorboard_log=full_tensorboard_log)
                 else:
-                    model = ACKTR(LnMlpPolicy, env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
+                    model = ACKTR(MlpLstmPolicy, env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
                                 learning_rate=scaled_learning_rate, 
                                 policy_kwargs=policy_kwargs,max_grad_norm=max_grad_norm)
             elif rlmodel=='lstm':

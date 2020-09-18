@@ -114,7 +114,6 @@ class EpisodeStats():
             newemp,g,newpen,newsal,a2,tis,paidpens,pink,toe,ura,bu,wr,pr,upr,uw,uwr,c7,c18=self.env.state_decode(newstate)
     
         t=int(np.round((a2-self.min_age)*self.inv_timestep))-1
-        
         if a2>a and newemp>=0: # new state is not reset (age2>age)
             if a2>self.min_retirementage and newemp==3:
                 newemp=2
@@ -122,8 +121,6 @@ class EpisodeStats():
                 self.empstate[t,newemp]+=1
                 self.alive[t]+=1
                 self.rewstate[t,newemp]+=r
-                #if self.poprewstate[t,n]>0:
-                #    print(t,n)
             
                 self.poprewstate[t,n]=r
                 self.actions[t,n]=act
@@ -166,6 +163,7 @@ class EpisodeStats():
                 self.empstate[t,newemp]+=1
                 self.alive[t]+=1
                 self.rewstate[t,newemp]+=r
+                
                 self.poprewstate[t,n]=r
                 self.actions[t,n]=act
                 self.popempstate[t,n]=newemp
@@ -1300,7 +1298,7 @@ class EpisodeStats():
             ura_army=statistic[:,14]
 
         if no_ve:
-            ura_ret=0*ura_ret
+            ura_ret[-2:-1]=None
 
         fig,ax=plt.subplots()
         if stack:
@@ -1486,9 +1484,10 @@ class EpisodeStats():
     def comp_total_reward(self): 
         total_reward=np.sum(self.rewstate)
         rr=total_reward/self.n_pop
-        print('total rew1 {} rew2 {}'.format(total_reward,np.sum(self.poprewstate)))
-        print('ave rew1 {} rew2 {}'.format(rr,np.mean(np.sum(self.poprewstate,axis=0))))
-        print('shape rew2 {} pop {} alive {}'.format(self.poprewstate.shape,self.n_pop,self.alive[0]))
+        #print('total rew1 {} rew2 {}'.format(total_reward,np.sum(self.poprewstate)))
+        #print('ave rew1 {} rew2 {}'.format(rr,np.mean(np.sum(self.poprewstate,axis=0))))
+        #print('shape rew2 {} pop {} alive {}'.format(self.poprewstate.shape,self.n_pop,self.alive[0]))
+        print('Ave reward {}'.format(rr))
         
         return rr
 
@@ -1518,7 +1517,7 @@ class EpisodeStats():
             plt.style.use('grayscale')
             plt.rcParams['figure.facecolor'] = 'white' # Or any suitable colour...
 
-        #self.comp_total_reward()
+        self.comp_total_reward()
         #self.plot_rewdist()
 
         self.plot_emp(figname=figname)
