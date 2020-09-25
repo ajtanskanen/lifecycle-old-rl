@@ -20,7 +20,8 @@ import tensorflow as tf
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from tqdm import tqdm_notebook as tqdm
 import os
-from . episodestats import EpisodeStats, SimStats
+from . episodestats import EpisodeStats
+from . simstats import SimStats
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # or any {'0', '1', '2'}
 import warnings
@@ -234,13 +235,13 @@ class Lifecycle():
             n_cpu = 4
         elif rlmodel=='acktr':
             policy_kwargs = dict(act_fun=tf.nn.relu, net_arch=[512, 512, 256]) # 256, 256?
-            n_cpu = 12 # 20
+            n_cpu = 8 # 12 # 20
         elif rlmodel=='small_acktr' or rlmodel=='small_lnacktr':
             policy_kwargs = dict(act_fun=tf.nn.relu, net_arch=[256, 256, 128]) # 256, 256?
-            n_cpu = 8
+            n_cpu = 4 #8
         elif rlmodel=='large_acktr':
             policy_kwargs = dict(act_fun=tf.nn.relu, net_arch=[256, 256, 64, 16]) # 256, 256?
-            n_cpu = 12
+            n_cpu = 4 # 12
         elif rlmodel=='lstm' or rlmodel=='lnacktr':
             policy_kwargs = dict()
             n_cpu = 4
@@ -258,7 +259,7 @@ class Lifecycle():
         return policy_kwargs,n_cpu
 
     def setup_rlmodel(self,rlmodel,loadname,env,batch,policy_kwargs,learning_rate,
-                      max_grad_norm,cont,tensorboard=True,verbose=1,n_cpu=1):
+                      max_grad_norm,cont,tensorboard=True,verbose=1,n_cpu=1,learning_schedule='linear'):
         '''
         Alustaa RL-mallin ajoa varten
         '''
@@ -267,7 +268,6 @@ class Lifecycle():
         full_tensorboard_log=True
         
         if cont:
-            #learning_rate=0.5*learning_rate
             learning_rate=0.25*learning_rate
         
         scaled_learning_rate=learning_rate*np.sqrt(batch)
@@ -279,10 +279,10 @@ class Lifecycle():
                 from stable_baselines.common.policies import MlpPolicy 
                 if tensorboard:
                     model = A2C.load(loadname, env=env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
-                                     tensorboard_log=self.tenb_dir, policy_kwargs=policy_kwargs)
+                                     tensorboard_log=self.tenb_dir, policy_kwargs=policy_kwargs,lr_schedule=learning_schedule)
                 else:
                     model = A2C.load(loadname, env=env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
-                                     policy_kwargs=policy_kwargs)
+                                     policy_kwargs=policy_kwargs,lr_schedule=learning_schedule)
             elif rlmodel=='acer':
                 from stable_baselines.common.policies import MlpPolicy 
                 model = ACER.load(loadname, env=env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
@@ -293,87 +293,89 @@ class Lifecycle():
                     model = ACKTR.load(loadname, env=env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
                                        tensorboard_log=self.tenb_dir, learning_rate=scaled_learning_rate, 
                                        policy_kwargs=policy_kwargs,max_grad_norm=max_grad_norm,
-                                       full_tensorboard_log=full_tensorboard_log,lr_schedule='linear')
+                                       full_tensorboard_log=full_tensorboard_log,lr_schedule=learning_schedule)
                 else:
                     model = ACKTR.load(loadname, env=env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
                                        learning_rate=np.sqrt(batch)*learning_rate, 
-                                       policy_kwargs=policy_kwargs,max_grad_norm=max_grad_norm,lr_schedule='linear')
+                                       policy_kwargs=policy_kwargs,max_grad_norm=max_grad_norm,lr_schedule=learning_schedule)
             elif rlmodel=='small_lnacktr' or rlmodel=='lnacktr':
                 from stable_baselines.common.policies import MlpLnLstmPolicy 
                 if tensorboard:
                     model = ACKTR.load(loadname, env=env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
                                        tensorboard_log=self.tenb_dir, learning_rate=scaled_learning_rate, 
                                        policy_kwargs=policy_kwargs,max_grad_norm=max_grad_norm,
-                                       full_tensorboard_log=full_tensorboard_log,lr_schedule='linear')
+                                       full_tensorboard_log=full_tensorboard_log,lr_schedule=learning_schedule)
                 else:
                     model = ACKTR.load(loadname, env=env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
                                        learning_rate=np.sqrt(batch)*learning_rate, 
-                                       policy_kwargs=policy_kwargs,max_grad_norm=max_grad_norm,lr_schedule='linear')
+                                       policy_kwargs=policy_kwargs,max_grad_norm=max_grad_norm,lr_schedule=learning_schedule)
             elif rlmodel=='lstm':
                 from stable_baselines.common.policies import MlpPolicy,MlpLstmPolicy 
                 if tensorboard:
                     model = ACKTR.load(loadname, env=env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
                                        tensorboard_log=self.tenb_dir, learning_rate=scaled_learning_rate, 
-                                       policy_kwargs=policy_kwargs,max_grad_norm=max_grad_norm,full_tensorboard_log=full_tensorboard_log)
+                                       policy_kwargs=policy_kwargs,max_grad_norm=max_grad_norm,
+                                       full_tensorboard_log=full_tensorboard_log,lr_schedule=learning_schedule)
                 else:
                     model = ACKTR.load(loadname, env=env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
-                                       learning_rate=scaled_learning_rate, policy_kwargs=policy_kwargs,max_grad_norm=max_grad_norm)
+                                       learning_rate=scaled_learning_rate, policy_kwargs=policy_kwargs,
+                                       max_grad_norm=max_grad_norm,lr_schedule=learning_schedule)
             elif rlmodel=='trpo':
                 from stable_baselines.common.policies import MlpPolicy 
                 model = TRPO.load(loadname, env=env, verbose=verbose,gamma=self.gamma,
                                   n_steps=batch*self.n_time,tensorboard_log=self.tenb_dir,
-                                  policy_kwargs=policy_kwargs)
+                                  policy_kwargs=policy_kwargs,lr_schedule=learning_schedule)
             else:
                 from stable_baselines.deepq.policies import MlpPolicy # for DQN
                 model = DQN.load(loadname, env=env, verbose=verbose,gamma=self.gamma,
                                  batch_size=batch,learning_starts=self.n_time,
                                  tensorboard_log=self.tenb_dir,prioritized_replay=True, 
-                                 policy_kwargs=policy_kwargs)
+                                 policy_kwargs=policy_kwargs,lr_schedule=learning_schedule)
         else:
             if rlmodel=='a2c':
                 from stable_baselines.common.policies import MlpPolicy 
                 model = A2C(MlpPolicy, env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time, 
-                            tensorboard_log=self.tenb_dir, policy_kwargs=policy_kwargs)
+                            tensorboard_log=self.tenb_dir, policy_kwargs=policy_kwargs,lr_schedule=learning_schedule)
             elif rlmodel=='acer':
                 from stable_baselines.common.policies import MlpPolicy 
                 model = ACER(MlpPolicy, env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time, 
-                             tensorboard_log=self.tenb_dir, policy_kwargs=policy_kwargs)
+                             tensorboard_log=self.tenb_dir, policy_kwargs=policy_kwargs,lr_schedule=learning_schedule)
             elif rlmodel=='small_acktr' or rlmodel=='acktr' or rlmodel=='large_acktr':
                 from stable_baselines.common.policies import MlpPolicy 
                 if tensorboard:
                     model = ACKTR(MlpPolicy, env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
                                 tensorboard_log=self.tenb_dir, learning_rate=scaled_learning_rate, 
                                 policy_kwargs=policy_kwargs,max_grad_norm=max_grad_norm,
-                                full_tensorboard_log=full_tensorboard_log,lr_schedule='linear')
+                                full_tensorboard_log=full_tensorboard_log,lr_schedule=learning_schedule)
                 else:
                     model = ACKTR(MlpPolicy, env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
                                 learning_rate=np.sqrt(batch)*learning_rate, 
-                                policy_kwargs=policy_kwargs,max_grad_norm=max_grad_norm,lr_schedule='linear')
+                                policy_kwargs=policy_kwargs,max_grad_norm=max_grad_norm,lr_schedule=learning_schedule)
             elif rlmodel=='small_lnacktr' or rlmodel=='lnacktr':
                 from stable_baselines.common.policies import MlpLnLstmPolicy 
                 if tensorboard:
                     model = ACKTR(MlpLstmPolicy, env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
                                 tensorboard_log=self.tenb_dir, learning_rate=scaled_learning_rate, 
-                                policy_kwargs=policy_kwargs,max_grad_norm=max_grad_norm,full_tensorboard_log=full_tensorboard_log)
+                                policy_kwargs=policy_kwargs,max_grad_norm=max_grad_norm,full_tensorboard_log=full_tensorboard_log,lr_schedule=learning_schedule)
                 else:
                     model = ACKTR(MlpLstmPolicy, env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
                                 learning_rate=scaled_learning_rate, 
-                                policy_kwargs=policy_kwargs,max_grad_norm=max_grad_norm)
+                                policy_kwargs=policy_kwargs,max_grad_norm=max_grad_norm,lr_schedule=learning_schedule)
             elif rlmodel=='lstm':
                 from stable_baselines.common.policies import MlpPolicy,MlpLstmPolicy 
                 model = ACKTR(MlpLstmPolicy, env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
                             tensorboard_log=self.tenb_dir, learning_rate=learning_rate, 
-                            policy_kwargs=policy_kwargs,max_grad_norm=max_grad_norm)
+                            policy_kwargs=policy_kwargs,max_grad_norm=max_grad_norm,lr_schedule=learning_schedule)
             elif rlmodel=='trpo':
                 from stable_baselines.common.policies import MlpPolicy 
                 model = TRPO(MlpPolicy, env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time, 
-                             tensorboard_log=self.tenb_dir, policy_kwargs=policy_kwargs)
+                             tensorboard_log=self.tenb_dir, policy_kwargs=policy_kwargs,lr_schedule=learning_schedule)
             else:
                 from stable_baselines.deepq.policies import MlpPolicy # for DQN
                 model = DQN(MlpPolicy, env, verbose=verbose,gamma=self.gamma,batch_size=batch, 
                             learning_starts=self.n_time,
                             tensorboard_log=self.tenb_dir,prioritized_replay=True, 
-                            policy_kwargs=policy_kwargs) 
+                            policy_kwargs=policy_kwargs,lr_schedule=learning_schedule) 
             
         return model
 
@@ -442,7 +444,8 @@ class Lifecycle():
     def train(self,train=False,debug=False,steps=20000,cont=False,rlmodel='dqn',
                 save='saved/malli',pop=None,batch=1,max_grad_norm=0.5,learning_rate=0.25,
                 start_from=None,max_n_cpu=1000,plot=True,use_vecmonitor=False,
-                bestname='tmp/best2',use_callback=False,log_interval=100,verbose=1,plotdebug=False):
+                bestname='tmp/best2',use_callback=False,log_interval=100,verbose=1,plotdebug=False,
+                learning_schedule='linear',):
         '''
         Opetusrutiini
         '''
@@ -490,7 +493,7 @@ class Lifecycle():
             env = VecNormalize(env, **normalize_kwargs)
 
         model=self.setup_rlmodel(self.rlmodel,start_from,env,batch,policy_kwargs,learning_rate,
-                                    max_grad_norm,cont,verbose=verbose,n_cpu=n_cpu)
+                                    max_grad_norm,cont,verbose=verbose,n_cpu=n_cpu,learning_schedule=learning_schedule)
         print('training...')
 
         if use_callback: # tässä ongelma, vecmonitor toimii => kuitenkin monta callbackia
@@ -749,7 +752,8 @@ class Lifecycle():
                save='saved/perusmalli',debug=False,simut='simut',results='results/simut_res',
                stats='results/simut_stats',deterministic=True,train=True,predict=True,
                batch1=1,batch2=100,cont=False,start_from=None,plot=False,callback_minsteps=None,
-               verbose=1,plotdebug=None,max_grad_norm=0.5,learning_rate=0.25,log_interval=10):
+               verbose=1,plotdebug=None,max_grad_norm=0.5,learning_rate=0.25,log_interval=10,
+               learning_schedule='linear'):
    
         '''
         run_results
@@ -771,12 +775,14 @@ class Lifecycle():
                 self.run_protocol(rlmodel=rlmodel,steps1=steps1,steps2=steps2,verbose=verbose,
                                   debug=debug,save=save,batch1=batch1,batch2=batch2,
                                   cont=cont,start_from=start_from,twostage=twostage,plotdebug=plotdebug,
-                                  max_grad_norm=max_grad_norm,learning_rate=learning_rate,log_interval=log_interval)
+                                  max_grad_norm=max_grad_norm,learning_rate=learning_rate,log_interval=log_interval,
+                                  learning_schedule=learning_schedule)
             else:
                 self.run_protocol(rlmodel=rlmodel,steps1=steps1,steps2=steps2,verbose=verbose,
                                  debug=debug,batch1=batch1,batch2=batch2,cont=cont,
                                  save=save,twostage=twostage,plotdebug=plotdebug,
-                                 max_grad_norm=max_grad_norm,learning_rate=learning_rate,log_interval=log_interval)
+                                 max_grad_norm=max_grad_norm,learning_rate=learning_rate,log_interval=log_interval,
+                                 learning_schedule=learning_schedule)
         if predict:
             #print('predict...')
             self.predict_protocol(pop=pop,rlmodel=rlmodel,load=save,plotdebug=plotdebug,
@@ -786,7 +792,8 @@ class Lifecycle():
           
     def run_protocol(self,steps1=2_000_000,steps2=1_000_000,rlmodel='acktr',
                debug=False,batch1=1,batch2=1000,cont=False,twostage=False,log_interval=10,
-               start_from=None,save='best3',verbose=1,plotdebug=None,max_grad_norm=0.5,learning_rate=0.25):
+               start_from=None,save='best3',verbose=1,plotdebug=None,max_grad_norm=0.5,
+               learning_rate=0.25,learning_schedule='linear'):
         '''
         run_protocol
 
@@ -794,7 +801,7 @@ class Lifecycle():
         1. train with a short batch, not saving the best model
         2. train with a long batch, save the best model during the training
         '''
-  
+        
         if twostage:
             tmpname='tmp/simut_100'
         else:
@@ -805,18 +812,19 @@ class Lifecycle():
             if cont:
                 self.train(steps=steps1,cont=cont,rlmodel=rlmodel,save=tmpname,batch=batch1,debug=debug,
                            start_from=start_from,use_callback=False,use_vecmonitor=False,
-                           log_interval=log_interval,verbose=1,plotdebug=plotdebug,max_grad_norm=max_grad_norm,learning_rate=learning_rate)
+                           log_interval=log_interval,verbose=1,plotdebug=plotdebug,
+                           max_grad_norm=max_grad_norm,learning_rate=learning_rate,learning_schedule=learning_schedule)
             else:
                 self.train(steps=steps1,cont=False,rlmodel=rlmodel,save=tmpname,batch=batch1,debug=debug,
                            use_callback=False,use_vecmonitor=False,log_interval=log_interval,verbose=1,plotdebug=plotdebug,
-                           max_grad_norm=max_grad_norm,learning_rate=learning_rate)
+                           max_grad_norm=max_grad_norm,learning_rate=learning_rate,learning_schedule=learning_schedule)
 
         if twostage and steps2>0:
             print('phase 2')
             self.train(steps=steps2,cont=True,rlmodel=rlmodel,save=tmpname,
                        debug=debug,start_from=tmpname,batch=batch2,verbose=verbose,
                        use_callback=False,use_vecmonitor=False,log_interval=log_interval,bestname=save,plotdebug=plotdebug,
-                       max_grad_norm=max_grad_norm,learning_rate=learning_rate)
+                       max_grad_norm=max_grad_norm,learning_rate=learning_rate,learning_schedule=learning_schedule)
 
     def predict_protocol(self,pop=1_00,rlmodel='acktr',results='results/simut_res',
                          load='saved/malli',debug=False,deterministic=False,plotdebug=None):
@@ -834,7 +842,7 @@ class Lifecycle():
                save='saved/distrib_base_',debug=False,simut='simut',results='results/distrib_',
                deterministic=True,train=True,predict=True,batch1=1,batch2=100,cont=False,
                start_from=None,plot=False,twostage=False,callback_minsteps=None,
-               stats_results='results/distrib_stats',startn=None,verbose=1,learning_rate=0.25):
+               stats_results='results/distrib_stats',startn=None,verbose=1,learning_rate=0.25,learning_schedule='linear'):
    
         '''
         run_verify
@@ -858,7 +866,7 @@ class Lifecycle():
                twostage=twostage,save=bestname2,debug=debug,simut=simut,results=results2,
                deterministic=deterministic,train=train,predict=predict,
                batch1=batch1,batch2=batch2,cont=cont,start_from=start_from,plot=False,
-               callback_minsteps=callback_minsteps,verbose=verbose,learning_rate=learning_rate)
+               callback_minsteps=callback_minsteps,verbose=verbose,learning_rate=learning_rate,learning_schedule=learning_schedule)
 
         #self.render_distrib(load=results,n=n,stats_results=stats_results)
             
@@ -976,17 +984,11 @@ class Lifecycle():
                  
         return fake_act
         
-    def L2error(self,pred):
+    def L2error(self):
         '''
         Laskee L2-virheen havaittuun työllisyysasteen L2-virhe/vuosi tasossa
         Käytetään optimoinnissa
         '''
-        ep=Epsisodestats()
-        baseline=ep.emp_stats()
-        pred=1
-        L2=(baseline-ep)**2/len(baseline)
+        L2=self.episodestats.comp_L1error()
         
         return L2
-        
-    def get_results(self):
-        pass

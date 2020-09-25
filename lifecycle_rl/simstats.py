@@ -1,0 +1,612 @@
+'''
+
+    simstats.py
+
+    implements statistic for multiple runs
+
+'''
+
+import h5py
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib as mpl
+import seaborn as sns
+from scipy.stats import norm
+import locale
+from tabulate import tabulate
+import pandas as pd
+from tqdm import tqdm_notebook as tqdm
+from .episodestats import EpisodeStats
+    
+class SimStats(EpisodeStats):
+    def run_simstats(self,results,save,n,plot=True,startn=0,max_age=54):
+        '''
+        Laskee statistiikat ajoista
+        '''
+        
+        print('computing simulation statistics...')
+        #n=self.load_hdf(results+'_simut','n')
+        e_rate=np.zeros((n,self.n_time))
+        agg_htv=np.zeros(n)
+        agg_tyoll=np.zeros(n)
+        agg_rew=np.zeros(n)
+        t_aste=np.zeros(self.n_time)
+        emps=np.zeros((n,self.n_time,self.n_employment))
+        emp_tyolliset=np.zeros((n,self.n_time))
+        emp_tyottomat=np.zeros((n,self.n_time))
+        emp_tyolliset_osuus=np.zeros((n,self.n_time))
+        emp_tyottomat_osuus=np.zeros((n,self.n_time))
+        emp_htv=np.zeros((n,self.n_time))
+        tyoll_virta=np.zeros((n,self.n_time))
+        tyot_virta=np.zeros((n,self.n_time))
+        tyot_virta_ansiosid=np.zeros((n,self.n_time))
+        tyot_virta_tm=np.zeros((n,self.n_time))
+        unemp_dur=np.zeros((n,5,5))
+        unemp_lastdur=np.zeros((n,5,5))
+
+        self.load_sim(results+'_'+str(100+startn))
+        base_empstate=self.empstate/self.n_pop
+        emps[0,:,:]=base_empstate
+        htv_base,tyoll_base,haj_base,tyollaste_base,tyolliset_base=self.comp_tyollisyys_stats(base_empstate,scale_time=True)
+        reward=self.get_reward()
+        agg_htv[0]=htv_base
+        agg_tyoll[0]=tyoll_base
+        agg_rew[0]=reward
+        best_rew=reward
+        best_emp=0
+        t_aste[0]=tyollaste_base
+        
+        tyolliset_ika,tyottomat,htv_ika,tyolliset_osuus,tyottomat_osuus=self.comp_employed_number(base_empstate)
+        
+        emp_tyolliset[0,:]=tyolliset_ika[:,0]
+        emp_tyottomat[0,:]=tyottomat[:,0]
+        emp_tyolliset_osuus[0,:]=tyolliset_osuus[:,0]
+        emp_tyottomat_osuus[0,:]=tyottomat_osuus[:,0]
+        emp_htv[0,:]=htv_ika[:,0]
+        
+        unemp_distrib,emp_distrib,unemp_distrib_bu=self.comp_empdistribs(ansiosid=True,tmtuki=True,putki=True,outsider=False,max_age=max_age)
+        tyoll_distrib,tyoll_distrib_bu=self.comp_tyollistymisdistribs(ansiosid=True,tmtuki=True,putki=True,outsider=False,max_age=max_age)
+
+        # virrat työllisyyteen ja työttömyyteen
+        tyoll_virta0,tyot_virta0=self.comp_virrat(ansiosid=True,tmtuki=True,putki=True,outsider=False)
+        tyoll_virta_ansiosid0,tyot_virta_ansiosid0=self.comp_virrat(ansiosid=True,tmtuki=False,putki=True,outsider=False)
+        tyoll_virta_tm0,tyot_virta_tm0=self.comp_virrat(ansiosid=False,tmtuki=True,putki=False,outsider=False)
+
+        tyoll_virta[0,:]=tyoll_virta0[:,0]
+        tyot_virta[0,:]=tyot_virta0[:,0]
+        tyot_virta_ansiosid[0,:]=tyot_virta_ansiosid0[:,0]
+        tyot_virta_tm[0,:]=tyot_virta_tm0[:,0]
+        
+        unemp_dur0=self.comp_unemp_durations(return_q=False)
+        unemp_lastdur0=self.comp_unemp_durations_v2(return_q=False)
+        unemp_dur[0,:,:]=unemp_dur0[:,:]
+        unemp_lastdur[0,:,:]=unemp_lastdur0[:,:]
+
+        if plot:
+            fig,ax=plt.subplots()
+            ax.set_xlabel('Ikä [v]')
+            ax.set_ylabel('Työllisyysaste [%]')
+            x=np.linspace(self.min_age,self.max_age,self.n_time)
+            ax.plot(x,100*tyolliset_base,alpha=0.9,lw=2.0)
+
+        tqdm_e = tqdm(range(int(n)), desc='Sim', leave=True, unit=" ")
+
+        for i in range(startn+1,n): 
+            self.load_sim(results+'_'+str(100+i))
+            empstate=self.empstate/self.n_pop
+            emps[i,:,:]=empstate
+            reward=self.get_reward()
+            if reward>best_rew:
+                best_rew=reward
+                best_emp=i
+
+            htv,tyollvaikutus,haj,tyollisyysaste,tyolliset=self.comp_tyollisyys_stats(empstate,scale_time=True)
+            if plot:
+                ax.plot(x,100*tyolliset,alpha=0.5,lw=0.5)
+    
+            agg_htv[i]=htv
+            agg_tyoll[i]=tyollvaikutus
+            agg_rew[i]=reward
+            t_aste[i]=tyollisyysaste
+
+            tyolliset_ika,tyottomat,htv_ika,tyolliset_osuus,tyottomat_osuus=self.comp_employed_number(empstate)
+            
+            emp_tyolliset[i,:]=tyolliset_ika[:,0]
+            emp_tyottomat[i,:]=tyottomat[:,0]
+            emp_tyolliset_osuus[i,:]=tyolliset_osuus[:,0]
+            emp_tyottomat_osuus[i,:]=tyottomat_osuus[:,0]
+            emp_htv[i,:]=htv_ika[:,0]
+
+            unemp_distrib2,emp_distrib2,unemp_distrib_bu2=self.comp_empdistribs(ansiosid=True,tmtuki=True,putki=True,outsider=False,max_age=max_age)
+            tyoll_distrib2,tyoll_distrib_bu2=self.comp_tyollistymisdistribs(ansiosid=True,tmtuki=True,putki=True,outsider=False,max_age=max_age)
+            
+            unemp_distrib.extend(unemp_distrib2)
+            emp_distrib.extend(emp_distrib2)
+            unemp_distrib_bu.extend(unemp_distrib_bu2)
+            tyoll_distrib.extend(tyoll_distrib2)
+            tyoll_distrib_bu.extend(tyoll_distrib_bu2)
+            
+            # virrat työllisyyteen ja työttömyyteen
+            tyoll_virta0,tyot_virta0=self.comp_virrat(ansiosid=True,tmtuki=True,putki=True,outsider=False)
+            tyoll_virta_ansiosid0,tyot_virta_ansiosid0=self.comp_virrat(ansiosid=True,tmtuki=False,putki=True,outsider=False)
+            tyoll_virta_tm0,tyot_virta_tm0=self.comp_virrat(ansiosid=False,tmtuki=True,putki=False,outsider=False)
+
+            tyoll_virta[i,:]=tyoll_virta0[:,0]
+            tyot_virta[i,:]=tyot_virta0[:,0]
+            tyot_virta_ansiosid[i,:]=tyot_virta_ansiosid0[:,0]
+            tyot_virta_tm[i,:]=tyot_virta_tm0[:,0]
+
+            unemp_dur0=self.comp_unemp_durations(return_q=False)
+            unemp_lastdur0=self.comp_unemp_durations_v2(return_q=False)
+            unemp_dur[i,:,:]=unemp_dur0[:,:]
+            unemp_lastdur[i,:,:]=unemp_lastdur0[:,:]
+            tqdm_e.set_description("Pop " + str(n))
+
+        self.save_simstats(save,agg_htv,agg_tyoll,agg_rew,\
+                            emp_tyolliset,emp_tyolliset_osuus,\
+                            emp_tyottomat,emp_tyottomat_osuus,\
+                            emp_htv,emps,\
+                            best_rew,best_emp,\
+                            unemp_distrib,emp_distrib,unemp_distrib_bu,\
+                            tyoll_distrib,tyoll_distrib_bu,\
+                            tyoll_virta,tyot_virta,tyot_virta_ansiosid,tyot_virta_tm,\
+                            unemp_dur,unemp_lastdur)
+                    
+        # save the best
+        self.load_sim(results+'_'+str(100+best_emp))
+        self.save_sim(results+'_best')
+                    
+        print('done')
+        print('best_emp',best_emp)
+        
+    def fit_norm(self,diff):
+        diff_stdval=np.std(diff)
+        diff_meanval=np.mean(diff)
+        diff_minval=np.min(diff)
+        diff_maxval=np.max(diff)
+        sz=(diff_maxval-diff_minval)/10
+        x=np.linspace(diff_minval,diff_maxval,1000)
+        y=norm.pdf(x,diff_meanval,diff_stdval)*diff.shape[0]*sz
+    
+        return x,y
+        
+    def count_putki_dist(self,emps):
+        putki=[]
+    
+        for k in range(emps.shape[0]):
+            putki.append(self.count_putki(emps[k,:,:]))
+            
+        putkessa=np.median(np.asarray(putki))
+        return putkessa        
+        
+    def plot_simstats(self,filename,grayscale=False,figname=None):
+        agg_htv,agg_tyoll,agg_rew,emp_tyolliset,emp_tyolliset_osuus,\
+            emp_tyottomat,emp_tyottomat_osuus,emp_htv,emps,best_rew,best_emp,emps=self.load_simstats(filename)
+
+        print('lisäpäivillä on {:.0f} henkilöä'.format(self.count_putki_dist(emps)))
+
+        if grayscale:
+            plt.style.use('grayscale')
+            plt.rcParams['figure.facecolor'] = 'white' # Or any suitable colour...
+
+        mean_htv=np.mean(agg_htv)
+        median_htv=np.median(agg_htv)
+        mean_tyoll=np.mean(agg_tyoll)
+        median_tyoll=np.median(agg_tyoll)
+        std_htv=np.std(agg_htv)
+        std_tyoll=np.std(agg_tyoll)
+        diff_htv=agg_htv-mean_htv
+        diff_tyoll=agg_tyoll-median_tyoll
+        
+        x,y=self.fit_norm(diff_htv)
+        
+        m_mean=np.mean(emp_tyolliset_osuus,axis=0)
+        m_median=np.median(emp_tyolliset_osuus,axis=0)
+        s_emp=np.std(emp_tyolliset_osuus,axis=0)
+        m_best=emp_tyolliset_osuus[best_emp,:]
+
+        if self.minimal:
+            print('Työllisyyden keskiarvo {:.0f} htv mediaani {:.0f} htv std {:.0f} htv'.format(mean_htv,median_htv,std_htv))
+        else:
+            print('Työllisyyden keskiarvo keskiarvo {:.0f} htv, mediaani {:.0f} htv std {:.0f} htv\n'
+                  'keskiarvo {:.0f} työllistä, mediaani {:.0f} työllistä, std {:.0f} työllistä'.format(
+                    mean_htv,median_htv,std_htv,mean_tyoll,median_tyoll,std_tyoll))
+
+        fig,ax=plt.subplots()
+        ax.set_xlabel('Poikkeama työllisyydessä [htv]')
+        ax.set_ylabel('Lukumäärä')
+        ax.hist(diff_htv,color='lightgray')
+        ax.plot(x,y,color='black')
+        if figname is not None:
+            plt.savefig(figname+'poikkeama.eps')
+        plt.show()
+
+        fig,ax=plt.subplots()
+        ax.set_xlabel('Ikä [v]')
+        ax.set_ylabel('Työllisyysaste [%]')
+        x=np.linspace(self.min_age,self.max_age,self.n_time)
+        ax.plot(x,100*np.transpose(emp_tyolliset_osuus),linewidth=0.4)
+        emp_statsratio=100*m_mean #100*self.emp_stats()
+        ax.plot(x,emp_statsratio,label='keskiarvo')
+        #ax.legend()
+        if figname is not None:
+            plt.savefig(figname+'tyollisyyshajonta.eps')
+        plt.show()
+
+        if self.version>0:
+            x,y=self.fit_norm(diff_tyoll)
+            fig,ax=plt.subplots()
+            ax.set_xlabel('Poikkeama työllisyydessä [henkilöä]')
+            ax.set_ylabel('Lukumäärä')
+            ax.hist(diff_tyoll,color='lightgray')
+            ax.plot(x,y,color='black')
+            plt.show()
+
+        fig,ax=plt.subplots()
+        ax.set_xlabel('Palkkio')
+        ax.set_ylabel('Lukumäärä')
+        ax.hist(agg_rew)
+        plt.show()
+
+        fig,ax=plt.subplots()
+        ax.set_xlabel('Ikä [v]')
+        ax.set_ylabel('Työllisyysaste [%]')
+        x=np.linspace(self.min_age,self.max_age,self.n_time)
+        ax.plot(x,100*m_mean,label='keskiarvo')
+        ax.plot(x,100*m_median,label='mediaani')
+        #ax.plot(x,100*(m_emp+s_emp),label='ka+std')
+        #ax.plot(x,100*(m_emp-s_emp),label='ka-std')
+        ax.plot(x,100*m_best,label='paras')
+        emp_statsratio=100*self.emp_stats()
+        ax.plot(x,emp_statsratio,label='havainto')
+        ax.legend()
+        plt.show()
+
+        fig,ax=plt.subplots()
+        ax.set_xlabel('Ikä [v]')
+        ax.set_ylabel('Hajonta työllisyysasteessa [%]')
+        x=np.linspace(self.min_age,self.max_age,self.n_time)
+        ax.plot(x,100*s_emp)
+        plt.show()
+        
+        unemp_distrib1,emp_distrib1,unemp_distrib_bu1,\
+            tyoll_distrib1,tyoll_distrib_bu1,\
+            tyoll_virta,tyot_virta,tyot_virta_ansiosid,tyot_virta_tm,\
+            unemp_dur,unemp_lastdur=self.load_simdistribs(filename)
+       
+        print('Keskikestot käytettyjen ansiosidonnaisten päivärahojen mukaan')
+        self.plot_unemp_durdistribs(unemp_dur)
+        print('Keskikestot viimeisimmän työttömyysjakson mukaan')
+        self.plot_unemp_durdistribs(unemp_lastdur)
+
+        #self.plot_compare_empdistribs(emp_distrib1,emp_distrib2,label='vaihtoehto')
+        self.plot_unempdistribs(unemp_distrib1,figname=figname,max=10,miny=1e-5,maxy=2)
+        #self.plot_tyolldistribs(unemp_distrib1,tyoll_distrib1,tyollistyneet=True,figname=figname)
+        self.plot_tyolldistribs_both(unemp_distrib1,tyoll_distrib1,max=4,figname=figname)
+
+    def get_simstats(self,filename1,plot=False,use_mean=False):
+        agg_htv,agg_tyoll,agg_rew,emp_tyolliset,emp_tyolliset_osuus,\
+            emp_tyottomat,emp_tyottomat_osuus,emp_htv,emps,best_rew,best_emp,emps=self.load_simstats(filename1)
+
+        mean_htv=np.mean(agg_htv)
+        median_htv=np.median(agg_htv)
+        mean_tyoll=np.mean(agg_tyoll)
+        median_tyoll=np.median(agg_tyoll)
+        std_htv=np.std(agg_htv)
+        diff_htv=agg_htv-mean_htv
+        diff_tyoll=agg_tyoll-mean_tyoll
+        
+        m_mean=np.mean(emp_tyolliset_osuus,axis=0)
+        m_median=np.median(emp_tyolliset_osuus,axis=0)
+        mn_median=np.median(emp_tyolliset,axis=0)
+        mn_mean=np.median(emp_tyolliset,axis=0)
+        s_emp=np.std(emp_tyolliset_osuus,axis=0)
+        m_best=emp_tyolliset_osuus[best_emp,:]
+
+        h_mean=np.mean(emp_htv,axis=0)
+        h_median=np.median(emp_htv,axis=0)
+        hs_emp=np.std(emp_htv,axis=0)
+        h_best=emp_htv[best_emp,:]
+
+
+        if self.minimal:
+            u_tmtuki=0*np.median(emps[:,:,0],axis=0)
+            u_ansiosid=np.median(emps[:,:,0],axis=0)
+        else:
+            u_tmtuki=np.median(emps[:,:,13],axis=0)
+            u_ansiosid=np.median(emps[:,:,0]+emps[:,:,4],axis=0)
+    
+        if plot:
+            fig,ax=plt.subplots()
+            ax.set_xlabel('Poikkeama työllisyydessä [htv]')
+            ax.set_ylabel('Lukumäärä')
+            ax.hist(diff_htv)
+            plt.show()
+
+            if self.version>0:
+                fig,ax=plt.subplots()
+                ax.set_xlabel('Poikkeama työllisyydessä [henkilöä]')
+                ax.set_ylabel('Lukumäärä')
+                ax.hist(diff_tyoll)
+                plt.show()
+
+            fig,ax=plt.subplots()
+            ax.set_xlabel('Palkkio')
+            ax.set_ylabel('Lukumäärä')
+            ax.hist(agg_rew)
+            plt.show()    
+    
+        if use_mean:
+            return m_best,m_mean,s_emp,mean_htv,u_tmtuki,u_ansiosid,h_mean,mn_mean
+        else:
+            return m_best,m_median,s_emp,median_htv,u_tmtuki,u_ansiosid,h_median,mn_median
+
+    def compare_simstats(self,filename1,filename2,label1='perus',label2='vaihtoehto',figname=None,greyscale=True):
+        m_best1,m_median1,s_emp1,median_htv1,u_tmtuki1,u_ansiosid1,h_median1,mn_median1=self.get_simstats(filename1)
+        _,m_mean1,s_emp1,mean_htv1,u_tmtuki1,u_ansiosid1,h_mean1,mn_mean1=self.get_simstats(filename1,use_mean=True)
+        m_best2,m_median2,s_emp2,median_htv2,u_tmtuki2,u_ansiosid2,h_median2,mn_median2=self.get_simstats(filename2)
+        _,m_mean2,s_emp2,mean_htv2,u_tmtuki2,u_ansiosid2,h_mean2,mn_mean2=self.get_simstats(filename2,use_mean=True)
+
+        if greyscale:
+            plt.style.use('grayscale')
+            plt.rcParams['figure.facecolor'] = 'white' # Or any suitable colour...
+        
+        print('Vaikutus mediaanityöllisyyteen {:.0f} htv ({:.0f} vs {:.0f})'.format(median_htv2-median_htv1,median_htv2,median_htv1))
+        print('Vaikutus keskiarvotyöllisyyteen {:.0f} htv ({:.0f} vs {:.0f})'.format(mean_htv2-mean_htv1,mean_htv2,mean_htv1))
+
+        if False: # mediaani
+            fig,ax=plt.subplots()
+            ax.set_xlabel('Ikä [v]')
+            ax.set_ylabel('Työllisyys [%]')
+            x=np.linspace(self.min_age,self.max_age,self.n_time)
+            ax.plot(x[1:],100*m_median1[1:],label=label1)
+            ax.plot(x[1:],100*m_median2[1:],label=label2)
+            #emp_statsratio=100*self.emp_stats()
+            #ax.plot(x,emp_statsratio,label='havainto')
+            ax.legend()
+            plt.show()
+
+        fig,ax=plt.subplots()
+        ax.set_xlabel('Ikä [v]')
+        ax.set_ylabel('Työllisyys [%]')
+        x=np.linspace(self.min_age,self.max_age,self.n_time)
+        ax.plot(x[1:],100*m_mean2[1:],label=label2)
+        ax.plot(x[1:],100*m_mean1[1:],ls='--',label=label1)
+        #emp_statsratio=100*self.emp_stats()
+        #ax.plot(x,emp_statsratio,label='havainto')
+        ax.legend()
+        if figname is not None:
+            plt.savefig(figname+'tyollisyys.eps')        
+        plt.show()
+
+        fig,ax=plt.subplots()
+        ax.set_xlabel('Ikä [v]')
+        ax.set_ylabel('Työllisyysero [hlö/htv]')
+        x=np.linspace(self.min_age,self.max_age,self.n_time)
+        ax.plot(x[1:],mn_median2[1:]-mn_median1[1:],label=label2+' miinus '+label1)
+        ax.plot(x[1:],h_median2[1:]-h_median1[1:],label=label2+' miinus '+label1+' htv')
+        #emp_statsratio=100*self.emp_stats()
+        #ax.plot(x,emp_statsratio,label='havainto')
+        ax.legend()
+        plt.show()
+
+        fig,ax=plt.subplots()
+        ax.set_xlabel('Ikä [v]')
+        ax.set_ylabel('Osuus väestöstä [%]')
+        x=np.linspace(self.min_age,self.max_age,self.n_time)
+        ax.plot(x[1:],100*u_tmtuki1[1:],ls='--',label='tm-tuki, '+label1)
+        ax.plot(x[1:],100*u_tmtuki2[1:],label='tm-tuki, '+label2)
+        ax.plot(x[1:],100*u_ansiosid1[1:],ls='--',label='ansiosidonnainen, '+label1)
+        ax.plot(x[1:],100*u_ansiosid2[1:],label='ansiosidonnainen, '+label2)
+        ax.legend()
+        if figname is not None:
+            plt.savefig(figname+'tyottomyydet.eps')        
+        plt.show()
+
+        fig,ax=plt.subplots()
+        ax.set_xlabel('Ikä [v]')
+        ax.set_ylabel('työllisyysero [%]')
+        x=np.linspace(self.min_age,self.max_age,self.n_time)
+        ax.plot(x[1:],100*(m_median2[1:]-m_median1[1:]),label=label1)
+        #emp_statsratio=100*self.emp_stats()
+        #ax.plot(x,emp_statsratio,label='havainto')
+        #ax.legend()
+        plt.show()
+
+        demog1,demog2=self.get_demog()
+        fig,ax=plt.subplots()
+        ax.set_xlabel('Ikä [v]')
+        ax.set_ylabel('cumsum työllisyys [lkm]')
+        x=np.linspace(self.min_age,self.max_age,self.n_time)
+        cs=self.timestep*np.cumsum(h_mean2[1:]-h_mean1[1:])
+        c2=self.timestep*np.cumsum(h_mean1[1:])
+        c1=self.timestep*np.cumsum(h_mean2[1:])
+        ax.plot(x[1:],cs,label=label1)
+        #emp_statsratio=100*self.emp_stats()
+        #ax.plot(x,emp_statsratio,label='havainto')
+        #ax.legend()
+        plt.show()
+
+        for age in set([50,63,63.25,63.5]):
+            mx=self.map_age(age)-1
+            print('Kumulatiivinen työllisyysvaikutus {:.2f} vuotiaana {:.1f} htv ({:.0f} vs {:.0f})'.format(age,cs[mx],c1[mx],c2[mx]))
+            
+        unemp_distrib1,emp_distrib1,unemp_distrib_bu1,tyoll_distrib1,tyoll_distrib_bu1,\
+            tyoll_virta1,tyot_virta1,tyot_virta_ansiosid1,tyot_virta_tm1,kestot1,viimkesto1=self.load_simdistribs(filename1)
+        unemp_distrib2,emp_distrib2,unemp_distrib_bu2,tyoll_distrib2,tyoll_distrib_bu2,\
+            tyoll_virta2,tyot_virta2,tyot_virta_ansiosid2,tyot_virta_tm2,kestot2,viimkesto2=self.load_simdistribs(filename2)
+        
+        self.plot_compare_unemp_durdistribs(kestot1,kestot2,viimkesto1,viimkesto2,label1='',label2='')
+        
+        #self.plot_compare_empdistribs(emp_distrib1,emp_distrib2,label='vaihtoehto')
+        self.plot_compare_unempdistribs(unemp_distrib1,unemp_distrib2,label1=label1,label2=label2,figname=figname)
+        self.plot_compare_tyolldistribs(unemp_distrib1,tyoll_distrib1,unemp_distrib2,tyoll_distrib2,tyollistyneet=True,label1=label1,label2=label2,figname=figname)
+        self.plot_compare_virtadistribs(tyoll_virta1,tyoll_virta2,tyot_virta1,tyot_virta2,tyot_virta_ansiosid1,tyot_virta_ansiosid2,tyot_virta_tm1,tyot_virta_tm2,label1=label1,label2=label2)
+
+    def save_simstats(self,filename,agg_htv,agg_tyoll,agg_rew,emp_tyolliset,emp_tyolliset_osuus,\
+                        emp_tyottomat,emp_tyottomat_osuus,emp_htv,emps,best_rew,best_emp,\
+                        unemp_distrib,emp_distrib,unemp_distrib_bu,\
+                        tyoll_distrib,tyoll_distrib_bu,\
+                        tyoll_virta,tyot_virta,tyot_virta_ansiosid,tyot_virta_tm,\
+                        unemp_dur,unemp_lastdur):
+        f = h5py.File(filename, 'w')
+        dset = f.create_dataset('agg_htv', data=agg_htv, dtype='float64')
+        dset = f.create_dataset('agg_tyoll', data=agg_tyoll, dtype='float64')
+        dset = f.create_dataset('agg_rew', data=agg_rew, dtype='float64')
+        dset = f.create_dataset('emp_tyolliset', data=emp_tyolliset, dtype='float64')
+        dset = f.create_dataset('emp_tyolliset_osuus', data=emp_tyolliset_osuus, dtype='float64')
+        dset = f.create_dataset('emp_tyottomat', data=emp_tyottomat, dtype='float64')
+        dset = f.create_dataset('emp_tyottomat_osuus', data=emp_tyottomat_osuus, dtype='float64')
+        dset = f.create_dataset('emp_htv', data=emp_htv, dtype='float64')
+        dset = f.create_dataset('emps', data=emps, dtype='float64')
+        dset = f.create_dataset('best_rew', data=best_rew, dtype='float64')
+        dset = f.create_dataset('best_emp', data=best_emp, dtype='float64')
+        dset = f.create_dataset('unemp_distrib', data=unemp_distrib, dtype='float64')
+        dset = f.create_dataset('emp_distrib', data=emp_distrib, dtype='float64')
+        dset = f.create_dataset('unemp_distrib_bu', data=unemp_distrib_bu, dtype='float64')
+        dset = f.create_dataset('tyoll_distrib', data=tyoll_distrib, dtype='float64')
+        dset = f.create_dataset('tyoll_distrib_bu', data=tyoll_distrib_bu, dtype='float64')
+        dset = f.create_dataset('tyoll_virta', data=tyoll_virta, dtype='float64')
+        dset = f.create_dataset('tyot_virta', data=tyot_virta, dtype='float64')
+        dset = f.create_dataset('tyot_virta_ansiosid', data=tyot_virta_ansiosid, dtype='float64')
+        dset = f.create_dataset('tyot_virta_tm', data=tyot_virta_tm, dtype='float64')
+        dset = f.create_dataset('unemp_dur', data=unemp_dur, dtype='float64')
+        dset = f.create_dataset('unemp_lastdur', data=unemp_lastdur, dtype='float64')
+
+    def load_simstats(self,filename):
+        f = h5py.File(filename, 'r')
+        #n_pop = f.get('n_pop').value
+        agg_htv = f.get('agg_htv').value
+        agg_tyoll = f.get('agg_tyoll').value
+        agg_rew = f.get('agg_rew').value
+        emps = f.get('emps').value
+        best_rew = f.get('best_rew').value
+        best_emp = int(f.get('best_emp').value)
+        emp_tyolliset = f.get('emp_tyolliset').value
+        emp_tyolliset_osuus = f.get('emp_tyolliset_osuus').value
+        emp_tyottomat = f.get('emp_tyottomat').value
+        emp_tyottomat_osuus = f.get('emp_tyottomat_osuus').value
+        emp_htv = f.get('emp_htv').value
+        
+        f.close()
+
+        return agg_htv,agg_tyoll,agg_rew,emp_tyolliset,emp_tyolliset_osuus,\
+               emp_tyottomat,emp_tyottomat_osuus,emp_htv,emps,best_rew,best_emp,emps
+
+    def load_simdistribs(self,filename):
+        f = h5py.File(filename, 'r')
+        if 'tyoll_virta' in f:
+            unemp_distrib = f.get('unemp_distrib').value
+        else:
+            unemp_distrib=np.zeros((self.n_time,self.n_pop))
+        
+        if 'tyoll_virta' in f:
+            emp_distrib = f.get('emp_distrib').value
+        else:
+            emp_distrib=np.zeros((self.n_time,self.n_pop))
+        if 'tyoll_virta' in f:
+            unemp_distrib_bu = f.get('unemp_distrib_bu').value
+        else:
+            unemp_distrib_bu=np.zeros((self.n_time,self.n_pop))
+        if 'tyoll_virta' in f:
+            tyoll_distrib = f.get('tyoll_distrib').value
+        else:
+            tyoll_distrib=np.zeros((self.n_time,self.n_pop))
+        if 'tyoll_virta' in f:
+            tyoll_distrib_bu = f.get('tyoll_distrib_bu').value
+        else:
+            tyoll_distrib_bu=np.zeros((self.n_time,self.n_pop))
+        if 'tyoll_virta' in f:
+            tyoll_virta = f.get('tyoll_virta').value
+        else:
+            tyoll_virta=np.zeros((self.n_time,self.n_pop))
+        if 'tyot_virta' in f:
+            tyot_virta = f.get('tyot_virta').value
+        else:
+            tyot_virta=np.zeros((self.n_time,self.n_pop))
+        if 'tyot_virta_ansiosid' in f:
+            tyot_virta_ansiosid = f.get('tyot_virta_ansiosid').value
+        else:
+            tyot_virta_ansiosid=np.zeros((self.n_time,self.n_pop))
+        if 'tyot_virta_tm' in f:
+            tyot_virta_tm = f.get('tyot_virta_tm').value
+        else:
+            tyot_virta_tm=np.zeros((self.n_time,self.n_pop))
+        if 'unemp_dur' in f:
+            unemp_dur = f.get('unemp_dur').value
+        else:
+            unemp_dur=np.zeros((1,5,5))
+        if 'unemp_lastdur' in f:
+            unemp_lastdur = f.get('unemp_lastdur').value
+        else:
+            unemp_lastdur=np.zeros((1,5,5))
+        
+        f.close()
+
+        return unemp_distrib,emp_distrib,unemp_distrib_bu,\
+               tyoll_distrib,tyoll_distrib_bu,\
+               tyoll_virta,tyot_virta,tyot_virta_ansiosid,tyot_virta_tm,\
+               unemp_dur,unemp_lastdur
+
+    def plot_compare_csvirta(self,m1,m2,lbl):
+        nc1=np.reshape(np.cumsum(m1),m1.shape)
+        print(m1.shape,np.cumsum(m1).shape)
+        nc2=np.reshape(np.cumsum(m2),m1.shape)
+        fig,ax=plt.subplots()
+        x=np.linspace(self.min_age,self.max_age,self.n_time)
+        plt.plot(x,nc1)
+        plt.plot(x,nc2)
+        ax.set_xlabel('Aika')
+        ax.set_ylabel(lbl)
+        plt.show()
+        fig,ax=plt.subplots()
+        plt.plot(x,nc1-nc2)
+        ax.set_xlabel('Aika')
+        ax.set_ylabel('diff '+lbl)
+        plt.show()
+
+    def plot_compare_virtadistribs(self,tyoll_virta1,tyoll_virta2,tyot_virta1,tyot_virta2,tyot_virta_ansiosid1,tyot_virta_ansiosid2,tyot_virta_tm1,tyot_virta_tm2,label1='',label2=''):
+        #print(tyoll_virta1.shape)
+        m1=np.mean(tyoll_virta1,axis=0,keepdims=True).transpose()
+        m2=np.mean(tyoll_virta2,axis=0,keepdims=True).transpose()
+        plt.plot(m1)
+        plt.plot(m2)
+        plt.show()
+        self.plot_compare_virrat(m1,m2,virta_label='työllisyys',label1=label1,label2=label2,ymin=0,ymax=5000)
+        self.plot_compare_csvirta(m1,m2,'cumsum työllisyysvirta')
+
+        m1=np.mean(tyot_virta1,axis=0,keepdims=True).transpose()
+        m2=np.mean(tyot_virta2,axis=0,keepdims=True).transpose()
+        self.plot_compare_virrat(m1,m2,virta_label='työttömyys',label1=label1,label2=label2)
+        self.plot_compare_csvirta(m1,m2,'cumsum työttömyysvirta')
+
+        m1=np.mean(tyot_virta_ansiosid1,axis=0,keepdims=True).transpose()
+        m2=np.mean(tyot_virta_ansiosid2,axis=0,keepdims=True).transpose()
+        self.plot_compare_virrat(m1,m2,virta_label='ei-tm-työttömyys',label1=label1,label2=label2)
+        m1=np.mean(tyot_virta_tm1,axis=0,keepdims=True).transpose()
+        m2=np.mean(tyot_virta_tm2,axis=0,keepdims=True).transpose()
+        self.plot_compare_virrat(m1,m2,virta_label='tm-työttömyys',label1=label1,label2=label2)
+        n1=(np.mean(tyoll_virta1,axis=0,keepdims=True)-np.mean(tyot_virta1,axis=0,keepdims=True)).transpose()
+        n2=(np.mean(tyoll_virta2,axis=0,keepdims=True)-np.mean(tyot_virta2,axis=0,keepdims=True)).transpose()
+        #print(n1.shape,tyoll_virta1.shape)
+        self.plot_compare_virrat(n1,n2,virta_label='netto',label1=label1,label2=label2,ymin=-1000,ymax=1000)
+        self.plot_compare_csvirta(n1,n2,'cumsum nettovirta')
+
+    def plot_unemp_durdistribs(self,kestot):
+        if len(kestot.shape)>2:
+            m1=self.empdur_to_dict(np.mean(kestot,axis=0))
+        else:
+            m1=self.empdur_to_dict(kestot)
+
+        df = pd.DataFrame.from_dict(m1,orient='index',columns=['0-6 kk','6-12 kk','12-18 kk','18-24kk','yli 24 kk'])
+        print(tabulate(df, headers='keys', tablefmt='psql', floatfmt=",.2f"))
+
+    def plot_compare_unemp_durdistribs(self,kestot1,kestot2,viimekesto1,viimekesto2,label1='',label2=''):
+        print('Keskikestot käytettyjen ansiosidonnaisten päivärahojen mukaan')
+        self.plot_unemp_durdistribs(kestot1)
+        self.plot_unemp_durdistribs(kestot2)
+
+        print('Keskikestot viimeisimmän työttömyysjakson mukaan')
+        self.plot_unemp_durdistribs(viimekesto1)
+        self.plot_unemp_durdistribs(viimekesto2)
+        

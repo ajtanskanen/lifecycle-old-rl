@@ -10,50 +10,55 @@ from bayes_opt import BayesianOptimization
 from bayes_opt.logger import JSONLogger
 from bayes_opt.util import load_logs
 from bayes_opt.event import Events
+from pathlib import Path
+from os import path
 
-from . lifecycle import Lifecycle
+from .lifecycle import Lifecycle
 
-Class OptimizeLifecycle:
-    def __init__(self,env=None,minimal=False,timestep=0.25,ansiopvraha_kesto300=None,
-                    ansiopvraha_kesto400=None,karenssi_kesto=None,
-                    ansiopvraha_toe=None,perustulo=None,mortality=None,
-                    randomness=None,include_putki=None,preferencenoise=None,
-                    callback_minsteps=None,pinkslip=True,plotdebug=False,
-                    use_sigma_reduction=None,porrasta_putki=None,perustulomalli=None,
-                    porrasta_1askel=None,porrasta_2askel=None,porrasta_3askel=None,
-                    osittainen_perustulo=None,gamma=None,exploration=None,exploration_ratio=None,
-                    year=2018):
+class OptimizeLifecycle():
+    def __init__(self,initargs=None,runargs=None):
         '''
         Alusta muuttujat
         '''
-        self.lf=Lifecycle()
+        self.runargs=runargs
+        self.lf=Lifecycle(**initargs)
         
-    def black_box_function(x, y):
+    def black_box_function(self,**x):
         """Function with unknown internals we wish to maximize.
 
         
         """
-        self.lf.run_results()
+        print(x)
+        self.lf.env.set_utility_params(**x)
+        self.lf.run_results(**self.runargs)
         return -self.lf.L2error()
 
-    def optimize(self):
+    def optimize(self,reset=False):
         # Bounded region of parameter space
-        pbounds = {'kappa_kokoaika_mies': (0.4, 0.7), 'delta_kappa_kokoaika_nais': (0.01, 0.1), 
-                   'mu_scale': (0.1,0.3), 'mu_age': (57,63)}
+        pbounds = {'men_kappa_fulltime': (0.3, 0.6), 'men_kappa_parttime': (0.3, 0.7), #'men_mu_scale': (0.01,0.3), 'men_mu_age': (57,62),
+                   'women_kappa_fulltime': (0.3, 0.6), 'women_kappa_parttime': (0.3, 0.7)} #, 'women_mu_scale': (0.01,0.3), 'women_mu_age': (57,62)}
 
         optimizer = BayesianOptimization(
-            f=black_box_function,
+            f=self.black_box_function,
             pbounds=pbounds,
             verbose=2, # verbose = 1 prints only when a maximum is observed, verbose = 0 is silent
             random_state=1,
         )
+        
+        LOG_DIR = Path().absolute() / 'bayes_opt_logs'
+        LOG_DIR.mkdir(exist_ok=True)
+        filename = 'log_0.json'
 
         # talletus
-        logger = JSONLogger(path="./logs.json")
-        load_logs(optimizer, logs=["./logs.json"]);
+        logfile=str(LOG_DIR / filename)
+        logger = JSONLogger(path=logfile)
+        if Path(logfile).exists() and not reset:
+            load_logs(optimizer, logs=[logfile]);
         optimizer.subscribe(Events.OPTIMIZATION_STEP, logger)
 
         optimizer.maximize(
             init_points=2,
-            n_iter=3,
+            n_iter=20,
         )
+        
+        print('The best parameters found {}'.format(optimizer.max))
