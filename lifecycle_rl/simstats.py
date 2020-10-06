@@ -58,11 +58,11 @@ class SimStats(EpisodeStats):
         
         tyolliset_ika,tyottomat,htv_ika,tyolliset_osuus,tyottomat_osuus=self.comp_employed_number(base_empstate)
         
-        emp_tyolliset[0,:]=tyolliset_ika[:,0]
-        emp_tyottomat[0,:]=tyottomat[:,0]
-        emp_tyolliset_osuus[0,:]=tyolliset_osuus[:,0]
-        emp_tyottomat_osuus[0,:]=tyottomat_osuus[:,0]
-        emp_htv[0,:]=htv_ika[:,0]
+        emp_tyolliset[0,:]=tyolliset_ika[:]
+        emp_tyottomat[0,:]=tyottomat[:]
+        emp_tyolliset_osuus[0,:]=tyolliset_osuus[:]
+        emp_tyottomat_osuus[0,:]=tyottomat_osuus[:]
+        emp_htv[0,:]=htv_ika[:]
         
         unemp_distrib,emp_distrib,unemp_distrib_bu=self.comp_empdistribs(ansiosid=True,tmtuki=True,putki=True,outsider=False,max_age=max_age)
         tyoll_distrib,tyoll_distrib_bu=self.comp_tyollistymisdistribs(ansiosid=True,tmtuki=True,putki=True,outsider=False,max_age=max_age)
@@ -111,11 +111,11 @@ class SimStats(EpisodeStats):
 
             tyolliset_ika,tyottomat,htv_ika,tyolliset_osuus,tyottomat_osuus=self.comp_employed_number(empstate)
             
-            emp_tyolliset[i,:]=tyolliset_ika[:,0]
-            emp_tyottomat[i,:]=tyottomat[:,0]
-            emp_tyolliset_osuus[i,:]=tyolliset_osuus[:,0]
-            emp_tyottomat_osuus[i,:]=tyottomat_osuus[:,0]
-            emp_htv[i,:]=htv_ika[:,0]
+            emp_tyolliset[i,:]=tyolliset_ika[:]
+            emp_tyottomat[i,:]=tyottomat[:]
+            emp_tyolliset_osuus[i,:]=tyolliset_osuus[:]
+            emp_tyottomat_osuus[i,:]=tyottomat_osuus[:]
+            emp_htv[i,:]=htv_ika[:]
 
             unemp_distrib2,emp_distrib2,unemp_distrib_bu2=self.comp_empdistribs(ansiosid=True,tmtuki=True,putki=True,outsider=False,max_age=max_age)
             tyoll_distrib2,tyoll_distrib_bu2=self.comp_tyollistymisdistribs(ansiosid=True,tmtuki=True,putki=True,outsider=False,max_age=max_age)
@@ -183,7 +183,8 @@ class SimStats(EpisodeStats):
         agg_htv,agg_tyoll,agg_rew,emp_tyolliset,emp_tyolliset_osuus,\
             emp_tyottomat,emp_tyottomat_osuus,emp_htv,emps,best_rew,best_emp,emps=self.load_simstats(filename)
 
-        print('lisäpäivillä on {:.0f} henkilöä'.format(self.count_putki_dist(emps)))
+        if self.version>0:
+            print('lisäpäivillä on {:.0f} henkilöä'.format(self.count_putki_dist(emps)))
 
         if grayscale:
             plt.style.use('grayscale')
@@ -197,6 +198,18 @@ class SimStats(EpisodeStats):
         std_tyoll=np.std(agg_tyoll)
         diff_htv=agg_htv-mean_htv
         diff_tyoll=agg_tyoll-median_tyoll
+        mean_rew=np.mean(agg_rew)
+
+        print('Mean reward {}'.format(mean_rew))
+        fig,ax=plt.subplots()
+        ax.set_xlabel('Rewards')
+        ax.set_ylabel('Lukumäärä')
+        ax.hist(agg_rew,color='lightgray')
+        #x,y=self.fit_norm(agg_rew)
+        #ax.plot(x,y,color='black')
+        #if figname is not None:
+        #    plt.savefig(figname+'poikkeama.eps')
+        plt.show()
         
         x,y=self.fit_norm(diff_htv)
         
@@ -367,11 +380,12 @@ class SimStats(EpisodeStats):
             plt.show()
 
         fig,ax=plt.subplots()
-        ax.set_xlabel('Ikä [v]')
-        ax.set_ylabel('Työllisyys [%]')
+        ax.set_xlabel('Age [y]')
+        ax.set_ylabel('Employment rate [%]')
         x=np.linspace(self.min_age,self.max_age,self.n_time)
         ax.plot(x[1:],100*m_mean2[1:],label=label2)
         ax.plot(x[1:],100*m_mean1[1:],ls='--',label=label1)
+        ax.set_ylim([0,100])  
         #emp_statsratio=100*self.emp_stats()
         #ax.plot(x,emp_statsratio,label='havainto')
         ax.legend()

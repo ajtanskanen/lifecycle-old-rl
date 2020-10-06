@@ -22,14 +22,19 @@ locale.setlocale(locale.LC_ALL, 'fi_FI')
 
 class EpisodeStats():
     def __init__(self,timestep,n_time,n_emps,n_pop,env,minimal,min_age,max_age,min_retirementage,year=2018,version=2):
-        self.reset(timestep,n_time,n_emps,n_pop,env,minimal,min_age,max_age,min_retirementage,year,version=version)
+        self.version=version
+        self.reset(timestep,n_time,n_emps,n_pop,env,minimal,min_age,max_age,min_retirementage,year)
+        print('version',version)
 
-    def reset(self,timestep,n_time,n_emps,n_pop,env,minimal,min_age,max_age,min_retirementage,year,version=2):
+    def reset(self,timestep,n_time,n_emps,n_pop,env,minimal,min_age,max_age,min_retirementage,year,version=None):
         self.min_age=min_age
         self.max_age=max_age
         self.min_retirementage=min_retirementage
         self.minimal=minimal
-        self.version=version
+        
+        if version is not None:
+            self.version=version
+            
         self.n_employment=n_emps
         self.n_time=n_time
         self.timestep=timestep # 0.25 = 3kk askel
@@ -99,6 +104,7 @@ class EpisodeStats():
         self.infostats_chilren7=np.zeros((self.n_time,1))
 
     def add(self,n,act,r,state,newstate,q=None,debug=False,plot=False,aveV=None): 
+        
         if self.version==0:
             emp,_,_,a,_,_=self.env.state_decode(state) # current employment state
             newemp,_,newsal,a2,tis,next_wage=self.env.state_decode(newstate)
@@ -2097,7 +2103,7 @@ class EpisodeStats():
 
         return q
 
-    def compare_with(self,cc2,label2='perus',label1='vaihtoehto',grayscale=False):
+    def compare_with(self,cc2,label2='perus',label1='vaihtoehto',grayscale=True,figname=None,dash=False):
         if grayscale:
             plt.style.use('grayscale')
             plt.rcParams['figure.facecolor'] = 'white' # Or any suitable colour...
@@ -2125,23 +2131,32 @@ class EpisodeStats():
         df[label2]=df2['one']
         df['ero']=df1[label1]-df2['one']
 
-        print('Rahavirrat skaalattuna väestötasolle')
-        print(tabulate(df, headers='keys', tablefmt='psql', floatfmt=",.2f"))
+        if self.version>0:
+            print('Rahavirrat skaalattuna väestötasolle')
+            print(tabulate(df, headers='keys', tablefmt='psql', floatfmt=",.2f"))
+        
+        if dash:
+            ls='--'
+        else:
+            ls=None
         
         fig,ax=plt.subplots()
-        ax.set_xlabel('Ikä [v]')
-        ax.set_ylabel('Työllisyysaste [%]')
+        ax.set_xlabel('Age [y]')
+        ax.set_ylabel('Employment rate [%]')
         ax.plot(x,100*tyolliset1,label=label1)
-        ax.plot(x,100*tyolliset2,label=label2)
+        ax.plot(x,100*tyolliset2,ls=ls,label=label2)
+        ax.set_ylim([0,100])  
         ax.legend()
+        if figname is not None:
+            plt.savefig(figname+'emp.eps', format='eps')
         plt.show()
 
         fig,ax=plt.subplots()
         ax.set_xlabel('Ikä [v]')
         ax.set_ylabel('Ero osuuksissa [%]')
         diff_emp=diff_emp*100
-        ax.plot(x,100*(tyot_osuus1-tyot_osuus2),label='työttömyys')
-        ax.plot(x,100*(kokotyo_osuus1-kokotyo_osuus2),label='kokoaikatyö')
+        ax.plot(x,100*(tyot_osuus1-tyot_osuus2),label='unemployment')
+        ax.plot(x,100*(kokotyo_osuus1-kokotyo_osuus2),label='fulltime work')
         if self.version>0:
             ax.plot(x,100*(osatyo_osuus1-osatyo_osuus2),label='osa-aikatyö')
             ax.plot(x,100*(tyolliset1-tyolliset2),label='työ yhteensä')
@@ -2150,12 +2165,14 @@ class EpisodeStats():
         plt.show()
 
         fig,ax=plt.subplots()
-        ax.set_xlabel('Ikä [v]')
-        ax.set_ylabel('Ero osuuksissa [%]')
+        ax.set_xlabel('Age [y]')
+        ax.set_ylabel('Unemployment rate [%]')
         diff_emp=diff_emp*100
-        ax.plot(x,100*tyot_osuus2,label='työttömyys, '+label2)
-        ax.plot(x,100*tyot_osuus1,label='työttömyys, '+label1)
+        ax.plot(x,100*tyot_osuus1,label=label1)
+        ax.plot(x,100*tyot_osuus2,label=label2)
         ax.legend()
+        if figname is not None:
+            plt.savefig(figname+'unemp.eps', format='eps')
         plt.show()
 
         fig,ax=plt.subplots()
@@ -2348,15 +2365,16 @@ class EpisodeStats():
         
         tyollosuus,htvosuus,tyot_osuus,kokotyo_osuus,osatyo_osuus=self.comp_employed(emp)
         
-        htv=np.round(scale*np.sum(demog2[min_cage:max_cage]*htvosuus[min_cage:max_cage]))
-        tyollvaikutus=np.round(scale*np.sum(demog2[min_cage:max_cage]*tyollosuus[min_cage:max_cage]))
-        osatyollvaikutus=np.round(scale*np.sum(demog2[min_cage:max_cage]*osatyo_osuus[min_cage:max_cage]))
-        kokotyollvaikutus=np.round(scale*np.sum(demog2[min_cage:max_cage]*kokotyo_osuus[min_cage:max_cage]))
+        d=np.squeeze(demog2[min_cage:max_cage])
+        htv=np.round(scale*np.sum(d*np.squeeze(htvosuus[min_cage:max_cage])))
+        tyollvaikutus=np.round(scale*np.sum(d*np.squeeze(tyollosuus[min_cage:max_cage])))
+        osatyollvaikutus=np.round(scale*np.sum(d*np.squeeze(osatyo_osuus[min_cage:max_cage])))
+        kokotyollvaikutus=np.round(scale*np.sum(d*np.squeeze(kokotyo_osuus[min_cage:max_cage])))
         haj=np.mean(np.std(tyollosuus[min_cage:max_cage]))
         
-        tyollaste=tyollvaikutus/(np.sum(demog2[min_cage:max_cage])*scale)
-        osatyollaste=osatyollvaikutus/(np.sum(demog2[min_cage:max_cage])*scale)
-        kokotyollaste=kokotyollvaikutus/(np.sum(demog2[min_cage:max_cage])*scale)
+        tyollaste=tyollvaikutus/(np.sum(d)*scale)
+        osatyollaste=osatyollvaikutus/(np.sum(d)*scale)
+        kokotyollaste=kokotyollvaikutus/(np.sum(d)*scale)
             
         if full:
             return htv,tyollvaikutus,haj,tyollaste,tyollosuus,osatyollvaikutus,kokotyollvaikutus,osatyollaste,kokotyollaste

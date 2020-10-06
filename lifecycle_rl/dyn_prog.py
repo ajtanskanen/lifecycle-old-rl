@@ -557,10 +557,10 @@ class DynProgLifecycle(Lifecycle):
         emp=1
         prev=0
         q=np.array(self.actHila[t,:,:,emp,prev,0]>self.actHila[t,:,:,emp,prev,1]).astype(int)
-        self.plot_img(q,xlabel="Eläke",ylabel="Palkka",title='Employed, stay in state')
+        self.plot_img(q,xlabel="Pension",ylabel="Wage",title='Employed, stay in state')
         emp=0
         q=np.array(self.actHila[t,:,:,emp,prev,0]>self.actHila[t,:,:,emp,prev,1]).astype(int)
-        self.plot_img(q,xlabel="Eläke",ylabel="Palkka",title='Unemployed, stay in state')
+        self.plot_img(q,xlabel="Pension",ylabel="Wage",title='Unemployed, stay in state')
 
     def print_V(self,age):
         t=self.map_age(age)    
@@ -590,9 +590,9 @@ class DynProgLifecycle(Lifecycle):
     
     def plot_V(self,age):
         t=self.map_age(age)
-        self.plot_img(self.get_diag_V(t,1),xlabel="Eläke",ylabel="Palkka",title='Töissä')
-        self.plot_img(self.get_diag_V(t,0),xlabel="Eläke",ylabel="Palkka",title='Työttömänä')
-        self.plot_img(self.get_diag_V(t,1)-self.get_diag_V(t,0),xlabel="Eläke",ylabel="Palkka",title='Työssä-Työtön')
+        self.plot_img(self.get_diag_V(t,1),xlabel="Pension",ylabel="Wage",title='Töissä')
+        self.plot_img(self.get_diag_V(t,0),xlabel="Pension",ylabel="Wage",title='Työttömänä')
+        self.plot_img(self.get_diag_V(t,1)-self.get_diag_V(t,0),xlabel="Pension",ylabel="Wage",title='Työssä-Työtön')
 
     def print_actV(self,age,time_in_state=1):
         t=self.map_age(age)
@@ -618,15 +618,15 @@ class DynProgLifecycle(Lifecycle):
 
     def plot_actV_diff(self,age):
         t=self.map_age(age)
-        self.plot_img(self.get_diag_actV(t,1,1)-self.get_diag_actV(t,1,0),xlabel="Eläke",ylabel="Palkka",title='Töissä (ero switch-stay)')
-        self.plot_img(self.get_diag_actV(t,0,1)-self.get_diag_actV(t,0,0),xlabel="Eläke",ylabel="Palkka",title='Työttömänä (ero switch-stay)')
+        self.plot_img(self.get_diag_actV(t,1,1)-self.get_diag_actV(t,1,0),xlabel="Pension",ylabel="Wage",title='Töissä (ero switch-stay)')
+        self.plot_img(self.get_diag_actV(t,0,1)-self.get_diag_actV(t,0,0),xlabel="Pension",ylabel="Wage",title='Työttömänä (ero switch-stay)')
 
     def plot_act(self,age,time_in_state=0):
         q1=self.get_act_q(age,emp=1,time_in_state=time_in_state)
         q2=self.get_act_q(age,emp=0,time_in_state=time_in_state)
 
-        self.plot_img(q1,xlabel="Eläke",ylabel="Palkka",title='Töissä')
-        self.plot_img(q2,xlabel="Eläke",ylabel="Palkka",title='Työttömänä')
+        self.plot_img(q1,xlabel="Pension",ylabel="Wage",title='Töissä')
+        self.plot_img(q2,xlabel="Pension",ylabel="Wage",title='Työttömänä')
     
     def get_act_q(self,age,emp=1,time_in_state=0,debug=False):
         t=self.map_age(age)
@@ -645,7 +645,7 @@ class DynProgLifecycle(Lifecycle):
         _=self.get_act_q(age=age,emp=emp,time_in_state=time_in_state,debug=True)
 
     def compare_act(self,age,cc,time_in_state=0,rlmodel='small_acktr',load='saved/malli_perusmini99_nondet',
-                    deterministic=True):
+                    deterministic=True,vmin=None,vmax=None):
         q1=self.get_act_q(age,emp=0,time_in_state=time_in_state)
         q2=cc.get_RL_act(age,emp=0,time_in_state=time_in_state,rlmodel=rlmodel,
             load=load,deterministic=deterministic,
@@ -656,9 +656,9 @@ class DynProgLifecycle(Lifecycle):
             load=load,deterministic=deterministic,
             n_palkka=self.n_palkka,deltapalkka=self.deltapalkka,n_elake=self.n_elake,deltaelake=self.deltaelake,
             hila_palkka0=self.hila_palkka0,hila_elake0=self.hila_elake0)
-    
-        self.plot_twoimg(q1,q2,title1='Töissä DO {}'.format(age),title2='Töissä RL {}'.format(age))
-        self.plot_twoimg(q3,q4,title1='Työtön DO {}'.format(age),title2='Työtön RL {}'.format(age))        
+            
+        self.plot_twoimg(q3,q4,title1='Employed DP {}'.format(age),title2='Employed RL {}'.format(age),vmin=0,vmax=2,figname='emp_'+str(age))
+        self.plot_twoimg(q1,q2,title1='Unemployed DP {}'.format(age),title2='Unemployed RL {}'.format(age),vmin=0,vmax=2,figname='unemp_'+str(age))
         
     def compare_ages(self,cc,rlmodel='small_acktr',load='saved/malli_perusmini99_nondet',
                      deterministic=True,time_in_state=0):

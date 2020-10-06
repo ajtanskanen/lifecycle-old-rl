@@ -48,7 +48,7 @@ class Lifecycle():
                     use_sigma_reduction=None,porrasta_putki=None,perustulomalli=None,
                     porrasta_1askel=None,porrasta_2askel=None,porrasta_3askel=None,
                     osittainen_perustulo=None,gamma=None,exploration=None,exploration_ratio=None,
-                    year=2018):
+                    year=2018,version=2):
         '''
         Alusta muuttujat
         '''
@@ -61,6 +61,7 @@ class Lifecycle():
         self.n_pop = 1000
         self.callback_minsteps = 1_000
         self.year=year
+        self.version=version
 
         # apumuuttujia
         self.n_age = self.max_age-self.min_age+1
@@ -161,6 +162,7 @@ class Lifecycle():
             #    self.environment='unemployment-v0'
 
             self.minimal=True
+            self.version=0
             self.gym_kwargs={'step': self.timestep,'gamma':self.gamma,
                 'min_age': self.min_age, 'max_age': self.max_age,
                 'plotdebug': self.plotdebug, 
@@ -207,16 +209,18 @@ class Lifecycle():
         self.n_employment,self.n_acts=self.env.get_n_states()
 
         self.episodestats=SimStats(self.timestep,self.n_time,self.n_employment,self.n_pop,
-                                   self.env,self.minimal,self.min_age,self.max_age,self.min_retirementage)
+                                   self.env,self.minimal,self.min_age,self.max_age,self.min_retirementage,
+                                   version=self.version)
 
     def explain(self):
         '''
         Tulosta laskennan parametrit
         '''
-        print('Parameters of lifecycle:\ntimestep {}\ngamma {} per anno\nmin_age {}\nmax_age {}\nmin_retirementage {}'.format(self.timestep,self.gamma,self.min_age,self.max_age,self.min_retirementage))
-        print('max_retirementage {}\nansiopvraha_kesto300 {}\nansiopvraha_kesto400 {}\nansiopvraha_toe {}'.format(self.max_retirementage,self.ansiopvraha_kesto300,self.ansiopvraha_kesto400,self.ansiopvraha_toe))
-        print('perustulo {}\nkarenssi_kesto {}\nmortality {}\nrandomness {}'.format(self.perustulo,self.karenssi_kesto,self.mortality,self.randomness))
-        print('include_putki {}\ninclude_pinkslip {}\n'.format(self.include_putki,self.include_pinkslip))
+        self.env.explain()
+        #print('Parameters of lifecycle:\ntimestep {}\ngamma {} per anno\nmin_age {}\nmax_age {}\nmin_retirementage {}'.format(self.timestep,self.gamma,self.min_age,self.max_age,self.min_retirementage))
+        #print('max_retirementage {}\nansiopvraha_kesto300 {}\nansiopvraha_kesto400 {}\nansiopvraha_toe {}'.format(self.max_retirementage,self.ansiopvraha_kesto300,self.ansiopvraha_kesto400,self.ansiopvraha_toe))
+        #print('perustulo {}\nkarenssi_kesto {}\nmortality {}\nrandomness {}'.format(self.perustulo,self.karenssi_kesto,self.mortality,self.randomness))
+        #print('include_putki {}\ninclude_pinkslip {}\n'.format(self.include_putki,self.include_pinkslip))
 
     def map_age(self,age,start_zero=False):
         if start_zero:
@@ -233,6 +237,9 @@ class Lifecycle():
         elif rlmodel=='acer':
             policy_kwargs = dict(act_fun=tf.nn.relu, net_arch=[64, 64, 16])
             n_cpu = 4
+        elif rlmodel=='deep_acktr':
+            policy_kwargs = dict(act_fun=tf.nn.relu, net_arch=[512, 512, 256, 128, 64]) # 256, 256?
+            n_cpu = 8 # 12 # 20
         elif rlmodel=='acktr':
             policy_kwargs = dict(act_fun=tf.nn.relu, net_arch=[512, 512, 256]) # 256, 256?
             n_cpu = 8 # 12 # 20
@@ -248,8 +255,8 @@ class Lifecycle():
         elif rlmodel=='trpo':
             policy_kwargs = dict(act_fun=tf.nn.relu, net_arch=[64, 64, 16])
             n_cpu = 4
-        else:
-            policy_kwargs = dict()
+        else: # DQN
+            policy_kwargs = dict(act_fun=tf.nn.relu, layers=[64, 64])
             n_cpu = 1
             rlmodel='dqn'
 
@@ -287,7 +294,7 @@ class Lifecycle():
                 from stable_baselines.common.policies import MlpPolicy 
                 model = ACER.load(loadname, env=env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
                                   tensorboard_log=self.tenb_dir, policy_kwargs=policy_kwargs)
-            elif rlmodel=='small_acktr' or rlmodel=='acktr' or rlmodel=='large_acktr':
+            elif rlmodel=='small_acktr' or rlmodel=='acktr' or rlmodel=='large_acktr' or rlmodel=='deep_acktr':
                 from stable_baselines.common.policies import MlpPolicy 
                 if tensorboard:
                     model = ACKTR.load(loadname, env=env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
@@ -326,11 +333,18 @@ class Lifecycle():
                                   n_steps=batch*self.n_time,tensorboard_log=self.tenb_dir,
                                   policy_kwargs=policy_kwargs,lr_schedule=learning_schedule)
             else:
-                from stable_baselines.deepq.policies import MlpPolicy # for DQN
-                model = DQN.load(loadname, env=env, verbose=verbose,gamma=self.gamma,
-                                 batch_size=batch,learning_starts=self.n_time,
-                                 tensorboard_log=self.tenb_dir,prioritized_replay=True, 
-                                 policy_kwargs=policy_kwargs,lr_schedule=learning_schedule)
+                if tensorboard:
+                    from stable_baselines.deepq.policies import MlpPolicy # for DQN
+                    model = DQN.load(loadname, env=env, verbose=verbose,gamma=self.gamma,
+                                     batch_size=batch,tensorboard_log=self.tenb_dir,
+                                     policy_kwargs=policy_kwargs,lr_schedule=learning_schedule,
+                                     full_tensorboard_log=full_tensorboard_log,learning_rate=learning_rate)
+                else:
+                    from stable_baselines.deepq.policies import MlpPolicy # for DQN
+                    model = DQN.load(loadname, env=env, verbose=verbose,gamma=self.gamma,
+                                     batch_size=batch,tensorboard_log=self.tenb_dir,
+                                     policy_kwargs=policy_kwargs,lr_schedule=learning_schedule,
+                                     learning_rate=learning_rate)
         else:
             if rlmodel=='a2c':
                 from stable_baselines.common.policies import MlpPolicy 
@@ -340,7 +354,7 @@ class Lifecycle():
                 from stable_baselines.common.policies import MlpPolicy 
                 model = ACER(MlpPolicy, env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time, 
                              tensorboard_log=self.tenb_dir, policy_kwargs=policy_kwargs,lr_schedule=learning_schedule)
-            elif rlmodel=='small_acktr' or rlmodel=='acktr' or rlmodel=='large_acktr':
+            elif rlmodel=='small_acktr' or rlmodel=='acktr' or rlmodel=='large_acktr' or rlmodel=='deep_acktr':
                 from stable_baselines.common.policies import MlpPolicy 
                 if tensorboard:
                     model = ACKTR(MlpPolicy, env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
@@ -372,11 +386,14 @@ class Lifecycle():
                              tensorboard_log=self.tenb_dir, policy_kwargs=policy_kwargs,lr_schedule=learning_schedule)
             else:
                 from stable_baselines.deepq.policies import MlpPolicy # for DQN
-                model = DQN(MlpPolicy, env, verbose=verbose,gamma=self.gamma,batch_size=batch, 
-                            learning_starts=self.n_time,
-                            tensorboard_log=self.tenb_dir,prioritized_replay=True, 
-                            policy_kwargs=policy_kwargs,lr_schedule=learning_schedule) 
-            
+                if tensorboard:
+                    model = DQN(MlpPolicy, env, verbose=verbose,gamma=self.gamma,batch_size=batch, 
+                                tensorboard_log=self.tenb_dir,learning_rate=learning_rate,
+                                policy_kwargs=policy_kwargs,full_tensorboard_log=full_tensorboard_log) 
+                else:
+                    model = DQN(MlpPolicy, env, verbose=verbose,gamma=self.gamma,batch_size=batch,
+                                learning_rate=learning_rate,policy_kwargs=policy_kwargs) 
+                            
         return model
 
     def make_env(self,env_id, rank, kwargs, seed=None, use_monitor=True):
@@ -560,7 +577,7 @@ class Lifecycle():
             model = A2C.load(load, env=env, verbose=1,gamma=self.gamma, policy_kwargs=policy_kwargs)
         elif self.rlmodel=='acer':
             model = ACER.load(load, env=env, verbose=1,gamma=self.gamma, policy_kwargs=policy_kwargs)
-        elif self.rlmodel=='acktr' or self.rlmodel=='small_acktr' or self.rlmodel=='lnacktr' or self.rlmodel=='small_lnacktr':
+        elif self.rlmodel=='acktr' or self.rlmodel=='small_acktr' or self.rlmodel=='lnacktr' or self.rlmodel=='small_lnacktr' or rlmodel=='deep_acktr':
             model = ACKTR.load(load, env=env, verbose=1,gamma=self.gamma, policy_kwargs=policy_kwargs)
         elif self.rlmodel=='trpo':
             model = TRPO.load(load, env=env, verbose=1,gamma=self.gamma, policy_kwargs=policy_kwargs)
@@ -613,7 +630,7 @@ class Lifecycle():
             model = A2C.load(load, env=env, verbose=1,gamma=self.gamma, policy_kwargs=policy_kwargs)
         elif self.rlmodel=='acer':
             model = ACER.load(load, env=env, verbose=1,gamma=self.gamma, policy_kwargs=policy_kwargs)
-        elif self.rlmodel=='acktr' or self.rlmodel=='small_acktr' or self.rlmodel=='lnacktr' or self.rlmodel=='small_lnacktr':
+        elif self.rlmodel=='acktr' or self.rlmodel=='small_acktr' or self.rlmodel=='lnacktr' or self.rlmodel=='small_lnacktr'  or rlmodel=='deep_acktr':
             model = ACKTR.load(load, env=env, verbose=1,gamma=self.gamma, policy_kwargs=policy_kwargs)
         elif self.rlmodel=='trpo':
             model = TRPO.load(load, env=env, verbose=1,gamma=self.gamma, policy_kwargs=policy_kwargs)
@@ -669,6 +686,13 @@ class Lifecycle():
             self.episodestats.render(load=load,figname=figname)
         else:
             self.episodestats.render(figname=figname)
+   
+    def render_reward(self,load=None,figname=None):
+        if load is not None:
+            self.episodestats.load_sim(load)
+            self.episodestats.comp_total_reward()
+        else:
+            self.episodestats.comp_total_reward()
    
     def load_sim(self,load=None):
         self.episodestats.load_sim(load)
@@ -740,13 +764,13 @@ class Lifecycle():
         self.plot_stats()
         self.plot_reward()
 
-    def compare_with(self,cc2,label1='vaihtoehto',label2='perus'):
+    def compare_with(self,cc2,label1='vaihtoehto',label2='perus',figname=None,grayscale=False,dash=True):
         '''
         compare_with
 
         compare results obtained another model
         '''
-        self.episodestats.compare_with(cc2.episodestats,label1=label1,label2=label2)
+        self.episodestats.compare_with(cc2.episodestats,label1=label1,label2=label2,grayscale=grayscale,figname=figname,dash=dash)
 
     def run_results(self,steps1=100,steps2=100,pop=1_000,rlmodel='acktr',twostage=False,
                save='saved/perusmalli',debug=False,simut='simut',results='results/simut_res',
@@ -842,7 +866,8 @@ class Lifecycle():
                save='saved/distrib_base_',debug=False,simut='simut',results='results/distrib_',
                deterministic=True,train=True,predict=True,batch1=1,batch2=100,cont=False,
                start_from=None,plot=False,twostage=False,callback_minsteps=None,
-               stats_results='results/distrib_stats',startn=None,verbose=1,learning_rate=0.25,learning_schedule='linear'):
+               stats_results='results/distrib_stats',startn=None,verbose=1,
+               learning_rate=0.25,learning_schedule='linear'):
    
         '''
         run_verify
@@ -902,9 +927,9 @@ class Lifecycle():
                         hila_palkka0=hila_palkka0,hila_elake0=hila_elake0)
         RL_emp=self.RL_simulate_V(model,env,t,emp=1,deterministic=deterministic,n_palkka=n_palkka,deltapalkka=deltapalkka,n_elake=n_elake,deltaelake=deltaelake,
                         hila_palkka0=hila_palkka0,hila_elake0=hila_elake0)
-        self.plot_img(RL_emp,xlabel="Eläke",ylabel="Palkka",title='Töissä')
-        self.plot_img(RL_unemp,xlabel="Eläke",ylabel="Palkka",title='Työttömänä')
-        self.plot_img(RL_emp-RL_unemp,xlabel="Eläke",ylabel="Palkka",title='Työssä-Työtön')
+        self.plot_img(RL_emp,xlabel="Pension",ylabel="Wage",title='Töissä')
+        self.plot_img(RL_unemp,xlabel="Pension",ylabel="Wage",title='Työttömänä')
+        self.plot_img(RL_emp-RL_unemp,xlabel="Pension",ylabel="Wage",title='Työssä-Työtön')
 
     def get_RL_act(self,t,emp=0,time_in_state=0,rlmodel='acktr',load='perus',debug=True,deterministic=True,
                         n_palkka=80,deltapalkka=1000,n_elake=40,deltaelake=1500,
@@ -924,9 +949,13 @@ class Lifecycle():
         plt.title(title)
         plt.show()
         
-    def plot_twoimg(self,img1,img2,xlabel="Eläke",ylabel="Palkka",title1="Employed",title2="Employed"):
+    def plot_twoimg(self,img1,img2,xlabel="Pension",ylabel="Wage",title1="Employed",title2="Employed",
+                    vmin=None,vmax=None,figname=None):
         fig, axs = plt.subplots(ncols=2)
-        im0 = axs[0].imshow(img1)
+        if vmin is not None:
+            im0 = axs[0].imshow(img1,vmin=vmin,vmax=vmax,cmap='gray')
+        else:
+            im0 = axs[0].imshow(img1)
         #heatmap = plt.pcolor(img1) 
         divider0 = make_axes_locatable(axs[0])
         cax0 = divider0.append_axes("right", size="20%", pad=0.05)
@@ -934,7 +963,10 @@ class Lifecycle():
         axs[0].set_xlabel(xlabel)
         axs[0].set_ylabel(ylabel)
         axs[0].set_title(title1)
-        im1 = axs[1].imshow(img2)
+        if vmin is not None:
+            im1 = axs[1].imshow(img2,vmin=vmin,vmax=vmax,cmap='gray')
+        else:
+            im1 = axs[1].imshow(img2)
         divider1 = make_axes_locatable(axs[1])
         cax1 = divider1.append_axes("right", size="20%", pad=0.05)
         cbar1 = plt.colorbar(im1, cax=cax1)
@@ -944,6 +976,9 @@ class Lifecycle():
         axs[1].set_title(title2)
         #plt.colorbar(heatmap)        
         plt.subplots_adjust(wspace=0.3)
+        if figname is not None:
+            plt.savefig(figname+'.eps', format='eps')
+
         plt.show()
         
     def filter_act(self,act,state):
