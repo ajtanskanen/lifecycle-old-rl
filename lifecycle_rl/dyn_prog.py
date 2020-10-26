@@ -29,7 +29,7 @@ class DynProgLifecycle(Lifecycle):
     def __init__(self,minimal=True,env=None,timestep=1.0,ansiopvraha_kesto300=None,
                     ansiopvraha_kesto400=None,karenssi_kesto=None,
                     ansiopvraha_toe=None,perustulo=None,plotdebug=False,mortality=None,
-                    gamma=None,n_palkka=None,n_elake=None):
+                    gamma=None,n_palkka=None,n_elake=None,n_tis=None):
 
         super().__init__(minimal=minimal,env=env,timestep=timestep,ansiopvraha_kesto300=ansiopvraha_kesto300,
                     ansiopvraha_kesto400=ansiopvraha_kesto400,karenssi_kesto=karenssi_kesto,
@@ -44,21 +44,27 @@ class DynProgLifecycle(Lifecycle):
         
         # dynaamisen ohjelmoinnin parametrejä
         self.n_palkka = 20
-        self.deltapalkka = 100000/(self.n_palkka-1)
-        self.n_palkka_future = 30 # 40
-        self.delta_palkka_future = 0.15
-        self.mid_palkka_future=5 # 20
-        self.n_elake = 20
-        self.deltaelake = 80000/(self.n_elake-1)
-        self.n_tis = 3 # ei vaikutusta palkkaan, joten 3 riittää
-        self.deltatis = 1
-        
-        print('min',self.min_retirementage)
-        
+        self.n_elake = 40
+        self.n_tis = 5 # ei vaikutusta palkkaan
+
         if n_palkka is not None:
             self.n_palkka=n_palkka
         if n_elake is not None:
             self.n_elake=n_elake
+        if n_tis is not None:
+            self.n_tis=n_tis
+        
+        self.deltapalkka = 100000/(self.n_palkka-1)
+        self.deltaelake = 80000/(self.n_elake-1)
+        self.deltatis = 1
+
+
+        # ei käytetä
+        #self.n_palkka_future = 30 # 40
+        #self.delta_palkka_future = 0.15
+        #self.mid_palkka_future=5 # 20
+        
+        print('min',self.min_retirementage)
         
     def init_grid(self):
         self.Hila = np.zeros((self.n_time+2,self.n_palkka,self.n_elake,self.n_employment,self.n_tis,self.n_palkka))
@@ -105,24 +111,24 @@ class DynProgLifecycle(Lifecycle):
         w=(v-self.hila_palkka0)/self.deltapalkka-vmin # lin.approximaatio
 
         return vmin,vmax,w
-
-    def map_palkka_future(self,v,palkka):
-        p=max(palkka,1000)
-        return (1.0+self.delta_palkka_future*(v-self.mid_palkka_future))*p
-
-    def inv_palkka_future(self,v,palkka):
-        p=max(palkka,1000)    
-        if p>0:
-            vv=(v/p-1.0)/self.delta_palkka_future+self.mid_palkka_future
-            vmin=max(0,min(self.n_palkka_future-2,int(vv)))
-            vmax=vmin+1
-            w=vv-vmin
-        else:
-            vmin=0
-            vmax=1
-            w=0
-
-        return vmin,vmax,w
+# 
+#     def map_palkka_future(self,v,palkka):
+#         p=max(palkka,1000)
+#         return (1.0+self.delta_palkka_future*(v-self.mid_palkka_future))*p
+# 
+#     def inv_palkka_future(self,v,palkka):
+#         p=max(palkka,1000)    
+#         if p>0:
+#             vv=(v/p-1.0)/self.delta_palkka_future+self.mid_palkka_future
+#             vmin=max(0,min(self.n_palkka_future-2,int(vv)))
+#             vmax=vmin+1
+#             w=vv-vmin
+#         else:
+#             vmin=0
+#             vmax=1
+#             w=0
+# 
+#         return vmin,vmax,w
 
     def map_exp_palkka(self,v):
         return self.hila_palkka0+self.deltapalkka*(np.exp(v*self.exppalkkascale)-1)

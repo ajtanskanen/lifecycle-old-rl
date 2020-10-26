@@ -31,7 +31,7 @@ warnings.simplefilter(action='ignore', category=Warning)
 
 # use stable baselines
 from stable_baselines.common.vec_env import SubprocVecEnv,DummyVecEnv
-from stable_baselines import A2C, ACER, DQN, ACKTR #, TRPO
+from stable_baselines import A2C, ACER, DQN, ACKTR#, TRPO
 from stable_baselines.common import set_global_seeds
 from stable_baselines.bench import Monitor
 from stable_baselines.results_plotter import load_results, ts2xy
@@ -228,7 +228,10 @@ class Lifecycle():
         else:
             return int((age-self.min_age)*self.inv_timestep)
 
-    def get_multiprocess_env(self,rlmodel,debug=False):
+    def get_multiprocess_env(self,rlmodel,debug=False,arch=None):
+
+        if arch is not None:
+            print('arch',arch)
 
         # multiprocess environment
         if rlmodel=='a2c':
@@ -238,16 +241,22 @@ class Lifecycle():
             policy_kwargs = dict(act_fun=tf.nn.relu, net_arch=[64, 64, 16])
             n_cpu = 4
         elif rlmodel=='deep_acktr':
-            policy_kwargs = dict(act_fun=tf.nn.relu, net_arch=[512, 512, 256, 128, 64]) # 256, 256?
+            policy_kwargs = dict(act_fun=tf.nn.relu, net_arch=[512, 512, 256, 128, 64]) 
             n_cpu = 8 # 12 # 20
         elif rlmodel=='acktr':
-            policy_kwargs = dict(act_fun=tf.nn.relu, net_arch=[512, 512, 256]) # 256, 256?
+            policy_kwargs = dict(act_fun=tf.nn.relu, net_arch=[512, 512, 256]) 
+            n_cpu = 8 # 12 # 20
+        elif rlmodel=='leaky_acktr': # tf.nn.leakyrelu
+            if arch is not None:
+                policy_kwargs = dict(act_fun=tf.nn.leaky_relu, net_arch=arch) 
+            else:
+                policy_kwargs = dict(act_fun=tf.nn.leaky_relu, net_arch=[256, 256, 16]) 
             n_cpu = 8 # 12 # 20
         elif rlmodel=='small_acktr' or rlmodel=='small_lnacktr':
-            policy_kwargs = dict(act_fun=tf.nn.relu, net_arch=[256, 256, 128]) # 256, 256?
+            policy_kwargs = dict(act_fun=tf.nn.relu, net_arch=[256, 256, 128]) 
             n_cpu = 4 #8
         elif rlmodel=='large_acktr':
-            policy_kwargs = dict(act_fun=tf.nn.relu, net_arch=[256, 256, 64, 16]) # 256, 256?
+            policy_kwargs = dict(act_fun=tf.nn.relu, net_arch=[256, 256, 64, 16])
             n_cpu = 4 # 12
         elif rlmodel=='lstm' or rlmodel=='lnacktr':
             policy_kwargs = dict()
@@ -255,31 +264,45 @@ class Lifecycle():
         elif rlmodel=='trpo':
             policy_kwargs = dict(act_fun=tf.nn.relu, net_arch=[64, 64, 16])
             n_cpu = 4
-        else: # DQN
+        elif rlmodel=='dqn': # DQN
             policy_kwargs = dict(act_fun=tf.nn.relu, layers=[64, 64])
             n_cpu = 1
             rlmodel='dqn'
+        else:
+            error('Unknown rlmodel')
 
         if debug:
             n_cpu=1
-
+            
         return policy_kwargs,n_cpu
 
     def setup_rlmodel(self,rlmodel,loadname,env,batch,policy_kwargs,learning_rate,
-                      max_grad_norm,cont,tensorboard=True,verbose=1,n_cpu=1,learning_schedule='linear'):
+                      cont,max_grad_norm=None,tensorboard=True,verbose=1,n_cpu=1,learning_schedule='linear',
+                      vf=None,gae_lambda=None):
         '''
         Alustaa RL-mallin ajoa varten
         '''
         batch=max(1,int(np.ceil(batch/n_cpu)))
         
         full_tensorboard_log=True
+        if vf is not None:
+            vf_coef=vf
+        else:
+            vf_coef=0.10 # baseline 0.25, best 0.10
+
+        if max_grad_norm is None:
+            max_grad_norm=0.05
+            
+        max_grad_norm=0.001
+        kfac_clip=0.001
         
         if cont:
             learning_rate=0.25*learning_rate
-        
-        scaled_learning_rate=learning_rate*np.sqrt(batch)
-        print('batch {} learning rate {} scaled {}'.format(batch,learning_rate,
-            scaled_learning_rate))
+            
+        #scaled_learning_rate=learning_rate*np.sqrt(batch)
+        scaled_learning_rate=learning_rate*batch
+        print('batch {} learning rate {} scaled {} n_cpu {}'.format(batch,learning_rate,
+            scaled_learning_rate,n_cpu))
 
         if cont:
             if rlmodel=='a2c':
@@ -290,48 +313,39 @@ class Lifecycle():
                 else:
                     model = A2C.load(loadname, env=env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
                                      policy_kwargs=policy_kwargs,lr_schedule=learning_schedule)
-            elif rlmodel=='acer':
-                from stable_baselines.common.policies import MlpPolicy 
-                model = ACER.load(loadname, env=env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
-                                  tensorboard_log=self.tenb_dir, policy_kwargs=policy_kwargs)
-            elif rlmodel=='small_acktr' or rlmodel=='acktr' or rlmodel=='large_acktr' or rlmodel=='deep_acktr':
+            elif rlmodel in set(['small_acktr','acktr','large_acktr','deep_acktr','leaky_acktr']):
                 from stable_baselines.common.policies import MlpPolicy 
                 if tensorboard:
                     model = ACKTR.load(loadname, env=env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
-                                       tensorboard_log=self.tenb_dir, learning_rate=scaled_learning_rate, 
-                                       policy_kwargs=policy_kwargs,max_grad_norm=max_grad_norm,
+                                       tensorboard_log=self.tenb_dir, learning_rate=scaled_learning_rate,kfac_clip=kfac_clip,
+                                       policy_kwargs=policy_kwargs,max_grad_norm=max_grad_norm,gae_lambda=gae_lambda,vf_coef=vf_coef,
                                        full_tensorboard_log=full_tensorboard_log,lr_schedule=learning_schedule)
                 else:
-                    model = ACKTR.load(loadname, env=env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
-                                       learning_rate=np.sqrt(batch)*learning_rate, 
+                    model = ACKTR.load(loadname, env=env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,kfac_clip=kfac_clip,
+                                       learning_rate=np.sqrt(batch)*learning_rate,vf_coef=vf_coef,gae_lambda=gae_lambda,
                                        policy_kwargs=policy_kwargs,max_grad_norm=max_grad_norm,lr_schedule=learning_schedule)
             elif rlmodel=='small_lnacktr' or rlmodel=='lnacktr':
                 from stable_baselines.common.policies import MlpLnLstmPolicy 
                 if tensorboard:
                     model = ACKTR.load(loadname, env=env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
                                        tensorboard_log=self.tenb_dir, learning_rate=scaled_learning_rate, 
-                                       policy_kwargs=policy_kwargs,max_grad_norm=max_grad_norm,
+                                       policy_kwargs=policy_kwargs,max_grad_norm=max_grad_norm,kfac_clip=kfac_clip,
                                        full_tensorboard_log=full_tensorboard_log,lr_schedule=learning_schedule)
                 else:
                     model = ACKTR.load(loadname, env=env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
-                                       learning_rate=np.sqrt(batch)*learning_rate, 
+                                       learning_rate=np.sqrt(batch)*learning_rate,kfac_clip=kfac_clip,
                                        policy_kwargs=policy_kwargs,max_grad_norm=max_grad_norm,lr_schedule=learning_schedule)
             elif rlmodel=='lstm':
                 from stable_baselines.common.policies import MlpPolicy,MlpLstmPolicy 
                 if tensorboard:
                     model = ACKTR.load(loadname, env=env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
-                                       tensorboard_log=self.tenb_dir, learning_rate=scaled_learning_rate, 
+                                       tensorboard_log=self.tenb_dir,learning_rate=scaled_learning_rate, 
                                        policy_kwargs=policy_kwargs,max_grad_norm=max_grad_norm,
                                        full_tensorboard_log=full_tensorboard_log,lr_schedule=learning_schedule)
                 else:
                     model = ACKTR.load(loadname, env=env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
                                        learning_rate=scaled_learning_rate, policy_kwargs=policy_kwargs,
                                        max_grad_norm=max_grad_norm,lr_schedule=learning_schedule)
-            elif rlmodel=='trpo':
-                from stable_baselines.common.policies import MlpPolicy 
-                model = TRPO.load(loadname, env=env, verbose=verbose,gamma=self.gamma,
-                                  n_steps=batch*self.n_time,tensorboard_log=self.tenb_dir,
-                                  policy_kwargs=policy_kwargs,lr_schedule=learning_schedule)
             else:
                 if tensorboard:
                     from stable_baselines.deepq.policies import MlpPolicy # for DQN
@@ -350,21 +364,17 @@ class Lifecycle():
                 from stable_baselines.common.policies import MlpPolicy 
                 model = A2C(MlpPolicy, env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time, 
                             tensorboard_log=self.tenb_dir, policy_kwargs=policy_kwargs,lr_schedule=learning_schedule)
-            elif rlmodel=='acer':
-                from stable_baselines.common.policies import MlpPolicy 
-                model = ACER(MlpPolicy, env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time, 
-                             tensorboard_log=self.tenb_dir, policy_kwargs=policy_kwargs,lr_schedule=learning_schedule)
-            elif rlmodel=='small_acktr' or rlmodel=='acktr' or rlmodel=='large_acktr' or rlmodel=='deep_acktr':
+            elif rlmodel in set(['small_acktr','acktr','large_acktr','deep_acktr','leaky_acktr']):
                 from stable_baselines.common.policies import MlpPolicy 
                 if tensorboard:
                     model = ACKTR(MlpPolicy, env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
-                                tensorboard_log=self.tenb_dir, learning_rate=scaled_learning_rate, 
-                                policy_kwargs=policy_kwargs,max_grad_norm=max_grad_norm,
+                                tensorboard_log=self.tenb_dir, learning_rate=scaled_learning_rate,kfac_clip=kfac_clip,
+                                policy_kwargs=policy_kwargs,max_grad_norm=max_grad_norm,gae_lambda=gae_lambda,vf_coef=vf_coef,
                                 full_tensorboard_log=full_tensorboard_log,lr_schedule=learning_schedule)
                 else:
-                    model = ACKTR(MlpPolicy, env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
-                                learning_rate=np.sqrt(batch)*learning_rate, 
-                                policy_kwargs=policy_kwargs,max_grad_norm=max_grad_norm,lr_schedule=learning_schedule)
+                    model = ACKTR(MlpPolicy, env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,kfac_clip=kfac_clip,
+                                learning_rate=scaled_learning_rate, max_grad_norm=max_grad_norm,gae_lambda=gae_lambda,vf_coef=vf_coef,
+                                policy_kwargs=policy_kwargs,lr_schedule=learning_schedule)
             elif rlmodel=='small_lnacktr' or rlmodel=='lnacktr':
                 from stable_baselines.common.policies import MlpLnLstmPolicy 
                 if tensorboard:
@@ -380,10 +390,6 @@ class Lifecycle():
                 model = ACKTR(MlpLstmPolicy, env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
                             tensorboard_log=self.tenb_dir, learning_rate=learning_rate, 
                             policy_kwargs=policy_kwargs,max_grad_norm=max_grad_norm,lr_schedule=learning_schedule)
-            elif rlmodel=='trpo':
-                from stable_baselines.common.policies import MlpPolicy 
-                model = TRPO(MlpPolicy, env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time, 
-                             tensorboard_log=self.tenb_dir, policy_kwargs=policy_kwargs,lr_schedule=learning_schedule)
             else:
                 from stable_baselines.deepq.policies import MlpPolicy # for DQN
                 if tensorboard:
@@ -459,10 +465,10 @@ class Lifecycle():
         return True
 
     def train(self,train=False,debug=False,steps=20000,cont=False,rlmodel='dqn',
-                save='saved/malli',pop=None,batch=1,max_grad_norm=0.5,learning_rate=0.25,
+                save='saved/malli',pop=None,batch=1,max_grad_norm=None,learning_rate=0.25,
                 start_from=None,max_n_cpu=1000,plot=True,use_vecmonitor=False,
                 bestname='tmp/best2',use_callback=False,log_interval=100,verbose=1,plotdebug=False,
-                learning_schedule='linear',):
+                learning_schedule='linear',vf=None,arch=None,gae_lambda=None):
         '''
         Opetusrutiini
         '''
@@ -479,7 +485,7 @@ class Lifecycle():
                                 self.env,self.minimal,self.min_age,self.max_age,self.min_retirementage,self.year)
 
         # multiprocess environment
-        policy_kwargs,n_cpu=self.get_multiprocess_env(self.rlmodel,debug=debug)  
+        policy_kwargs,n_cpu=self.get_multiprocess_env(self.rlmodel,debug=debug,arch=arch)  
 
         self.savename=save
         n_cpu=min(max_n_cpu,n_cpu)
@@ -510,7 +516,8 @@ class Lifecycle():
             env = VecNormalize(env, **normalize_kwargs)
 
         model=self.setup_rlmodel(self.rlmodel,start_from,env,batch,policy_kwargs,learning_rate,
-                                    max_grad_norm,cont,verbose=verbose,n_cpu=n_cpu,learning_schedule=learning_schedule)
+                                cont,max_grad_norm=max_grad_norm,verbose=verbose,n_cpu=n_cpu,
+                                learning_schedule=learning_schedule,vf=vf,gae_lambda=gae_lambda)
         print('training...')
 
         if use_callback: # tässä ongelma, vecmonitor toimii => kuitenkin monta callbackia
@@ -535,7 +542,7 @@ class Lifecycle():
         return val
         
     def setup_model(self,debug=False,rlmodel='acktr',plot=True,load=None,pop=None,
-                 max_grad_norm=0.5,learning_rate=0.25,deterministic=False):
+                    deterministic=False,arch=None):
 
         if pop is not None:
             self.n_pop=pop
@@ -554,7 +561,7 @@ class Lifecycle():
         print('simulating ',self.loadname)
 
         # multiprocess environment
-        policy_kwargs,n_cpu=self.get_multiprocess_env(rlmodel,debug=debug)
+        policy_kwargs,n_cpu=self.get_multiprocess_env(rlmodel,debug=debug,arch=arch)
 
         nonvec=False
         if nonvec:
@@ -575,67 +582,69 @@ class Lifecycle():
 
         if self.rlmodel=='a2c':
             model = A2C.load(load, env=env, verbose=1,gamma=self.gamma, policy_kwargs=policy_kwargs)
-        elif self.rlmodel=='acer':
-            model = ACER.load(load, env=env, verbose=1,gamma=self.gamma, policy_kwargs=policy_kwargs)
-        elif self.rlmodel=='acktr' or self.rlmodel=='small_acktr' or self.rlmodel=='lnacktr' or self.rlmodel=='small_lnacktr' or rlmodel=='deep_acktr':
+        elif self.rlmodel in set(['acktr','small_acktr','lnacktr','small_lnacktr','deep_acktr','leaky_acktr']):
             model = ACKTR.load(load, env=env, verbose=1,gamma=self.gamma, policy_kwargs=policy_kwargs)
         elif self.rlmodel=='trpo':
             model = TRPO.load(load, env=env, verbose=1,gamma=self.gamma, policy_kwargs=policy_kwargs)
-        else:
+        elif self.rlmodel=='dqn':
             model = DQN.load(load, env=env, verbose=1,gamma=self.gamma,prioritized_replay=True,policy_kwargs=policy_kwargs)
+        else:
+            error('unknown model')
 
-        return model,env
+        return model,env,n_cpu
 
     def simulate(self,debug=False,rlmodel='acktr',plot=True,load=None,pop=None,
-                 max_grad_norm=0.5,learning_rate=0.25,
-                 deterministic=False,save='results/testsimulate'):
+                 deterministic=False,save='results/testsimulate',arch=None):
 
-        if pop is not None:
-            self.n_pop=pop
+        model,env,n_cpu=self.setup_model(debug=debug,rlmodel=rlmodel,plot=plot,load=load,pop=pop,
+                 deterministic=deterministic,arch=arch)
 
-        if load is not None:
-            self.loadname=load
-
-        if rlmodel is not None:
-            self.rlmodel=rlmodel
-            
-        print('simulate')
-            
-        self.episodestats.reset(self.timestep,self.n_time,self.n_employment,self.n_pop,
-                                self.env,self.minimal,self.min_age,self.max_age,self.min_retirementage,self.year)
-
-        print('simulating ',self.loadname)
-
-        # multiprocess environment
-        policy_kwargs,n_cpu=self.get_multiprocess_env(self.rlmodel,debug=debug)
-
-        nonvec=False
-        if nonvec:
-            env=self.env
-            #env.seed(4567)
-            #env.env_seed(4567)
-        else:
-            env = SubprocVecEnv([lambda: self.make_env(self.environment, i, self.gym_kwargs) for i in range(n_cpu)])
-            #env = SubprocVecEnv([lambda: gym.make(self.environment,kwargs=self.gym_kwargs) for i in range(n_cpu)])
-            #env = DummyVecEnv([lambda: gym.make(self.environment,kwargs=self.gym_kwargs) for i in range(n_cpu)])
-
-        normalize=False
-        if normalize:
-            normalize_kwargs={}
-            env = VecNormalize(env, **normalize_kwargs)
-
-        print('predicting...')
-
-        if self.rlmodel=='a2c':
-            model = A2C.load(load, env=env, verbose=1,gamma=self.gamma, policy_kwargs=policy_kwargs)
-        elif self.rlmodel=='acer':
-            model = ACER.load(load, env=env, verbose=1,gamma=self.gamma, policy_kwargs=policy_kwargs)
-        elif self.rlmodel=='acktr' or self.rlmodel=='small_acktr' or self.rlmodel=='lnacktr' or self.rlmodel=='small_lnacktr'  or rlmodel=='deep_acktr':
-            model = ACKTR.load(load, env=env, verbose=1,gamma=self.gamma, policy_kwargs=policy_kwargs)
-        elif self.rlmodel=='trpo':
-            model = TRPO.load(load, env=env, verbose=1,gamma=self.gamma, policy_kwargs=policy_kwargs)
-        else:
-            model = DQN.load(load, env=env, verbose=1,gamma=self.gamma,prioritized_replay=True,policy_kwargs=policy_kwargs)
+#         if pop is not None:
+#             self.n_pop=pop
+# 
+#         if load is not None:
+#             self.loadname=load
+# 
+#         if rlmodel is not None:
+#             self.rlmodel=rlmodel
+#             
+#         print('simulate')
+#             
+#         self.episodestats.reset(self.timestep,self.n_time,self.n_employment,self.n_pop,
+#                                 self.env,self.minimal,self.min_age,self.max_age,self.min_retirementage,self.year)
+# 
+#         print('simulating ',self.loadname)
+# 
+#         # multiprocess environment
+#         policy_kwargs,n_cpu=self.get_multiprocess_env(self.rlmodel,debug=debug,arch=arch)
+# 
+#         nonvec=False
+#         if nonvec:
+#             env=self.env
+#             #env.seed(4567)
+#             #env.env_seed(4567)
+#         else:
+#             env = SubprocVecEnv([lambda: self.make_env(self.environment, i, self.gym_kwargs) for i in range(n_cpu)])
+#             #env = SubprocVecEnv([lambda: gym.make(self.environment,kwargs=self.gym_kwargs) for i in range(n_cpu)])
+#             #env = DummyVecEnv([lambda: gym.make(self.environment,kwargs=self.gym_kwargs) for i in range(n_cpu)])
+# 
+#         normalize=False
+#         if normalize:
+#             normalize_kwargs={}
+#             env = VecNormalize(env, **normalize_kwargs)
+# 
+#         print('predicting...')
+# 
+#         if self.rlmodel=='a2c':
+#             model = A2C.load(load, env=env, verbose=1,gamma=self.gamma, policy_kwargs=policy_kwargs)
+#         elif self.rlmodel=='acer':
+#             model = ACER.load(load, env=env, verbose=1,gamma=self.gamma, policy_kwargs=policy_kwargs)
+#         elif self.rlmodel in set(['acktr','small_acktr','lnacktr','small_lnacktr','deep_acktr','leaky_acktr']):
+#             model = ACKTR.load(load, env=env, verbose=1,gamma=self.gamma, policy_kwargs=policy_kwargs,net_arch=arch)
+#         elif self.rlmodel=='trpo':
+#             model = TRPO.load(load, env=env, verbose=1,gamma=self.gamma, policy_kwargs=policy_kwargs)
+#         else:
+#             model = DQN.load(load, env=env, verbose=1,gamma=self.gamma,prioritized_replay=True,policy_kwargs=policy_kwargs)
 
         states = env.reset()
         n=n_cpu-1
@@ -652,14 +661,6 @@ class Lifecycle():
                 if dones[k]:
                     terminal_state=infos[k]['terminal_observation']  
                     self.episodestats.add(pop_num[k],act[k],rewards[k],states[k],terminal_state,infos[k],debug=debug)
-                    
-                    # ensimmäinen havainto
-                    #self.episodestats.add(pop_num[k],0,0,terminal_state,newstate[k],None,debug=debug)
-                    
-                    #print('terminal',terminal_state)
-                    #print('terminal',infos[k])
-                    #print('new',newstate[k])
-                    #print('new',infos[k])
                     tqdm_e.update(1)
                     n+=1
                     tqdm_e.set_description("Pop " + str(n))
@@ -690,9 +691,9 @@ class Lifecycle():
     def render_reward(self,load=None,figname=None):
         if load is not None:
             self.episodestats.load_sim(load)
-            self.episodestats.comp_total_reward()
+            return self.episodestats.comp_total_reward()
         else:
-            self.episodestats.comp_total_reward()
+            return self.episodestats.comp_total_reward()
    
     def load_sim(self,load=None):
         self.episodestats.load_sim(load)
@@ -776,8 +777,8 @@ class Lifecycle():
                save='saved/perusmalli',debug=False,simut='simut',results='results/simut_res',
                stats='results/simut_stats',deterministic=True,train=True,predict=True,
                batch1=1,batch2=100,cont=False,start_from=None,plot=False,callback_minsteps=None,
-               verbose=1,plotdebug=None,max_grad_norm=0.5,learning_rate=0.25,log_interval=10,
-               learning_schedule='linear'):
+               verbose=1,plotdebug=None,max_grad_norm=None,learning_rate=0.25,log_interval=10,
+               learning_schedule='linear',vf=None,arch=None,gae_lambda=None):
    
         '''
         run_results
@@ -800,24 +801,24 @@ class Lifecycle():
                                   debug=debug,save=save,batch1=batch1,batch2=batch2,
                                   cont=cont,start_from=start_from,twostage=twostage,plotdebug=plotdebug,
                                   max_grad_norm=max_grad_norm,learning_rate=learning_rate,log_interval=log_interval,
-                                  learning_schedule=learning_schedule)
+                                  learning_schedule=learning_schedule,vf=vf,arch=arch,gae_lambda=gae_lambda)
             else:
                 self.run_protocol(rlmodel=rlmodel,steps1=steps1,steps2=steps2,verbose=verbose,
                                  debug=debug,batch1=batch1,batch2=batch2,cont=cont,
                                  save=save,twostage=twostage,plotdebug=plotdebug,
                                  max_grad_norm=max_grad_norm,learning_rate=learning_rate,log_interval=log_interval,
-                                 learning_schedule=learning_schedule)
+                                 learning_schedule=learning_schedule,vf=vf,arch=arch,gae_lambda=gae_lambda)
         if predict:
             #print('predict...')
             self.predict_protocol(pop=pop,rlmodel=rlmodel,load=save,plotdebug=plotdebug,
-                          debug=debug,deterministic=deterministic,results=results)
+                          debug=debug,deterministic=deterministic,results=results,arch=arch)
         if plot:
             self.render(load=results)
           
     def run_protocol(self,steps1=2_000_000,steps2=1_000_000,rlmodel='acktr',
                debug=False,batch1=1,batch2=1000,cont=False,twostage=False,log_interval=10,
-               start_from=None,save='best3',verbose=1,plotdebug=None,max_grad_norm=0.5,
-               learning_rate=0.25,learning_schedule='linear'):
+               start_from=None,save='best3',verbose=1,plotdebug=None,max_grad_norm=None,
+               learning_rate=0.25,learning_schedule='linear',vf=None,arch=None,gae_lambda=None):
         '''
         run_protocol
 
@@ -836,11 +837,11 @@ class Lifecycle():
             if cont:
                 self.train(steps=steps1,cont=cont,rlmodel=rlmodel,save=tmpname,batch=batch1,debug=debug,
                            start_from=start_from,use_callback=False,use_vecmonitor=False,
-                           log_interval=log_interval,verbose=1,plotdebug=plotdebug,
+                           log_interval=log_interval,verbose=1,plotdebug=plotdebug,vf=vf,arch=arch,gae_lambda=gae_lambda,
                            max_grad_norm=max_grad_norm,learning_rate=learning_rate,learning_schedule=learning_schedule)
             else:
-                self.train(steps=steps1,cont=False,rlmodel=rlmodel,save=tmpname,batch=batch1,debug=debug,
-                           use_callback=False,use_vecmonitor=False,log_interval=log_interval,verbose=1,plotdebug=plotdebug,
+                self.train(steps=steps1,cont=False,rlmodel=rlmodel,save=tmpname,batch=batch1,debug=debug,vf=vf,arch=arch,
+                           use_callback=False,use_vecmonitor=False,log_interval=log_interval,verbose=1,plotdebug=plotdebug,gae_lambda=gae_lambda,
                            max_grad_norm=max_grad_norm,learning_rate=learning_rate,learning_schedule=learning_schedule)
 
         if twostage and steps2>0:
@@ -850,7 +851,7 @@ class Lifecycle():
                        use_callback=False,use_vecmonitor=False,log_interval=log_interval,bestname=save,plotdebug=plotdebug,
                        max_grad_norm=max_grad_norm,learning_rate=learning_rate,learning_schedule=learning_schedule)
 
-    def predict_protocol(self,pop=1_00,rlmodel='acktr',results='results/simut_res',
+    def predict_protocol(self,pop=1_00,rlmodel='acktr',results='results/simut_res',arch=None,
                          load='saved/malli',debug=False,deterministic=False,plotdebug=None):
         '''
         predict_protocol
@@ -859,7 +860,7 @@ class Lifecycle():
         '''
  
         # simulate the saved best
-        self.simulate(pop=pop,rlmodel=rlmodel,plot=False,debug=debug,
+        self.simulate(pop=pop,rlmodel=rlmodel,plot=False,debug=debug,arch=arch,
                       load=load,save=results,deterministic=deterministic)
 
     def run_distrib(self,n=5,steps1=100,steps2=100,pop=1_000,rlmodel='acktr',
@@ -895,11 +896,11 @@ class Lifecycle():
 
         #self.render_distrib(load=results,n=n,stats_results=stats_results)
             
-    def comp_distribs(self,load=None,n=1,startn=0,stats_results='results/distrib_stats'):
+    def comp_distribs(self,load=None,n=1,startn=0,stats_results='results/distrib_stats',singlefile=False):
         if load is None:
             return
             
-        self.episodestats.run_simstats(load,stats_results,n,startn=startn)
+        self.episodestats.run_simstats(load,stats_results,n,startn=startn,singlefile=singlefile)
 
     def render_distrib(self,stats_results='results/distrib_stats',plot=False,figname=None):
         self.episodestats.plot_simstats(stats_results,figname=figname)
@@ -922,7 +923,7 @@ class Lifecycle():
     def plot_RL_act(self,t,rlmodel='acktr',load='perus',debug=True,deterministic=True,
                         n_palkka=80,deltapalkka=1000,n_elake=40,deltaelake=1500,
                         hila_palkka0=0,hila_elake0=0):
-        model,env=self.setup_model(rlmodel=rlmodel,load=load,debug=debug)
+        model,env,n_cpu=self.setup_model(rlmodel=rlmodel,load=load,debug=debug)
         RL_unemp=self.RL_simulate_V(model,env,t,emp=0,deterministic=deterministic,n_palkka=n_palkka,deltapalkka=deltapalkka,n_elake=n_elake,deltaelake=deltaelake,
                         hila_palkka0=hila_palkka0,hila_elake0=hila_elake0)
         RL_emp=self.RL_simulate_V(model,env,t,emp=1,deterministic=deterministic,n_palkka=n_palkka,deltapalkka=deltapalkka,n_elake=n_elake,deltaelake=deltaelake,
@@ -934,7 +935,7 @@ class Lifecycle():
     def get_RL_act(self,t,emp=0,time_in_state=0,rlmodel='acktr',load='perus',debug=True,deterministic=True,
                         n_palkka=80,deltapalkka=1000,n_elake=40,deltaelake=1500,
                         hila_palkka0=0,hila_elake0=0):
-        model,env=self.setup_model(rlmodel=rlmodel,load=load,debug=debug)
+        model,env,n_cpu=self.setup_model(rlmodel=rlmodel,load=load,debug=debug)
         return self.RL_simulate_V(model,env,t,emp=emp,deterministic=deterministic,time_in_state=time_in_state,
                         n_palkka=n_palkka,deltapalkka=deltapalkka,n_elake=n_elake,deltaelake=deltaelake,
                         hila_palkka0=hila_palkka0,hila_elake0=hila_elake0)
@@ -1027,3 +1028,5 @@ class Lifecycle():
         L2=self.episodestats.comp_L1error()
         
         return L2
+        
+    
