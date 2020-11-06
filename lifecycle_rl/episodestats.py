@@ -44,6 +44,8 @@ class EpisodeStats():
         self.year=year
         self.env=env
         self.reaalinen_palkkojenkasvu=0.016
+        self.palkkakerroin=(0.8*1+0.2*1.0/(1+self.reaalinen_palkkojenkasvu))**self.timestep
+        self.elakeindeksi=(0.2*1+0.8*1.0/(1+self.reaalinen_palkkojenkasvu))**self.timestep
         
         if self.minimal:
             self.version=0
@@ -230,16 +232,20 @@ class EpisodeStats():
 
     def comp_annual_irr(self,npv,premium,pension,empstate,doprint=False):
         k=0
-        ext=int(np.ceil(npv))
+        max_npv=int(np.ceil(npv))
         cashflow=-premium+pension
-        x=np.zeros(cashflow.shape[0]+ext)
+        x=np.zeros(cashflow.shape[0]+max_npv)
         
-        #print(npv,tyel_premium,paid_pension)
+        eind=np.zeros(max_npv+1)
         
-        # indeksointi puuttuu
+        el=1
+        for k in range(max_npv+1):
+            eind[k]=el
+            el=el*self.elakeindeksi
+            
         x[:cashflow.shape[0]]=cashflow
         if npv>0:
-            x[cashflow.shape[0]-1:]=(cashflow[-2])
+            x[cashflow.shape[0]-1:]=cashflow[-2]*eind[:max_npv+1]
             
         y=np.zeros(int(np.ceil(x.shape[0]/4)))
         for k in range(y.shape[0]):
@@ -286,22 +292,29 @@ class EpisodeStats():
         agg_irr=self.reaalinen_palkkojenkasvu*100+self.comp_annual_irr(maxnpv,agg_premium,agg_pensions,self.popempstate[:,0])
         x=np.zeros(self.infostats_paid_tyel_pension.shape[0]+int(np.ceil(maxnpv)))
         
+        max_npv=int(max(np.ceil(self.infostats_npv0[:,0])))
+        eind=np.zeros(max_npv)
+        
+        el=1
+        for k in range(max_npv):
+            eind[k]=el
+            el=el*self.elakeindeksi
+            
+        cfn=self.infostats_tyelpremium.shape[0]
         for k in range(self.n_pop):
             if np.sum(self.popempstate[0:self.map_age(63),k]==15)<1: # ilman kuolleita
                 n=int(np.ceil(self.infostats_npv0[k,0]))
                 cashflow=-self.infostats_tyelpremium[:,k]+self.infostats_paid_tyel_pension[:,k]
         
                 # indeksointi puuttuu
-                cfn=cashflow.shape[0]
                 x[:cfn]+=cashflow            
                 if n>0:
-                    x[cfn-1:cfn+n-1]+=(cashflow[-2])
+                    x[cfn-1:cfn+n-1]+=cashflow[-2]*eind[:n] # ei indeksoida, pitäisi huomioida takuueläkekin
             
         y=np.zeros(int(np.ceil(x.shape[0]/4)))
         for k in range(y.shape[0]):
             y[k]=np.sum(x[4*k:4*k+4])
         irri=npf.irr(y)*100        
-    
         
         print('aggregate irr {}'.format(agg_irr))
 
@@ -2192,6 +2205,8 @@ class EpisodeStats():
         q['asumistuki']=np.sum(self.infostats_asumistuki*scalex)
         q['tyoelake']=np.sum(self.infostats_tyoelake*scalex)
         q['kokoelake']=np.sum(self.infostats_kokoelake*scalex)
+        q['tyoelake_maksu']=np.sum(self.infostats_tyelpremium*scalex)
+        #q['tyoelake_maksettu']=np.sum(self.infostats_paid_tyel_pension*scalex)
         q['opintotuki']=np.sum(self.infostats_opintotuki*scalex)
         q['isyyspaivaraha']=np.sum(self.infostats_isyyspaivaraha*scalex)
         q['aitiyspaivaraha']=np.sum(self.infostats_aitiyspaivaraha*scalex)
