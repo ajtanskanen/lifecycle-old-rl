@@ -48,7 +48,9 @@ class Lifecycle():
                     use_sigma_reduction=None,porrasta_putki=None,perustulomalli=None,
                     porrasta_1askel=None,porrasta_2askel=None,porrasta_3askel=None,
                     osittainen_perustulo=None,gamma=None,exploration=None,exploration_ratio=None,
-                    year=2018,version=2):
+                    irr_vain_tyoelake=None,additional_income_tax=None,additional_tyel_premium=None,
+                    additional_kunnallisvero=None,additional_income_tax_high=None,
+                    year=2018,version=2):                    
         '''
         Alusta muuttujat
         '''
@@ -85,12 +87,32 @@ class Lifecycle():
         self.porrasta_2askel=True
         self.porrasta_3askel=True
         self.osittainen_perustulo=True
+        self.irr_vain_tyoelake=True
+        self.additional_income_tax=0.0
+        self.additional_tyel_premium=0.0
+        self.additional_kunnallisvero=0.0
+        self.additional_income_tax_high=0.0
 
         if callback_minsteps is not None:
             self.callback_minsteps=callback_minsteps
 
         if karenssi_kesto is not None:
             self.karenssi_kesto=karenssi_kesto
+
+        if irr_vain_tyoelake is not None:
+            self.irr_vain_tyoelake=irr_vain_tyoelake
+
+        if additional_income_tax is not None:
+            self.additional_income_tax=additional_income_tax
+
+        if additional_tyel_premium is not None:
+            self.additional_tyel_premium=additional_tyel_premium
+
+        if additional_kunnallisvero is not None:
+            self.additional_kunnallisvero=additional_kunnallisvero
+
+        if additional_income_tax_high is not None:
+            self.additional_income_tax_high=additional_income_tax_high
 
         if plotdebug is not None:
             self.plotdebug=plotdebug
@@ -167,7 +189,8 @@ class Lifecycle():
                 'min_age': self.min_age, 'max_age': self.max_age,
                 'plotdebug': self.plotdebug, 
                 'min_retirementage': self.min_retirementage, 'max_retirementage':self.max_retirementage,
-                'reset_exploration_go': self.exploration,'reset_exploration_ratio': self.exploration_ratio}
+                'reset_exploration_go': self.exploration,'reset_exploration_ratio': self.exploration_ratio,
+                'irr_vain_tyoelake': self.irr_vain_tyoelake}
             #self.n_employment = 3
             #self.n_acts = 3
         else:
@@ -189,7 +212,11 @@ class Lifecycle():
                 'include_putki': self.include_putki, 'use_sigma_reduction': self.use_sigma_reduction,
                 'plotdebug': self.plotdebug, 'include_preferencenoise': self.include_preferencenoise,
                 'perustulomalli': perustulomalli,'osittainen_perustulo':self.osittainen_perustulo,
-                'reset_exploration_go': self.exploration,'reset_exploration_ratio': self.exploration_ratio}
+                'reset_exploration_go': self.exploration,'reset_exploration_ratio': self.exploration_ratio,
+                'irr_vain_tyoelake': self.irr_vain_tyoelake, 'additional_income_tax': self.additional_income_tax,
+                'additional_tyel_premium': self.additional_tyel_premium, 
+                'additional_income_tax_high': self.additional_income_tax_high,
+                'additional_kunnallisvero': self.additional_kunnallisvero}
             #self.n_acts = 4
             #if self.mortality:
             #    self.n_employment = 16
@@ -694,6 +721,17 @@ class Lifecycle():
             return self.episodestats.comp_total_reward()
         else:
             return self.episodestats.comp_total_reward()
+   
+    def render_leffer(self,load=None,figname=None):
+        if load is not None:
+            self.episodestats.load_sim(load)
+            rew=self.episodestats.comp_total_reward()
+        else:
+            rew=self.episodestats.comp_total_reward()
+            
+        q=self.episodestats.comp_budget()
+            
+        return rew,q['palkkatulo'],q['verot+maksut']
    
     def load_sim(self,load=None):
         self.episodestats.load_sim(load)

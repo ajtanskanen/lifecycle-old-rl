@@ -64,6 +64,7 @@ class EpisodeStats():
         self.rewstate=np.zeros((self.n_time,n_emps))
         self.poprewstate=np.zeros((self.n_time,self.n_pop))
         self.salaries_emp=np.zeros((self.n_time,n_emps))
+        self.salaries=np.zeros((self.n_time,self.n_pop))
         self.actions=np.zeros((self.n_time,self.n_pop))
         self.popempstate=np.zeros((self.n_time,self.n_pop))
         self.popunemprightleft=np.zeros((self.n_time,self.n_pop))
@@ -72,7 +73,6 @@ class EpisodeStats():
         self.unemp_distrib_bu=np.zeros((self.n_time,self.n_pop))
         self.siirtyneet=np.zeros((self.n_time,n_emps))
         self.pysyneet=np.zeros((self.n_time,n_emps))
-        self.salaries=np.zeros((self.n_time,self.n_pop))
         self.aveV=np.zeros((self.n_time,self.n_pop))
         self.time_in_state=np.zeros((self.n_time,n_emps))
         self.stat_tyoura=np.zeros((self.n_time,n_emps))
@@ -857,6 +857,70 @@ class EpisodeStats():
                     ax.plot(x2,scaled,label=t)
                 plt.legend()
                 plt.show()
+                
+    def test_salaries(self):
+        n=self.n_pop
+
+        palkat_ika_miehet=12.5*np.array([2339.01,2489.09,2571.40,2632.58,2718.03,2774.21,2884.89,2987.55,3072.40,3198.48,3283.81,3336.51,3437.30,3483.45,3576.67,3623.00,3731.27,3809.58,3853.66,3995.90,4006.16,4028.60,4104.72,4181.51,4134.13,4157.54,4217.15,4165.21,4141.23,4172.14,4121.26,4127.43,4134.00,4093.10,4065.53,4063.17,4085.31,4071.25,4026.50,4031.17,4047.32,4026.96,4028.39,4163.14,4266.42,4488.40,4201.40,4252.15,4443.96,3316.92,3536.03,3536.03])
+        palkat_ika_naiset=12.5*np.array([2223.96,2257.10,2284.57,2365.57,2443.64,2548.35,2648.06,2712.89,2768.83,2831.99,2896.76,2946.37,2963.84,2993.79,3040.83,3090.43,3142.91,3159.91,3226.95,3272.29,3270.97,3297.32,3333.42,3362.99,3381.84,3342.78,3345.25,3360.21,3324.67,3322.28,3326.72,3326.06,3314.82,3303.73,3302.65,3246.03,3244.65,3248.04,3223.94,3211.96,3167.00,3156.29,3175.23,3228.67,3388.39,3457.17,3400.23,3293.52,2967.68,2702.05,2528.84,2528.84])
+        g_r=[0.77,1.0,1.23]
+        data_range=np.arange(20,72)
+
+        sal20=np.zeros((n,1))
+        sal25=np.zeros((n,1))
+        sal30=np.zeros((n,1))
+        sal50=np.zeros((n,1))
+        sal=np.zeros((n,72))
+
+        p=np.arange(700,17500,100)*12.5
+        palkka20=np.array([10.3,5.6,4.5,14.2,7.1,9.1,22.8,22.1,68.9,160.3,421.6,445.9,501.5,592.2,564.5,531.9,534.4,431.2,373.8,320.3,214.3,151.4,82.3,138.0,55.6,61.5,45.2,19.4,32.9,13.1,9.6,7.4,12.3,12.5,11.5,5.3,2.4,1.6,1.2,1.2,14.1,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0])
+        palkka25=np.array([12.4,11.3,30.2,4.3,28.5,20.3,22.5,23.7,83.3,193.0,407.9,535.0,926.5,1177.1,1540.9,1526.4,1670.2,1898.3,1538.8,1431.5,1267.9,1194.8,1096.3,872.6,701.3,619.0,557.2,465.8,284.3,291.4,197.1,194.4,145.0,116.7,88.7,114.0,56.9,57.3,55.0,25.2,24.4,20.1,25.2,37.3,41.4,22.6,14.1,9.4,6.3,7.5,8.1,9.0,4.0,3.4,5.4,4.1,5.2,1.0,2.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0])
+        palkka30=np.array([1.0,2.0,3.0,8.5,12.1,22.9,15.8,21.8,52.3,98.2,295.3,392.8,646.7,951.4,1240.5,1364.5,1486.1,1965.2,1908.9,1729.5,1584.8,1460.6,1391.6,1551.9,1287.6,1379.0,1205.6,1003.6,1051.6,769.9,680.5,601.2,552.0,548.3,404.5,371.0,332.7,250.0,278.2,202.2,204.4,149.8,176.7,149.0,119.6,76.8,71.4,56.3,75.9,76.8,58.2,50.2,46.8,48.9,30.1,32.2,28.8,31.1,45.5,41.2,36.5,18.1,11.6,8.5,10.2,4.3,13.5,12.3,4.9,13.9,5.4,5.9,7.4,14.1,9.6,8.4,11.5,0.0,3.3,9.0,5.2,5.0,3.1,7.4,2.0,4.0,4.1,14.0,2.0,3.0,1.0,0.0,6.2,2.0,1.2,2.0,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0])
+        palkka50=np.array([2.0,3.1,2.4,3.9,1.0,1.0,11.4,30.1,29.3,34.3,231.9,341.9,514.4,724.0,1076.8,1345.2,1703.0,1545.8,1704.0,1856.1,1805.4,1608.1,1450.0,1391.4,1338.5,1173.2,1186.3,1024.8,1105.6,963.0,953.0,893.7,899.8,879.5,857.0,681.5,650.5,579.2,676.8,498.0,477.5,444.3,409.1,429.0,340.5,297.2,243.1,322.5,297.5,254.1,213.1,249.3,212.1,212.8,164.4,149.3,158.6,157.4,154.1,112.7,93.4,108.4,87.3,86.7,82.0,115.9,66.9,84.2,61.4,43.7,58.1,40.9,73.9,50.0,51.6,25.7,43.2,48.2,43.0,32.6,21.6,22.4,36.3,28.3,19.4,21.1,21.9,21.5,19.2,15.8,22.6,9.3,14.0,22.4,14.0,13.0,11.9,18.7,7.3,21.6,9.5,11.2,12.0,18.2,12.9,2.2,10.7,6.1,11.7,7.6,1.0,4.7,8.5,6.4,3.3,4.6,1.2,3.7,5.8,1.0,1.0,1.0,1.0,3.2,1.2,3.1,2.2,2.3,2.1,1.1,2.0,2.1,2.2,4.6,2.2,1.0,1.0,1.0,0.0,3.0,1.2,0.0,8.2,3.0,1.0,1.0,2.1,1.2,3.2,1.0,5.2,1.1,5.2,1.0,1.2,2.3,1.0,3.1,1.0,1.0,1.1,1.6,1.1,1.1,1.0,1.0,1.0,1.0])
+
+        m20=0
+        m25=0
+        m30=0
+        m50=0
+        for k in range(self.n_pop):
+            #print(self.popempstate[self.map_age(20),k],self.map_age(20),k)
+            if self.popempstate[self.map_age(20),k] in set([1,10]):
+                sal20[m20]=self.salaries[self.map_age(20),k]
+                m20=m20+1
+            if self.popempstate[self.map_age(25),k] in set([1,10]):
+                sal25[m25]=self.salaries[self.map_age(25),k]
+                m25=m25+1
+            if self.popempstate[self.map_age(30),k] in set([1,10]):
+                sal30[m30]=self.salaries[self.map_age(30),k]
+                m30=m30+1
+            if self.popempstate[self.map_age(50),k] in set([1,10]):
+                sal50[m50]=self.salaries[self.map_age(50),k]
+                m50=m50+1
+                
+        #print(sal25,self.salaries)
+                
+        def kuva(sal,ika,m,p,palkka):
+            plt.hist(sal[:m],bins=50,density=True)
+            ave=np.mean(sal[:m])/12
+            palave=np.sum(palkka*p)/12/np.sum(palkka)
+            plt.title('{}: ave {} vs {}'.format(ika,ave,palave))
+            plt.plot(p,palkka/sum(palkka)/2000)
+            plt.show()
+
+        kuva(sal20,20,m20,p,palkka20)
+        kuva(sal25,25,m25,p,palkka25)
+        kuva(sal30,30,m30,p,palkka30)
+        kuva(sal50,50,m50,p,palkka50)
+
+        data_range=np.arange(20,71)
+        plt.plot(data_range,np.mean(self.salaries[::4],axis=1),label='arvio')
+        data_range=np.arange(20,72)
+        plt.plot(data_range,0.5*palkat_ika_miehet+0.5*palkat_ika_naiset,label='data')
+
+        plt.legend()
+        plt.show()
+
+                    
 
     def plot_rewdist(self,t=0,sum=False,all=False):
         if all:
@@ -1350,10 +1414,10 @@ class EpisodeStats():
             self.plot_ratiostates(self.stat_tyoura,ylabel='Työuran pituus [v]',stack=False)
 
     def plot_ratiostates(self,statistic,ylabel='',ylimit=None, show_legend=True, parent=False,\
-                         unemp=False,start_from=None,stack=False,no_ve=False,figname=None):
+                         unemp=False,start_from=None,stack=False,no_ve=False,figname=None,emp=False):
         self.plot_states(statistic/self.empstate,ylabel=ylabel,ylimit=ylimit,no_ve=no_ve,\
-                    show_legend=show_legend,parent=parent,unemp=unemp,start_from=start_from,\
-                    stack=stack,figname=figname)
+                        show_legend=show_legend,parent=parent,unemp=unemp,start_from=start_from,\
+                        stack=stack,figname=figname,emp=emp)
 
     def count_putki(self,emps=None):
         if emps is None:
@@ -1370,7 +1434,7 @@ class EpisodeStats():
 
     def plot_states(self,statistic,ylabel='',ylimit=None,show_legend=True,parent=False,unemp=False,no_ve=False,
                     start_from=None,stack=True,figname=None,yminlim=None,ymaxlim=None,
-                    onlyunemp=False,reverse=False,grayscale=False):
+                    onlyunemp=False,reverse=False,grayscale=False,emp=False):
         if start_from is None:
             x=np.linspace(self.min_age,self.max_age,self.n_time)
         else:
@@ -1464,6 +1528,10 @@ class EpisodeStats():
                     ax.plot(x,ura_student,label='student')
                     ax.plot(x,ura_outsider,label='outsider')
                     ax.plot(x,ura_pipe,label='putki')
+            elif emp:
+                ax.plot(x,ura_emp,label='työssä')
+                if self.version>0:
+                    ax.plot(x,ura_osatyo,label='osatyö')
             else:
                 ax.plot(x,ura_unemp,label='tyött')
                 ax.plot(x,ura_ret,label='eläke')
@@ -1591,9 +1659,20 @@ class EpisodeStats():
         
         return rr
 
+    def comp_palkkasumma(self): 
+        total_reward=np.sum(self.rewstate)
+        rr=total_reward/self.n_pop
+        #print('total rew1 {} rew2 {}'.format(total_reward,np.sum(self.poprewstate)))
+        #print('ave rew1 {} rew2 {}'.format(rr,np.mean(np.sum(self.poprewstate,axis=0))))
+        #print('shape rew2 {} pop {} alive {}'.format(self.poprewstate.shape,self.n_pop,self.alive[0]))
+        print('Ave reward {}'.format(rr))
+        
+        return rr
+
     def plot_wage_reduction(self):
         self.plot_ratiostates(self.stat_wage_reduction,ylabel='wage-reduction tilassa',stack=False)
         self.plot_ratiostates(self.stat_wage_reduction,ylabel='wage-reduction tilassa',stack=False,unemp=True)
+        self.plot_ratiostates(self.stat_wage_reduction,ylabel='wage-reduction tilassa',stack=False,emp=True)
         #self.plot_ratiostates(np.log(1.0+self.stat_wage_reduction),ylabel='log 5wage-reduction tilassa',stack=False)
 
     def plot_distrib(self,label='',plot_emp=False,plot_bu=False,ansiosid=False,tmtuki=False,putki=False,outsider=False,max_age=500,laaja=False,max=4,figname=None):
@@ -2187,7 +2266,7 @@ class EpisodeStats():
 
         return q
         
-    def comp_budget(self,scale=False):
+    def comp_budget(self,scale=True):
         demog,demog2=self.get_demog()
 
         scalex=demog2/self.n_pop
