@@ -82,6 +82,7 @@ class EpisodeStats():
         self.out_of_work=np.zeros((self.n_time,n_emps))
         self.stat_unemp_len=np.zeros((self.n_time,self.n_pop))
         self.stat_wage_reduction=np.zeros((self.n_time,n_emps))
+        self.infostats_group=np.zeros((self.n_pop,1))
         self.infostats_taxes=np.zeros((self.n_time,1))
         self.infostats_etuustulo=np.zeros((self.n_time,1))
         self.infostats_perustulo=np.zeros((self.n_time,1))
@@ -154,6 +155,7 @@ class EpisodeStats():
                 self.stat_unemp_len[t,n]=tis
                 self.popunemprightleft[t,n]=-self.env.unempright_left(newemp,tis,bu,a2,ura)
                 self.popunemprightused[t,n]=bu
+                self.infostats_group[n]=g
                 if q is not None:
                     self.infostats_taxes[t]+=q['verot']*self.timestep*12
                     self.infostats_etuustulo[t]+=q['etuustulo_brutto']*self.timestep*12
@@ -882,8 +884,23 @@ class EpisodeStats():
         m25=0
         m30=0
         m50=0
+        salx=np.zeros((self.n_time+2,1))
+        saln=np.zeros((self.n_time+2,1))
+        salx_m=np.zeros((self.n_time+2,1))
+        saln_m=np.zeros((self.n_time+2,1))
+        salx_f=np.zeros((self.n_time+2,1))
+        saln_f=np.zeros((self.n_time+2,1))
         for k in range(self.n_pop):
-            #print(self.popempstate[self.map_age(20),k],self.map_age(20),k)
+            for t in range(self.n_time-2):
+                if self.popempstate[t,k] in set([1,10,8,9]):
+                    salx[t]=salx[t]+self.salaries[t,k]
+                    saln[t]=saln[t]+1
+                    if self.infostats_group[k]>2:
+                        salx_f[t]=salx_f[t]+self.salaries[t,k]
+                        saln_f[t]=saln_f[t]+1
+                    else:
+                        salx_m[t]=salx_m[t]+self.salaries[t,k]
+                        saln_m[t]=saln_m[t]+1
             if self.popempstate[self.map_age(20),k] in set([1,10]):
                 sal20[m20]=self.salaries[self.map_age(20),k]
                 m20=m20+1
@@ -897,6 +914,10 @@ class EpisodeStats():
                 sal50[m50]=self.salaries[self.map_age(50),k]
                 m50=m50+1
                 
+                
+        salx=salx/np.maximum(1,saln)
+        salx_f=salx_f/np.maximum(1,saln_f)
+        salx_m=salx_m/np.maximum(1,saln_m)
         #print(sal25,self.salaries)
                 
         def kuva(sal,ika,m,p,palkka):
@@ -912,11 +933,20 @@ class EpisodeStats():
         kuva(sal30,30,m30,p,palkka30)
         kuva(sal50,50,m50,p,palkka50)
 
-        data_range=np.arange(20,71)
-        plt.plot(data_range,np.mean(self.salaries[::4],axis=1),label='arvio')
+        data_range=np.arange(21,72)
+        plt.plot(data_range,np.mean(self.salaries[::4],axis=1),label='malli kaikki')
+        plt.plot(data_range,salx[::4],label='malli töissä')
         data_range=np.arange(20,72)
         plt.plot(data_range,0.5*palkat_ika_miehet+0.5*palkat_ika_naiset,label='data')
+        plt.legend()
+        plt.show()
 
+        data_range=np.arange(21,72)
+        plt.plot(data_range,salx_m[::4],label='malli töissä miehet')
+        plt.plot(data_range,salx_f[::4],label='malli töissä naiset')
+        data_range=np.arange(20,72)
+        plt.plot(data_range,palkat_ika_miehet,label='data miehet')
+        plt.plot(data_range,palkat_ika_naiset,label='data naiset')
         plt.legend()
         plt.show()
 
@@ -1099,7 +1129,7 @@ class EpisodeStats():
     def plot_outsider(self,printtaa=True):
         x=np.linspace(self.min_age,self.max_age,self.n_time)
         fig,ax=plt.subplots()
-        ax.plot(x,100*(self.empstate[:,11]+self.empstate[:,5]+self.empstate[:,6]+self.empstate[:,7])/self.alive[:,0],label='työvoiman ulkopuolella, ei opiskelija, sis. vanh.vapaat')
+        ax.plot(x,100*(self.empstate[:,11]+self.empstate[:,5]+self.empstate[:,7])/self.alive[:,0],label='työvoiman ulkopuolella, ei opiskelija, sis. vanh.vapaat')
         emp_statsratio=100*self.outsider_stats()    
         ax.plot(x,emp_statsratio,label='havainto')
         ax.set_xlabel('Ikä [v]')
@@ -2133,6 +2163,7 @@ class EpisodeStats():
         _ = f.create_dataset('infostats_tyelpremium', data=self.infostats_tyelpremium, dtype=ftype)
         _ = f.create_dataset('infostats_npv0', data=self.infostats_npv0, dtype=ftype)
         _ = f.create_dataset('infostats_irr', data=self.infostats_irr, dtype=ftype)
+        _ = f.create_dataset('infostats_group', data=self.infostats_group, dtype=ftype)
         
         f.close()
 
@@ -2217,6 +2248,9 @@ class EpisodeStats():
             self.infostats_chilren7=f.get('infostats_chilren7').value      
         if 'infostats_chilren18' in f.keys(): # older runs do not have these
             self.infostats_chilren18=f.get('infostats_chilren18').value      
+        
+        if 'infostats_group' in f.keys(): # older runs do not have these
+            self.infostats_group=f.get('infostats_group').value      
         
         if 'n_pop' in f:
             self.n_pop=int(f.get('n_pop').value)
@@ -2645,3 +2679,20 @@ class EpisodeStats():
 
     def get_reward(self):
         return np.sum(self.rewstate)/self.n_pop
+
+    def get_vanhempainvapaat(self):
+        '''
+        Laskee vanhempainvapaalla olevien määrän outsider-mallia (Excel) varten
+        '''
+
+        alive=np.zeros((self.galive.shape[0],1))
+        alive[:,0]=np.sum(self.galive[:,0:3],1)
+        ulkopuolella_m=np.sum(self.gempstate[:,7,0:3],axis=1)[:,None]/alive
+        
+        alive[:,0]=np.sum(self.galive[:,3:6],1)
+        nn=np.sum(self.gempstate[:,5,3:6]+self.gempstate[:,7,3:6],axis=1)[:,None]
+        print(nn.shape)
+        ulkopuolella_n=nn/alive
+        
+        return ulkopuolella_m[::4],ulkopuolella_n[::4]
+        
