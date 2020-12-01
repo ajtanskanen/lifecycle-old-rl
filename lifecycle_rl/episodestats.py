@@ -72,6 +72,7 @@ class EpisodeStats():
         self.tyoll_distrib_bu=np.zeros((self.n_time,self.n_pop))
         self.unemp_distrib_bu=np.zeros((self.n_time,self.n_pop))
         self.siirtyneet=np.zeros((self.n_time,n_emps))
+        self.siirtyneet_det=np.zeros((self.n_time,n_emps,n_emps))
         self.pysyneet=np.zeros((self.n_time,n_emps))
         self.aveV=np.zeros((self.n_time,self.n_pop))
         self.time_in_state=np.zeros((self.n_time,n_emps))
@@ -82,6 +83,7 @@ class EpisodeStats():
         self.out_of_work=np.zeros((self.n_time,n_emps))
         self.stat_unemp_len=np.zeros((self.n_time,self.n_pop))
         self.stat_wage_reduction=np.zeros((self.n_time,n_emps))
+        self.stat_wage_reduction_g=np.zeros((self.n_time,n_emps,self.n_groups))
         self.infostats_group=np.zeros((self.n_pop,1))
         self.infostats_taxes=np.zeros((self.n_time,1))
         self.infostats_etuustulo=np.zeros((self.n_time,1))
@@ -109,9 +111,12 @@ class EpisodeStats():
         self.infostats_chilren7=np.zeros((self.n_time,1))
         self.infostats_tyelpremium=np.zeros((self.n_time,self.n_pop))
         self.infostats_paid_tyel_pension=np.zeros((self.n_time,self.n_pop))
+        self.infostats_sairausvakuutus=np.zeros((self.n_time,self.n_pop))
+        self.infostats_pvhoitomaksu=np.zeros((self.n_time,self.n_pop))
+        self.infostats_ylevero=np.zeros((self.n_time,self.n_pop))
         self.infostats_irr=np.zeros((self.n_pop,1))
         self.infostats_npv0=np.zeros((self.n_pop,1))
-        
+        self.infostats_mother_in_workforce=np.zeros((self.n_time,1))
 
     def add(self,n,act,r,state,newstate,q=None,debug=False,plot=False,aveV=None): 
         
@@ -126,10 +131,10 @@ class EpisodeStats():
             newemp,g,newpen,newsal,a2,tis,paidpens,pink,toe,ura,oof,bu,wr,p=self.env.state_decode(newstate)
         else: 
             # v2
-            emp,_,_,_,a,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_=self.env.state_decode(state) # current employment state
-            newemp,g,newpen,newsal,a2,tis,paidpens,pink,toe,ura,bu,wr,pr,upr,uw,uwr,c3,c7,c18,unemp_left,aa=self.env.state_decode(newstate)
+            emp,_,_,_,a,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_=self.env.state_decode(state) # current employment state
+            newemp,g,newpen,newsal,a2,tis,paidpens,pink,toe,ura,bu,wr,pr,upr,uw,uwr,c3,c7,c18,unemp_left,aa,toe58=self.env.state_decode(newstate)
     
-        t=int(np.round((a2-self.min_age)*self.inv_timestep))-1
+        t=int(np.round((a2-self.min_age)*self.inv_timestep))#-1
         if a2>a and newemp>=0: # new state is not reset (age2>age)
             if a2>self.min_retirementage and newemp==3:
                 newemp=2
@@ -144,9 +149,12 @@ class EpisodeStats():
                 self.salaries[t,n]=newsal
                 self.salaries_emp[t,newemp]+=newsal
                 self.time_in_state[t,newemp]+=tis
+                if tis<=0.25 and newemp==5:
+                    self.infostats_mother_in_workforce[t]+=1
                 self.infostats_pinkslip[t,newemp]+=pink
                 self.gempstate[t,newemp,g]+=1
                 self.stat_wage_reduction[t,newemp]+=wr
+                self.stat_wage_reduction_g[t,newemp,g]+=wr
                 self.galive[t,g]+=1
                 self.stat_tyoura[t,newemp]+=ura
                 self.stat_toe[t,newemp]+=toe
@@ -178,6 +186,9 @@ class EpisodeStats():
                     self.infostats_tulot_netto[t]+=q['kateen']*self.timestep*12
                     self.infostats_tyelpremium[t,n]=q['tyel_kokomaksu']*self.timestep*12
                     self.infostats_paid_tyel_pension[t,n]=q['puhdas_tyoelake']*self.timestep*12
+                    self.infostats_sairausvakuutus[t,n]=q['sairausvakuutus']*self.timestep*12
+                    self.infostats_pvhoitomaksu[t,n]=q['pvhoito']*self.timestep*12
+                    self.infostats_ylevero[t,n]=q['ylevero']*self.timestep*12
                     self.infostats_npv0[n]=q['multiplier']
             else:
                 self.empstate[t,newemp]+=1
@@ -207,6 +218,7 @@ class EpisodeStats():
 
             if not emp==newemp:
                 self.siirtyneet[t,emp]+=1
+                self.siirtyneet_det[t,emp,newemp]+=1
             else:
                 self.pysyneet[t,emp]+=1
         elif newemp<0:
@@ -871,7 +883,9 @@ class EpisodeStats():
         sal20=np.zeros((n,1))
         sal25=np.zeros((n,1))
         sal30=np.zeros((n,1))
+        sal40=np.zeros((n,1))
         sal50=np.zeros((n,1))
+        sal60=np.zeros((n,1))
         sal=np.zeros((n,72))
 
         p=np.arange(700,17500,100)*12.5
@@ -883,7 +897,9 @@ class EpisodeStats():
         m20=0
         m25=0
         m30=0
+        m40=0
         m50=0
+        m60=0
         salx=np.zeros((self.n_time+2,1))
         saln=np.zeros((self.n_time+2,1))
         salx_m=np.zeros((self.n_time+2,1))
@@ -910,9 +926,15 @@ class EpisodeStats():
             if self.popempstate[self.map_age(30),k] in set([1,10]):
                 sal30[m30]=self.salaries[self.map_age(30),k]
                 m30=m30+1
+            if self.popempstate[self.map_age(40),k] in set([1,10]):
+                sal40[m40]=self.salaries[self.map_age(40),k]
+                m40=m40+1
             if self.popempstate[self.map_age(50),k] in set([1,10]):
                 sal50[m50]=self.salaries[self.map_age(50),k]
                 m50=m50+1
+            if self.popempstate[self.map_age(60),k] in set([1,10]):
+                sal60[m60]=self.salaries[self.map_age(60),k]
+                m60=m60+1
                 
                 
         salx=salx/np.maximum(1,saln)
@@ -928,10 +950,18 @@ class EpisodeStats():
             plt.plot(p,palkka/sum(palkka)/2000)
             plt.show()
 
+        def kuva2(sal,ika,m):
+            plt.hist(sal[:m],bins=50,density=True)
+            ave=np.mean(sal[:m])/12
+            plt.title('{}: ave {}'.format(ika,ave))
+            plt.show()
+
         kuva(sal20,20,m20,p,palkka20)
         kuva(sal25,25,m25,p,palkka25)
         kuva(sal30,30,m30,p,palkka30)
+        kuva2(sal40,40,m40)
         kuva(sal50,50,m50,p,palkka50)
+        kuva2(sal60,60,m60)
 
         data_range=np.arange(21,72)
         plt.plot(data_range,np.mean(self.salaries[::4],axis=1),label='malli kaikki')
@@ -1055,17 +1085,19 @@ class EpisodeStats():
             gempstate=np.sum(self.gempstate[:,:,0:3],axis=2)
             alive=np.zeros((self.galive.shape[0],1))
             alive[:,0]=np.sum(self.galive[:,0:3],1)
+            mother_in_workforce=0
         else: # women
             gempstate=np.sum(self.gempstate[:,:,3:6],axis=2)
             alive=np.zeros((self.galive.shape[0],1))
             alive[:,0]=np.sum(self.galive[:,3:6],1)
+            mother_in_workforce=self.infostats_mother_in_workforce
     
-        tyollisyysaste,osatyoaste,tyottomyysaste,ka_tyottomyysaste=self.comp_empratios(gempstate,alive,unempratio=unempratio)
+        tyollisyysaste,osatyoaste,tyottomyysaste,ka_tyottomyysaste=self.comp_empratios(gempstate,alive,unempratio=unempratio,mother_in_workforce=mother_in_workforce)
         
         return tyollisyysaste,osatyoaste,tyottomyysaste,ka_tyottomyysaste
 
 
-    def comp_empratios(self,emp,alive,unempratio=True):
+    def comp_empratios(self,emp,alive,unempratio=True,mother_in_workforce=0):
         employed=emp[:,1]
         retired=emp[:,2]
         unemployed=emp[:,0]
@@ -1082,7 +1114,7 @@ class EpisodeStats():
             outsider=emp[:,11]
             student=emp[:,12]
             tyomarkkinatuki=emp[:,13]
-            tyollisyysaste=100*(employed+osatyo+veosatyo+vetyo)/alive[:,0]
+            tyollisyysaste=100*(employed+osatyo+veosatyo+vetyo+dad+mother_in_workforce)/alive[:,0]
             osatyoaste=100*(osatyo+veosatyo)/(employed+osatyo+veosatyo+vetyo)
             if unempratio:
                 tyottomyysaste=100*(unemployed+piped+tyomarkkinatuki)/(tyomarkkinatuki+unemployed+employed+piped+osatyo+veosatyo+vetyo)
@@ -1136,6 +1168,19 @@ class EpisodeStats():
         ax.set_ylabel('Osuus tilassa [%]')
         ax.legend()
         plt.show()
+
+        x=np.linspace(self.min_age,self.max_age,self.n_time)
+        fig,ax=plt.subplots()
+        ax.plot(x,100*np.sum(self.gempstate[:,11,3:5]+self.gempstate[:,5,3:5]+self.gempstate[:,7,3:5],1,keepdims=True)/np.sum(self.galive[:,3:5],1,keepdims=True),label='työvoiman ulkopuolella, naiset')
+        ax.plot(x,100*np.sum(self.gempstate[:,11,0:2]+self.gempstate[:,5,0:2]+self.gempstate[:,7,0:2],1,keepdims=True)/np.sum(self.galive[:,3:5],1,keepdims=True),label='työvoiman ulkopuolella, miehet')
+        emp_statsratio=100*self.outsider_stats(g=1)    
+        ax.plot(x,emp_statsratio,label='havainto, naiset')
+        emp_statsratio=100*self.outsider_stats(g=2)    
+        ax.plot(x,emp_statsratio,label='havainto, miehet')
+        ax.set_xlabel('Ikä [v]')
+        ax.set_ylabel('Osuus tilassa [%]')
+        ax.legend()
+        plt.show()
         if printtaa:
             #print('yht',100*(self.empstate[:,11]+self.empstate[:,5]+self.empstate[:,6]+self.empstate[:,7])/self.alive[:,0])
             nn=np.sum(self.galive[:,3:5],1,keepdims=True)
@@ -1159,7 +1204,7 @@ class EpisodeStats():
     def plot_student(self):
         x=np.linspace(self.min_age,self.max_age,self.n_time)
         fig,ax=plt.subplots()
-        ax.plot(x,100*self.empstate[:,12]/self.alive[:,0],label='opiskelijat')
+        ax.plot(x,100*self.empstate[:,12]/self.alive[:,0],label='opiskelija tai armeijassa')
         emp_statsratio=100*self.student_stats()
         ax.plot(x,emp_statsratio,label='havainto')
         ax.set_xlabel('Ikä [v]')
@@ -1256,12 +1301,23 @@ class EpisodeStats():
         if self.version>0:
             self.plot_states(empstate_ratio,ylabel='Osuus tilassa [%]',ylimit=20,stack=False)
             self.plot_states(empstate_ratio,ylabel='Osuus tilassa [%]',parent=True,stack=False)
+            self.plot_parents_in_work()
             self.plot_states(empstate_ratio,ylabel='Osuus tilassa [%]',unemp=True,stack=False)
 
         if figname is not None:
             self.plot_states(empstate_ratio,ylabel='Osuus tilassa [%]',start_from=60,stack=True,figname=figname+'_stack60')
         else:
             self.plot_states(empstate_ratio,ylabel='Osuus tilassa [%]',start_from=60,stack=True)
+
+    def plot_parents_in_work(self):
+        empstate_ratio=100*self.empstate/self.alive
+        ml=100*self.infostats_mother_in_workforce/self.alive
+        x=np.linspace(self.min_age,self.max_age,self.n_time)
+        fig,ax=plt.subplots()
+        ax.plot(x,ml,label='äitiysvapaa')
+        ax.plot(x,empstate_ratio[:,6],label='isyysvapaa')
+        ax.legend()
+        plt.show()
 
     def plot_unemp(self,unempratio=True,figname=None,grayscale=False):
         '''
@@ -1434,7 +1490,7 @@ class EpisodeStats():
             plt.savefig(figname+'tyollisyysaste_spk.eps', format='eps')
                 
         plt.show()
-
+        
     def plot_pensions(self):
         if self.version>0:
             self.plot_ratiostates(self.stat_pension,ylabel='Tuleva eläke [e/v]',stack=False)
@@ -1612,6 +1668,21 @@ class EpisodeStats():
         pysyneet_ratio=self.pysyneet/self.alive*100
         self.plot_states(pysyneet_ratio,ylabel='Pysyneet tilassa',stack=True,
                         yminlim=0,ymaxlim=min(100,1.1*np.nanmax(np.cumsum(pysyneet_ratio,1))))
+        siirtyneet_ratio=self.siirtyneet_det[:,:,1]/self.alive*100
+        self.plot_states(siirtyneet_ratio,ylabel='Siirtyneet työhön tilasta',stack=True,
+                        yminlim=0,ymaxlim=min(100,1.1*np.nanmax(np.cumsum(siirtyneet_ratio,1))))
+        siirtyneet_ratio=self.siirtyneet_det[:,:,4]/self.alive*100
+        self.plot_states(siirtyneet_ratio,ylabel='Siirtyneet putkeen tilasta',stack=True,
+                        yminlim=0,ymaxlim=min(100,1.1*np.nanmax(np.cumsum(siirtyneet_ratio,1))))
+        siirtyneet_ratio=self.siirtyneet_det[:,:,0]/self.alive*100
+        self.plot_states(siirtyneet_ratio,ylabel='Siirtyneet työttömäksi tilasta',stack=True,
+                        yminlim=0,ymaxlim=min(100,1.1*np.nanmax(np.cumsum(siirtyneet_ratio,1))))
+        siirtyneet_ratio=self.siirtyneet_det[:,:,13]/self.alive*100
+        self.plot_states(siirtyneet_ratio,ylabel='Siirtyneet tm-tuelle tilasta',stack=True,
+                        yminlim=0,ymaxlim=min(100,1.1*np.nanmax(np.cumsum(siirtyneet_ratio,1))))
+        siirtyneet_ratio=self.siirtyneet_det[:,:,10]/self.alive*100
+        self.plot_states(siirtyneet_ratio,ylabel='Siirtyneet osa-aikatyöhön tilasta',stack=True,
+                        yminlim=0,ymaxlim=min(100,1.1*np.nanmax(np.cumsum(siirtyneet_ratio,1))))
 
     def plot_army(self):
         x=np.linspace(self.min_age,self.max_age,self.n_time)
@@ -1704,6 +1775,12 @@ class EpisodeStats():
         self.plot_ratiostates(self.stat_wage_reduction,ylabel='wage-reduction tilassa',stack=False,unemp=True)
         self.plot_ratiostates(self.stat_wage_reduction,ylabel='wage-reduction tilassa',stack=False,emp=True)
         #self.plot_ratiostates(np.log(1.0+self.stat_wage_reduction),ylabel='log 5wage-reduction tilassa',stack=False)
+        self.plot_ratiostates(np.sum(self.stat_wage_reduction_g[:,:,0:3],axis=2),ylabel='wage-reduction tilassa naiset',stack=False)
+        self.plot_ratiostates(np.sum(self.stat_wage_reduction_g[:,:,3:6],axis=2),ylabel='wage-reduction tilassa miehet',stack=False)
+        self.plot_ratiostates(np.sum(self.stat_wage_reduction_g[:,:,0:3],axis=2),ylabel='wage-reduction tilassa, naiset',stack=False,unemp=True)
+        self.plot_ratiostates(np.sum(self.stat_wage_reduction_g[:,:,3:6],axis=2),ylabel='wage-reduction tilassa, miehet',stack=False,unemp=True)
+        self.plot_ratiostates(np.sum(self.stat_wage_reduction_g[:,:,0:3],axis=2),ylabel='wage-reduction tilassa, naiset',stack=False,emp=True)
+        self.plot_ratiostates(np.sum(self.stat_wage_reduction_g[:,:,3:6],axis=2),ylabel='wage-reduction tilassa, miehet',stack=False,emp=True)
 
     def plot_distrib(self,label='',plot_emp=False,plot_bu=False,ansiosid=False,tmtuki=False,putki=False,outsider=False,max_age=500,laaja=False,max=4,figname=None):
         unemp_distrib,emp_distrib,unemp_distrib_bu=self.comp_empdistribs(ansiosid=ansiosid,tmtuki=tmtuki,putki=putki,outsider=outsider,max_age=max_age,laaja=laaja)
@@ -1853,7 +1930,7 @@ class EpisodeStats():
             self.plot_pinkslip()
             self.plot_outsider()
             self.plot_student()
-            self.plot_army()
+            #self.plot_army()
             self.plot_group_student()
             self.plot_group_army()
             self.plot_group_disab()
@@ -1914,7 +1991,7 @@ class EpisodeStats():
         if self.version>0:
             self.plot_outsider()
             self.plot_student()
-            self.plot_army()
+            #self.plot_army()
             self.plot_group_student()
             self.plot_group_army()
             self.plot_group_disab()
@@ -2003,7 +2080,7 @@ class EpisodeStats():
             else: # miehet
                 emp_ratio=np.array([0.240,0.269,0.273,0.252,0.207,0.159,0.122,0.096,0.076,0.062,0.056,0.047,0.037,0.035,0.031,0.029,0.027,0.026,0.023,0.021,0.019,0.019,0.017,0.015,0.015,0.014,0.013,0.013,0.013,0.011,0.010,0.010,0.009,0.007,0.008,0.007,0.007,0.006,0.005,0.004,0.003,0.003,0.002,0.002,0.002,0.002,0.001,0.001,0.001,0.002,0.001 ])
 
-        return self.map_ratios(emp_ratio)
+        return self.map_ratios(emp_ratio)+self.army_stats(g=g)
         
     def army_stats(self,g=0):
         '''
@@ -2125,6 +2202,7 @@ class EpisodeStats():
         _ = f.create_dataset('alive', data=self.alive, dtype=ftype)
         _ = f.create_dataset('galive', data=self.galive, dtype=ftype)
         _ = f.create_dataset('siirtyneet', data=self.siirtyneet, dtype=ftype)
+        _ = f.create_dataset('siirtyneet_det', data=self.siirtyneet_det, dtype=ftype)
         _ = f.create_dataset('pysyneet', data=self.pysyneet, dtype=ftype)
         _ = f.create_dataset('salaries', data=self.salaries, dtype=ftype)
         _ = f.create_dataset('aveV', data=self.aveV, dtype=ftype)
@@ -2136,6 +2214,7 @@ class EpisodeStats():
         _ = f.create_dataset('stat_unemp_len', data=self.stat_unemp_len, dtype=ftype)
         _ = f.create_dataset('popempstate', data=self.popempstate, dtype=ftype)
         _ = f.create_dataset('stat_wage_reduction', data=self.stat_wage_reduction, dtype=ftype)
+        _ = f.create_dataset('stat_wage_reduction_g', data=self.stat_wage_reduction_g, dtype=ftype)
         _ = f.create_dataset('popunemprightleft', data=self.popunemprightleft, dtype=ftype)
         _ = f.create_dataset('popunemprightused', data=self.popunemprightused, dtype=ftype)
         _ = f.create_dataset('infostats_taxes', data=self.infostats_taxes, dtype=ftype)
@@ -2164,6 +2243,10 @@ class EpisodeStats():
         _ = f.create_dataset('infostats_npv0', data=self.infostats_npv0, dtype=ftype)
         _ = f.create_dataset('infostats_irr', data=self.infostats_irr, dtype=ftype)
         _ = f.create_dataset('infostats_group', data=self.infostats_group, dtype=ftype)
+        _ = f.create_dataset('infostats_sairausvakuutus', data=self.infostats_sairausvakuutus, dtype=ftype)
+        _ = f.create_dataset('infostats_pvhoitomaksu', data=self.infostats_pvhoitomaksu, dtype=ftype)
+        _ = f.create_dataset('infostats_ylevero', data=self.infostats_ylevero, dtype=ftype)
+        _ = f.create_dataset('infostats_mother_in_workforce', data=self.infostats_mother_in_workforce, dtype=ftype)
         
         f.close()
 
@@ -2251,6 +2334,20 @@ class EpisodeStats():
         
         if 'infostats_group' in f.keys(): # older runs do not have these
             self.infostats_group=f.get('infostats_group').value      
+            
+        if 'infostats_sairausvakuutus' in f.keys():
+            self.infostats_sairausvakuutus=f.get('infostats_sairausvakuutus').value      
+            self.infostats_pvhoitomaksu=f.get('infostats_pvhoitomaksu').value     
+            self.infostats_ylevero=f.get('infostats_ylevero').value     
+        
+        if 'infostats_mother_in_workforce' in f.keys():
+            self.infostats_mother_in_workforce=f.get('infostats_mother_in_workforce').value
+        
+        if 'stat_wage_reduction_g' in f.keys():
+            self.stat_wage_reduction_g=f.get('stat_wage_reduction_g').value    
+            
+        if 'siirtyneet_det' in f.keys():
+            self.siirtyneet_det=f.get('siirtyneet_det').value
         
         if 'n_pop' in f:
             self.n_pop=int(f.get('n_pop').value)
@@ -2274,14 +2371,16 @@ class EpisodeStats():
 
     def stat_budget_2018(self,scale=False):
         q={}
-        q['palkkatulo']=89_134_200_000 # lähde: ETK
+        q['tyotulosumma']=89_134_200_000 #+4_613_400_000+1_239_900_000 # lähde: ETK, tyel + julkinen + yel + myel
         q['etuusmeno']=0
-        q['verot+maksut']=30_763_000_000 
+        q['verot+maksut']=0   # tuloverot 30_763_000_000 ml YLE ja kirkollisvero
         q['valtionvero']=5_542_000_000
         q['kunnallisvero']=18_991_000_000
         q['ptel']=5_560_000_000
-        #q['elakemaksut']=22_085_700_000 # Lähde: ETK
-        q['tyotvakmaksu']=0.019*q['palkkatulo']
+        q['elakemaksut']=22_085_700_000 # Lähde: ETK
+        q['tyotvakmaksu']=0.019*q['tyotulosumma']
+        q['sairausvakuutusmaksu']=1_335_000_000+407_000_000
+        q['ylevero']=497_000_000
         q['ansiopvraha']=3_895_333_045 # 1_930_846_464+1_964_486_581 # ansioturva + perusturva = 3 895 333 045
         q['asumistuki']=1_488_900_000 + 600_100_000 # yleinen plus eläkkeensaajan
         q['tyoelake']=27_865_000_000
@@ -2293,9 +2392,14 @@ class EpisodeStats():
         q['sairauspaivaraha']=786_659_783
         q['toimeentulotuki']=715_950_847
         q['perustulo']=0
+        q['pvhoitomaksu']=0
+        
         q['etuusmeno']=q['ansiopvraha']+q['kokoelake']+q['opintotuki']+q['isyyspaivaraha']+\
-            q['aitiyspaivaraha']+q['sairauspaivaraha']+q['toimeentulotuki']+q['perustulo']
-        q['tulot_netto']=q['palkkatulo']+q['etuusmeno']-q['verot+maksut']
+            q['aitiyspaivaraha']+q['sairauspaivaraha']+q['toimeentulotuki']+q['perustulo']+\
+            q['asumistuki']+q['kotihoidontuki']
+        q['verot+maksut']=q['valtionvero']+q['kunnallisvero']+q['ptel']+q['tyotvakmaksu']+\
+            q['ylevero']+q['sairausvakuutusmaksu']
+        q['tulot_netto']=q['tyotulosumma']+q['etuusmeno']-q['verot+maksut']
         q['muut tulot']=q['etuusmeno']-q['verot+maksut']
 
         return q
@@ -2306,7 +2410,7 @@ class EpisodeStats():
         scalex=demog2/self.n_pop
         
         q={}
-        q['palkkatulo']=np.sum(self.infostats_palkkatulo*scalex)
+        q['tyotulosumma']=np.sum(self.infostats_palkkatulo*scalex)
         q['etuusmeno']=np.sum(self.infostats_etuustulo*scalex)
         q['verot+maksut']=np.sum(self.infostats_taxes*scalex)
         q['muut tulot']=q['etuusmeno']-q['verot+maksut']
@@ -2327,6 +2431,9 @@ class EpisodeStats():
         q['sairauspaivaraha']=np.sum(self.infostats_sairauspaivaraha*scalex)
         q['toimeentulotuki']=np.sum(self.infostats_toimeentulotuki*scalex)
         q['perustulo']=np.sum(self.infostats_perustulo*scalex)
+        q['sairausvakuutusmaksu']=np.sum(self.infostats_sairausvakuutus*scalex)
+        q['pvhoitomaksu']=np.sum(self.infostats_pvhoitomaksu*scalex)
+        q['ylevero']=np.sum(self.infostats_ylevero*scalex)
         q['tulot_netto']=np.sum(self.infostats_tulot_netto*scalex)
 
         return q
@@ -2371,7 +2478,7 @@ class EpisodeStats():
         scalex=demog2/self.n_pop
         
         q={}
-        q['yhteensä']=np.sum(demog2)
+        q['yhteensä']=np.sum(demog2)*self.timestep
         q['palkansaajia']=2_204_000 # TK
         q['ansiosidonnaisella']=116_972+27_157  # Kelan tilasto 31.12.2018
         q['tmtuella']=189_780  # Kelan tilasto 31.12.2018
@@ -2392,7 +2499,7 @@ class EpisodeStats():
         htv_tt=21.5*12
         
         q={}
-        q['yhteensä']=np.sum(np.sum(demog2))
+        q['yhteensä']=np.sum(np.sum(demog2))*self.timestep
         q['palkansaajia']=2_204_000 # TK
         q['ansiosidonnaisella']=(30_676_200+7_553_200)/htv_tt  # Kelan tilasto 31.12.2018
         q['tmtuella']=49_880_300/htv_tt   # Kelan tilasto 31.12.2018
@@ -2690,8 +2797,22 @@ class EpisodeStats():
         ulkopuolella_m=np.sum(self.gempstate[:,7,0:3],axis=1)[:,None]/alive
         
         alive[:,0]=np.sum(self.galive[:,3:6],1)
-        nn=np.sum(self.gempstate[:,5,3:6]+self.gempstate[:,7,3:6],axis=1)[:,None]
-        print(nn.shape)
+        nn=np.sum(self.gempstate[:,5,3:6]+self.gempstate[:,7,3:6],axis=1)[:,None]-self.infostats_mother_in_workforce
+        ulkopuolella_n=nn/alive
+        
+        return ulkopuolella_m[::4],ulkopuolella_n[::4]
+        
+    def get_vanhempainvapaat_md(self):
+        '''
+        Laskee vanhempainvapaalla olevien määrän outsider-mallia (Excel) varten
+        '''
+
+        alive=np.zeros((self.galive.shape[0],1))
+        alive[:,0]=np.sum(self.galive[:,0:3],1)
+        ulkopuolella_m=np.sum(self.gempstate[:,6,0:3],axis=1)[:,None]/alive
+        
+        alive[:,0]=np.sum(self.galive[:,3:6],1)
+        nn=self.infostats_mother_in_workforce
         ulkopuolella_n=nn/alive
         
         return ulkopuolella_m[::4],ulkopuolella_n[::4]
