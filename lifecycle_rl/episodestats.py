@@ -1216,12 +1216,12 @@ class EpisodeStats():
         fig,ax=plt.subplots()
         for gender in range(2):
             if gender==0:
-                leg='Opiskelijat Miehet'
+                leg='Opiskelijat+Armeija Miehet'
                 opiskelijat=np.sum(self.gempstate[:,12,0:3],axis=1)
                 alive=np.zeros((self.galive.shape[0],1))
                 alive[:,0]=np.sum(self.galive[:,0:3],1)
             else:
-                leg='Opiskelijat Naiset'
+                leg='Opiskelijat+Armeija Naiset'
                 opiskelijat=np.sum(self.gempstate[:,12,3:6],axis=1)
                 alive=np.zeros((self.galive.shape[0],1))
                 alive[:,0]=np.sum(self.galive[:,3:6],1)
@@ -1308,6 +1308,31 @@ class EpisodeStats():
             self.plot_states(empstate_ratio,ylabel='Osuus tilassa [%]',start_from=60,stack=True,figname=figname+'_stack60')
         else:
             self.plot_states(empstate_ratio,ylabel='Osuus tilassa [%]',start_from=60,stack=True)
+
+    def plot_emp_by_gender(self,figname=None):
+
+        x=np.linspace(self.min_age,self.max_age,self.n_time)
+        for gender in range(2):
+            if gender<1:
+                empstate_ratio=100*np.sum(self.gempstate[:,:,0:3],axis=2)/(np.sum(self.galive[:,0:3],axis=1)[:,None])
+                genderlabel='miehet'
+            else:
+                empstate_ratio=100*np.sum(self.gempstate[:,:,3:6],axis=2)/(np.sum(self.galive[:,3:6],axis=1)[:,None])
+                genderlabel='naiset'
+            if figname is not None:
+                self.plot_states(empstate_ratio,ylabel='Osuus tilassa {} [%]'.format(genderlabel),stack=True,figname=figname+'_stack')
+            else:
+                self.plot_states(empstate_ratio,ylabel='Osuus tilassa {} [%]'.format(genderlabel),stack=True)
+
+            if self.version>0:
+                self.plot_states(empstate_ratio,ylabel='Osuus tilassa {} [%]'.format(genderlabel),ylimit=20,stack=False)
+                self.plot_states(empstate_ratio,ylabel='Osuus tilassa {} [%]'.format(genderlabel),parent=True,stack=False)
+                self.plot_states(empstate_ratio,ylabel='Osuus tilassa {} [%]'.format(genderlabel),unemp=True,stack=False)
+
+            if figname is not None:
+                self.plot_states(empstate_ratio,ylabel='Osuus tilassa {} [%]'.format(genderlabel),start_from=60,stack=True,figname=figname+'_stack60')
+            else:
+                self.plot_states(empstate_ratio,ylabel='Osuus tilassa {} [%]'.format(genderlabel),start_from=60,stack=True)
 
     def plot_parents_in_work(self):
         empstate_ratio=100*self.empstate/self.alive
@@ -1500,10 +1525,10 @@ class EpisodeStats():
             self.plot_ratiostates(self.stat_tyoura,ylabel='Työuran pituus [v]',stack=False)
 
     def plot_ratiostates(self,statistic,ylabel='',ylimit=None, show_legend=True, parent=False,\
-                         unemp=False,start_from=None,stack=False,no_ve=False,figname=None,emp=False):
+                         unemp=False,start_from=None,stack=False,no_ve=False,figname=None,emp=False,oa_unemp=False):
         self.plot_states(statistic/self.empstate,ylabel=ylabel,ylimit=ylimit,no_ve=no_ve,\
                         show_legend=show_legend,parent=parent,unemp=unemp,start_from=start_from,\
-                        stack=stack,figname=figname,emp=emp)
+                        stack=stack,figname=figname,emp=emp,oa_unemp=oa_unemp)
 
     def count_putki(self,emps=None):
         if emps is None:
@@ -1520,7 +1545,7 @@ class EpisodeStats():
 
     def plot_states(self,statistic,ylabel='',ylimit=None,show_legend=True,parent=False,unemp=False,no_ve=False,
                     start_from=None,stack=True,figname=None,yminlim=None,ymaxlim=None,
-                    onlyunemp=False,reverse=False,grayscale=False,emp=False):
+                    onlyunemp=False,reverse=False,grayscale=False,emp=False,oa_unemp=False):
         if start_from is None:
             x=np.linspace(self.min_age,self.max_age,self.n_time)
         else:
@@ -1614,6 +1639,14 @@ class EpisodeStats():
                     ax.plot(x,ura_student,label='student')
                     ax.plot(x,ura_outsider,label='outsider')
                     ax.plot(x,ura_pipe,label='putki')
+            elif oa_unemp:
+                ax.plot(x,ura_unemp,label='tyött')
+                if self.version>0:
+                    ax.plot(x,ura_tyomarkkinatuki,label='tm-tuki')
+                    ax.plot(x,ura_student,label='student')
+                    ax.plot(x,ura_outsider,label='outsider')
+                    ax.plot(x,ura_pipe,label='putki')
+                    ax.plot(x,ura_osatyo,label='osa-aika')
             elif emp:
                 ax.plot(x,ura_emp,label='työssä')
                 if self.version>0:
@@ -1741,6 +1774,7 @@ class EpisodeStats():
     def plot_reward(self):
         self.plot_ratiostates(self.rewstate,ylabel='Keskireward tilassa',stack=False)
         self.plot_ratiostates(self.rewstate,ylabel='Keskireward tilassa',stack=False,no_ve=True)
+        self.plot_ratiostates(self.rewstate,ylabel='Keskireward tilassa',stack=False,oa_unemp=True)
         x=np.linspace(self.min_age,self.max_age,self.n_time)
         total_reward=np.sum(self.rewstate,axis=1)
         fig,ax=plt.subplots()
@@ -1854,7 +1888,7 @@ class EpisodeStats():
         self.comp_total_reward()
         #self.plot_rewdist()
 
-        self.plot_emp(figname=figname)
+        #self.plot_emp(figname=figname)
 
         if self.version>0:            
             q=self.comp_budget(scale=True)
@@ -1932,7 +1966,7 @@ class EpisodeStats():
             self.plot_student()
             #self.plot_army()
             self.plot_group_student()
-            self.plot_group_army()
+            #self.plot_group_army()
             self.plot_group_disab()
             self.plot_moved()
             self.plot_ave_stay()
@@ -1993,7 +2027,7 @@ class EpisodeStats():
             self.plot_student()
             #self.plot_army()
             self.plot_group_student()
-            self.plot_group_army()
+            #self.plot_group_army()
             self.plot_group_disab()
             self.plot_moved()
             self.plot_ave_stay()
