@@ -50,13 +50,13 @@ class Lifecycle():
                     osittainen_perustulo=None,gamma=None,exploration=None,exploration_ratio=None,
                     irr_vain_tyoelake=None,additional_income_tax=None,additional_tyel_premium=None,
                     additional_kunnallisvero=None,additional_income_tax_high=None,
-                    year=2018,version=2):                    
+                    year=2018,version=2,scale_tyel_accrual=None):                    
         '''
         Alusta muuttujat
         '''
         self.timestep=timestep # 0.25 = 3kk askel
         self.inv_timestep=int(np.round(1/self.timestep)) # pitäisi olla kokonaisluku
-        self.min_age = 20
+        self.min_age = 18
         self.max_age = 70
         self.min_retirementage=63.5
         self.max_retirementage=68
@@ -92,6 +92,7 @@ class Lifecycle():
         self.additional_tyel_premium=0.0
         self.additional_kunnallisvero=0.0
         self.additional_income_tax_high=0.0
+        self.scale_tyel_accrual=False
 
         if callback_minsteps is not None:
             self.callback_minsteps=callback_minsteps
@@ -166,8 +167,12 @@ class Lifecycle():
             
         if preferencenoise is not None:
             self.include_preferencenoise=preferencenoise
+            
         if osittainen_perustulo is not None:
             self.osittainen_perustulo=osittainen_perustulo
+            
+        if scale_tyel_accrual is not None:
+            self.scale_tyel_accrual=scale_tyel_accrual
 
         if env is not None:
             self.environment=env
@@ -213,10 +218,12 @@ class Lifecycle():
                 'plotdebug': self.plotdebug, 'include_preferencenoise': self.include_preferencenoise,
                 'perustulomalli': perustulomalli,'osittainen_perustulo':self.osittainen_perustulo,
                 'reset_exploration_go': self.exploration,'reset_exploration_ratio': self.exploration_ratio,
-                'irr_vain_tyoelake': self.irr_vain_tyoelake, 'additional_income_tax': self.additional_income_tax,
+                'irr_vain_tyoelake': self.irr_vain_tyoelake, 
+                'additional_income_tax': self.additional_income_tax,
                 'additional_tyel_premium': self.additional_tyel_premium, 
                 'additional_income_tax_high': self.additional_income_tax_high,
-                'additional_kunnallisvero': self.additional_kunnallisvero}
+                'additional_kunnallisvero': self.additional_kunnallisvero,
+                'scale_tyel_accrual': self.scale_tyel_accrual}
             #self.n_acts = 4
             #if self.mortality:
             #    self.n_employment = 16
@@ -231,13 +238,13 @@ class Lifecycle():
         os.makedirs("saved/", exist_ok=True)
         os.makedirs("results/", exist_ok=True)
         os.makedirs("best/", exist_ok=True)
-
+        
         self.env = gym.make(self.environment,kwargs=self.gym_kwargs)
         self.n_employment,self.n_acts=self.env.get_n_states()
 
         self.episodestats=SimStats(self.timestep,self.n_time,self.n_employment,self.n_pop,
                                    self.env,self.minimal,self.min_age,self.max_age,self.min_retirementage,
-                                   version=self.version)
+                                   version=self.version,params=self.gym_kwargs,year=self.year)
 
     def explain(self):
         '''
@@ -626,53 +633,6 @@ class Lifecycle():
         model,env,n_cpu=self.setup_model(debug=debug,rlmodel=rlmodel,plot=plot,load=load,pop=pop,
                  deterministic=deterministic,arch=arch)
 
-#         if pop is not None:
-#             self.n_pop=pop
-# 
-#         if load is not None:
-#             self.loadname=load
-# 
-#         if rlmodel is not None:
-#             self.rlmodel=rlmodel
-#             
-#         print('simulate')
-#             
-#         self.episodestats.reset(self.timestep,self.n_time,self.n_employment,self.n_pop,
-#                                 self.env,self.minimal,self.min_age,self.max_age,self.min_retirementage,self.year)
-# 
-#         print('simulating ',self.loadname)
-# 
-#         # multiprocess environment
-#         policy_kwargs,n_cpu=self.get_multiprocess_env(self.rlmodel,debug=debug,arch=arch)
-# 
-#         nonvec=False
-#         if nonvec:
-#             env=self.env
-#             #env.seed(4567)
-#             #env.env_seed(4567)
-#         else:
-#             env = SubprocVecEnv([lambda: self.make_env(self.environment, i, self.gym_kwargs) for i in range(n_cpu)])
-#             #env = SubprocVecEnv([lambda: gym.make(self.environment,kwargs=self.gym_kwargs) for i in range(n_cpu)])
-#             #env = DummyVecEnv([lambda: gym.make(self.environment,kwargs=self.gym_kwargs) for i in range(n_cpu)])
-# 
-#         normalize=False
-#         if normalize:
-#             normalize_kwargs={}
-#             env = VecNormalize(env, **normalize_kwargs)
-# 
-#         print('predicting...')
-# 
-#         if self.rlmodel=='a2c':
-#             model = A2C.load(load, env=env, verbose=1,gamma=self.gamma, policy_kwargs=policy_kwargs)
-#         elif self.rlmodel=='acer':
-#             model = ACER.load(load, env=env, verbose=1,gamma=self.gamma, policy_kwargs=policy_kwargs)
-#         elif self.rlmodel in set(['acktr','small_acktr','lnacktr','small_lnacktr','deep_acktr','leaky_acktr']):
-#             model = ACKTR.load(load, env=env, verbose=1,gamma=self.gamma, policy_kwargs=policy_kwargs,net_arch=arch)
-#         elif self.rlmodel=='trpo':
-#             model = TRPO.load(load, env=env, verbose=1,gamma=self.gamma, policy_kwargs=policy_kwargs)
-#         else:
-#             model = DQN.load(load, env=env, verbose=1,gamma=self.gamma,prioritized_replay=True,policy_kwargs=policy_kwargs)
-
         states = env.reset()
         n=n_cpu-1
         p=np.zeros(self.n_pop)
@@ -722,7 +682,7 @@ class Lifecycle():
         else:
             return self.episodestats.comp_total_reward()
    
-    def render_leffer(self,load=None,figname=None):
+    def render_laffer(self,load=None,figname=None):
         if load is not None:
             self.episodestats.load_sim(load)
             rew=self.episodestats.comp_total_reward()
@@ -730,8 +690,11 @@ class Lifecycle():
             rew=self.episodestats.comp_total_reward()
             
         q=self.episodestats.comp_budget()
+        q2=self.episodestats.comp_participants(scale=True)
+        htv=q2['palkansaajia']
+        muut_tulot=q['muut tulot']
             
-        return rew,q['palkkatulo'],q['verot+maksut']
+        return rew,q['tyotulosumma'],q['verot+maksut'],htv,muut_tulot
    
     def load_sim(self,load=None):
         self.episodestats.load_sim(load)
@@ -1067,4 +1030,9 @@ class Lifecycle():
         
         return L2
         
-    
+    def comp_aggkannusteet(self,n=None,savefile=None):
+        self.episodestats.comp_aggkannusteet(self.env.ben,n=n,savefile=savefile)
+        
+    def plot_aggkannusteet(self,loadfile):
+        self.episodestats.plot_aggkannusteet(self.env.ben,loadfile)        
+        

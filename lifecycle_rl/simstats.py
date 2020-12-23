@@ -709,3 +709,264 @@ class SimStats(EpisodeStats):
         self.plot_unemp_durdistribs(viimekesto1)
         self.plot_unemp_durdistribs(viimekesto2)
         
+    def comp_aggkannusteet(self,ben,min_salary=0,max_salary=6000,step_salary=50,n=None,savefile=None):
+        n_salary=int((max_salary-min_salary)/step_salary)
+        netto=np.zeros(n_salary)
+        palkka=np.zeros(n_salary)
+        tva=np.zeros(n_salary)
+        osa_tva=np.zeros(n_salary)
+        eff=np.zeros(n_salary)
+        
+        if n is None:
+            n=self.n_pop
+        
+        tqdm_e = tqdm(range(int(n)), desc='Population', leave=True, unit=" p")
+        
+        num=0    
+        for popp in range(n):
+            for t in np.arange(0,self.n_time,10):
+                employment_state=self.popempstate[t,popp]
+            
+                if employment_state in set([0,1,4,7,10,13]):
+                    if employment_state in set([0,4]):
+                        old_wage=self.infostats_unempwagebasis[t,popp]
+                    elif employment_state in set([13]):
+                        old_wage=0
+                    else:
+                        old_wage=self.infostats_unempwagebasis_acc[t,popp]
+                        
+                    toe=self.infostats_toe[t,popp]
+                    wage=self.salaries[t,popp]
+                    children_under3=int(self.infostats_children_under3[t,popp])
+                    children_under7=int(self.infostats_children_under7[t,popp])
+                    children_under18=children_under7
+                    ika=self.map_t_to_age(t)
+                    num=num+1
+                    p=self.setup_p(wage,old_wage,0,employment_state,0,
+                        children_under3,children_under7,children_under18,ika)
+                        #irtisanottu=0,tyohistoria=0,karenssia_jaljella=0)
+                    p2=self.setup_p_for_unemp(p,old_wage,toe,employment_state)
+                    nettox,effx,tvax,osa_tvax=ben.comp_insentives(p=p,p2=p2,min_salary=min_salary,max_salary=max_salary,
+                        step_salary=step_salary,dt=100)
+                    netto+=nettox
+                    eff+=effx
+                    tva+=tvax
+                    osa_tva+=osa_tvax
+            tqdm_e.update(1)
+            tqdm_e.set_description("Pop " + str(popp))
+
+        netto=netto/num
+        eff=eff/num
+        tva=tva/num
+        osa_tva=osa_tva/num
+        
+        if savefile is not None:
+            f = h5py.File(savefile, 'w')
+            ftype='float64'
+            _ = f.create_dataset('netto', data=netto, dtype=ftype)
+            _ = f.create_dataset('eff', data=eff, dtype=ftype)
+            _ = f.create_dataset('tva', data=tva, dtype=ftype)
+            _ = f.create_dataset('osa_tva', data=osa_tva, dtype=ftype)
+            _ = f.create_dataset('min_salary', data=min_salary, dtype=ftype)
+            _ = f.create_dataset('max_salary', data=max_salary, dtype=ftype)
+            _ = f.create_dataset('step_salary', data=step_salary, dtype=ftype)
+            _ = f.create_dataset('n', data=n, dtype=ftype)
+            f.close()        
+
+
+    def plot_aggkannusteet(self,ben,loadfile):
+        f = h5py.File(loadfile, 'r')
+        netto=f.get('netto').value
+        eff=f.get('eff').value
+        tva=f.get('tva').value
+        osa_tva=f.get('osa_tva').value
+        min_salary=f.get('min_salary').value
+        max_salary=f.get('max_salary').value
+        step_salary=f.get('step_salary').value
+        n=f.get('n').value
+        f.close()        
+        
+        ben.plot_insentives(netto,eff,tva,osa_tva,min_salary=min_salary,max_salary=max_salary,step_salary=step_salary)
+
+            
+    def setup_p(self,wage,old_wage,pension,employment_state,time_in_state,
+                children_under3,children_under7,children_under18,ika,
+                irtisanottu=0,tyohistoria=0,karenssia_jaljella=0,perustulo=0,include_children=0):
+        '''
+        asettaa p:n parametrien mukaiseksi
+        '''
+        p={}
+
+        p['perustulo']=perustulo
+        p['opiskelija']=0
+        p['toimeentulotuki_vahennys']=0
+        p['ika']=ika
+        p['tyoton']=0
+        p['saa_ansiopaivarahaa']=0
+        p['vakiintunutpalkka']=0
+        
+        if include_children:
+            p['lapsia']=children_under18
+            p['lapsia_paivahoidossa']=children_under7
+            p['lapsia_alle_kouluikaisia']=children_under7
+            p['lapsia_alle_3v']=children_under3
+        else:
+            p['lapsia']=children_under3
+            p['lapsia_paivahoidossa']=children_under3
+            p['lapsia_alle_kouluikaisia']=children_under3
+            p['lapsia_alle_3v']=children_under3
+        p['aikuisia']=1
+        p['veromalli']=0
+        p['kuntaryhma']=3
+        p['lapsia_kotihoidontuella']=0
+        p['tyottomyyden_kesto']=1
+        p['puoliso_tyottomyyden_kesto']=10
+        p['isyysvapaalla']=0
+        p['aitiysvapaalla']=0
+        p['kotihoidontuella']=0
+        p['tyoelake']=0
+        p['elakkeella']=0
+        p['sairauspaivarahalla']=0
+        p['disabled']=0
+        if employment_state==1:
+            p['tyoton']=0 # voisi olla työtön siinä mielessä, että oikeutettu soviteltuun päivärahaan
+            p['t']=wage/12
+            p['vakiintunutpalkka']=wage/12
+            p['saa_ansiopaivarahaa']=0
+        elif employment_state==0: # työtön, ansiopäivärahalla
+            if ika<65:
+                #self.render()
+                p['tyoton']=1
+                p['t']=0
+                p['vakiintunutpalkka']=old_wage/12
+                p['saa_ansiopaivarahaa']=1
+                    
+                if irtisanottu<1 and karenssia_jaljella>0:
+                    p['saa_ansiopaivarahaa']=0
+                    p['tyoton']=0
+            else:
+                p['tyoton']=0 # ei oikeutta työttömyysturvaan
+                p['t']=0
+                p['vakiintunutpalkka']=0
+                p['saa_ansiopaivarahaa']=0
+        elif employment_state==13: # työmarkkinatuki
+            if ika<65:
+                p['tyoton']=1
+                p['t']=0
+                p['vakiintunutpalkka']=0
+                p['tyottomyyden_kesto']=12*21.5*time_in_state
+                p['saa_ansiopaivarahaa']=0
+            else:
+                p['tyoton']=0 # ei oikeutta työttömyysturvaan
+                p['t']=0
+                p['vakiintunutpalkka']=0
+                p['saa_ansiopaivarahaa']=0
+        elif employment_state==3: # tk
+            p['t']=0
+            p['elakkeella']=1 
+            #p['elake']=pension
+            p['tyoelake']=pension/12
+            p['disabled']=1
+        elif employment_state==4: # työttömyysputki
+            if ika<65:
+                p['tyoton']=1
+                p['t']=0
+                p['vakiintunutpalkka']=old_wage/12
+                p['saa_ansiopaivarahaa']=1
+                p['tyottomyyden_kesto']=12*21.5*time_in_state
+            else:
+                p['tyoton']=0 # ei oikeutta työttömyysturvaan
+                p['t']=0
+                p['vakiintunutpalkka']=0
+                p['saa_ansiopaivarahaa']=0
+        elif employment_state==5: # ansiosidonnainen vanhempainvapaa, äidit
+            p['aitiysvapaalla']=1
+            p['aitiysvapaa_kesto']=0
+            p['t']=0
+            p['vakiintunutpalkka']=old_wage/12
+            p['saa_ansiopaivarahaa']=1
+        elif employment_state==6: # ansiosidonnainen vanhempainvapaa, isät
+            p['isyysvapaalla']=1
+            p['t']=0
+            p['vakiintunutpalkka']=old_wage/12
+            p['saa_ansiopaivarahaa']=1
+        elif employment_state==7: # hoitovapaa
+            p['kotihoidontuella']=1
+            if self.include_children:
+                p['lapsia_paivahoidossa']=0
+                p['lapsia_kotihoidontuella']=children_under7
+            else:
+                p['lapsia_paivahoidossa']=0
+                p['lapsia_kotihoidontuella']=children_under3
+            p['kotihoidontuki_kesto']=time_in_state
+            p['t']=0
+            p['vakiintunutpalkka']=old_wage/12
+        elif employment_state==2: # vanhuuseläke
+            if ika>=self.min_retirementage:
+                p['t']=0
+                p['elakkeella']=1  
+                p['tyoelake']=pension/12
+            else:
+                p['t']=0
+                p['elakkeella']=0
+                p['tyoelake']=0
+        elif employment_state==8: # ve+osatyö
+            p['t']=wage/12
+            p['elakkeella']=1  
+            p['tyoelake']=pension/12
+        elif employment_state==9: # ve+työ
+            p['t']=wage/12
+            p['elakkeella']=1  
+            p['tyoelake']=pension/12
+        elif employment_state==10: # osa-aikatyö
+            p['t']=wage/12
+        elif employment_state==11: # työelämän ulkopuolella
+            p['toimeentulotuki_vahennys']=0 # oletetaan että ei kieltäytynyt työstä
+            p['t']=0
+        elif employment_state==12: # opiskelija
+            p['opiskelija']=1
+            p['t']=0
+        #elif employment_state==14: # armeijassa, korjaa! ei tosin vaikuta tuloksiin.
+        #    p['opiskelija']=1
+        #    p['t']=0
+        elif employment_state==14: # kuollut
+            p['t']=0
+        else:
+            print('Unknown employment_state ',employment_state)
+
+        # tarkastellaan yksinasuvia henkilöitä
+        if employment_state==12: # opiskelija
+            p['asumismenot_toimeentulo']=250
+            p['asumismenot_asumistuki']=250
+        elif employment_state in set([2,8,9]): # eläkeläinen
+            p['asumismenot_toimeentulo']=200
+            p['asumismenot_asumistuki']=200
+        else: # muu
+            p['asumismenot_toimeentulo']=320 # per hlö, ehkä 500 e olisi realistisempi, mutta se tuottaa suuren asumistukimenon
+            p['asumismenot_asumistuki']=320
+
+        p['ansiopvrahan_suojaosa']=1
+        p['ansiopvraha_lapsikorotus']=1
+        p['puoliso_tulot']=0
+        p['puoliso_tyoton']=0  
+        p['puoliso_vakiintunutpalkka']=0  
+        p['puoliso_saa_ansiopaivarahaa']=0
+        
+        return p
+        
+    def setup_p_for_unemp(self,p,old_wage,toe,employment_state):
+        '''
+        asettaa p:n parametrien mukaiseksi
+        '''
+        if employment_state in set([1,10]):
+            p['tyoton']=1 # voisi olla työtön siinä mielessä, että oikeutettu soviteltuun päivärahaan
+            p['t']=0
+            p['vakiintunutpalkka']=old_wage/12
+            if toe>0:
+                p['saa_ansiopaivarahaa']=1
+            else:
+                p['saa_ansiopaivarahaa']=0
+        else:
+            pass
+        
+        return p        
