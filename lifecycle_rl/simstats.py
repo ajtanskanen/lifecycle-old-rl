@@ -735,7 +735,10 @@ class SimStats(EpisodeStats):
                     else:
                         old_wage=self.infostats_unempwagebasis_acc[t,popp]
                         
-                    toe=self.infostats_toe[t,popp]
+                    if self.infostats_toe[t,popp]>0.5:
+                        toe=1
+                    else:
+                        toe=0
                     wage=self.salaries[t,popp]
                     children_under3=int(self.infostats_children_under3[t,popp])
                     children_under7=int(self.infostats_children_under7[t,popp])
@@ -752,6 +755,9 @@ class SimStats(EpisodeStats):
                     eff+=effx
                     tva+=tvax
                     osa_tva+=osa_tvax
+                    
+                    #print('p={}\np2={}\nold_wage={}\ne={}\ntoe={}\n'.format(p,p2,old_wage,employment_state,toe))
+                    
             tqdm_e.update(1)
             tqdm_e.set_description("Pop " + str(popp))
 
@@ -774,7 +780,7 @@ class SimStats(EpisodeStats):
             f.close()        
 
 
-    def plot_aggkannusteet(self,ben,loadfile):
+    def plot_aggkannusteet(self,ben,loadfile,baseloadfile=None):
         f = h5py.File(loadfile, 'r')
         netto=f.get('netto').value
         eff=f.get('eff').value
@@ -785,8 +791,18 @@ class SimStats(EpisodeStats):
         step_salary=f.get('step_salary').value
         n=f.get('n').value
         f.close()        
+
+        if baseloadfile is not None:
+            f = h5py.File(baseloadfile, 'r')
+            basenetto=f.get('netto').value
+            baseeff=f.get('eff').value
+            basetva=f.get('tva').value
+            baseosatva=f.get('osa_tva').value
+            f.close()        
         
-        ben.plot_insentives(netto,eff,tva,osa_tva,min_salary=min_salary,max_salary=max_salary,step_salary=step_salary)
+        
+        ben.plot_insentives(netto,eff,tva,osa_tva,min_salary=min_salary,max_salary=max_salary,
+            step_salary=step_salary,basenetto=basenetto,baseeff=baseeff,basetva=basetva,baseosatva=baseosatva)
 
             
     def setup_p(self,wage,old_wage,pension,employment_state,time_in_state,
@@ -831,7 +847,7 @@ class SimStats(EpisodeStats):
         if employment_state==1:
             p['tyoton']=0 # voisi olla työtön siinä mielessä, että oikeutettu soviteltuun päivärahaan
             p['t']=wage/12
-            p['vakiintunutpalkka']=wage/12
+            p['vakiintunutpalkka']=old_wage/12
             p['saa_ansiopaivarahaa']=0
         elif employment_state==0: # työtön, ansiopäivärahalla
             if ika<65:

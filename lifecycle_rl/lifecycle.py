@@ -50,7 +50,7 @@ class Lifecycle():
                     osittainen_perustulo=None,gamma=None,exploration=None,exploration_ratio=None,
                     irr_vain_tyoelake=None,additional_income_tax=None,additional_tyel_premium=None,
                     additional_kunnallisvero=None,additional_income_tax_high=None,
-                    year=2018,version=2,scale_tyel_accrual=None):                    
+                    year=2018,version=2,scale_tyel_accrual=None,preferencenoise_level=None):                    
         '''
         Alusta muuttujat
         '''
@@ -82,6 +82,7 @@ class Lifecycle():
         self.ansiopvraha_toe=None
         self.environment='unemployment-v0'
         self.include_preferencenoise=False
+        self.preferencenoise_level=0
         self.porrasta_putki=True
         self.porrasta_1askel=True
         self.porrasta_2askel=True
@@ -168,6 +169,9 @@ class Lifecycle():
         if preferencenoise is not None:
             self.include_preferencenoise=preferencenoise
             
+        if preferencenoise_level is not None:
+            self.preferencenoise_level=preferencenoise_level
+            
         if osittainen_perustulo is not None:
             self.osittainen_perustulo=osittainen_perustulo
             
@@ -216,6 +220,7 @@ class Lifecycle():
                 'porrasta_2askel': self.porrasta_2askel, 'porrasta_3askel': self.porrasta_3askel,
                 'include_putki': self.include_putki, 'use_sigma_reduction': self.use_sigma_reduction,
                 'plotdebug': self.plotdebug, 'include_preferencenoise': self.include_preferencenoise,
+                'preferencenoise_level': self.preferencenoise_level,
                 'perustulomalli': perustulomalli,'osittainen_perustulo':self.osittainen_perustulo,
                 'reset_exploration_go': self.exploration,'reset_exploration_ratio': self.exploration_ratio,
                 'irr_vain_tyoelake': self.irr_vain_tyoelake, 
@@ -1033,6 +1038,11 @@ class Lifecycle():
     def comp_aggkannusteet(self,n=None,savefile=None):
         self.episodestats.comp_aggkannusteet(self.env.ben,n=n,savefile=savefile)
         
-    def plot_aggkannusteet(self,loadfile):
-        self.episodestats.plot_aggkannusteet(self.env.ben,loadfile)        
+    def plot_aggkannusteet(self,loadfile,baseloadfile=None):
+        self.episodestats.plot_aggkannusteet(self.env.ben,loadfile,baseloadfile=baseloadfile)
+        
+    def comp_taxratios(self,grouped=True):
+        return self.episodestats.comp_taxratios(grouped=grouped)
+        
+    
         

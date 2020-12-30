@@ -94,6 +94,8 @@ class EpisodeStats():
         self.infostats_asumistuki=np.zeros((self.n_time,1))
         self.infostats_valtionvero=np.zeros((self.n_time,1))
         self.infostats_kunnallisvero=np.zeros((self.n_time,1))
+        self.infostats_valtionvero_distrib=np.zeros((self.n_time,n_emps))
+        self.infostats_kunnallisvero_distrib=np.zeros((self.n_time,n_emps))
         self.infostats_ptel=np.zeros((self.n_time,1))
         self.infostats_tyotvakmaksu=np.zeros((self.n_time,1))
         self.infostats_tyoelake=np.zeros((self.n_time,1))
@@ -170,12 +172,9 @@ class EpisodeStats():
                 self.popunemprightleft[t,n]=-self.env.unempright_left(newemp,tis,bu,a2,ura)
                 self.popunemprightused[t,n]=bu
                 self.infostats_group[n]=g
-                self.infostats_unempwagebasis=uw
-                self.infostats_unempwagebasis_acc=uwr
-                if toe>0.6:
-                    self.infostats_toe[t,n]=1
-                else:
-                    self.infostats_toe[t,n]=0
+                self.infostats_unempwagebasis[t,n]=uw
+                self.infostats_unempwagebasis_acc[t,n]=uwr
+                self.infostats_toe[t,n]=toe
                 
                 if q is not None:
                     self.infostats_taxes[t]+=q['verot']*self.timestep*12
@@ -185,7 +184,9 @@ class EpisodeStats():
                     self.infostats_ansiopvraha[t]+=q['ansiopvraha']*self.timestep*12
                     self.infostats_asumistuki[t]+=q['asumistuki']*self.timestep*12
                     self.infostats_valtionvero[t]+=q['valtionvero']*self.timestep*12
+                    self.infostats_valtionvero_distrib[t,newemp]+=q['valtionvero']*self.timestep*12
                     self.infostats_kunnallisvero[t]+=q['kunnallisvero']*self.timestep*12
+                    self.infostats_kunnallisvero_distrib[t,newemp]+=q['kunnallisvero']*self.timestep*12
                     self.infostats_ptel[t]+=q['ptel']*self.timestep*12
                     self.infostats_tyotvakmaksu[t]+=q['tyotvakmaksu']*self.timestep*12
                     self.infostats_tyoelake[t]+=q['elake_maksussa']*self.timestep*12
@@ -1286,6 +1287,63 @@ class EpisodeStats():
         ax.set_ylabel('Osuus tilassa [%]')
         ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
         plt.show()
+        
+    def plot_taxes(self,figname=None):
+        valtionvero_ratio=100*self.infostats_valtionvero_distrib/np.reshape(np.sum(self.infostats_valtionvero_distrib,1),(-1,1))
+        kunnallisvero_ratio=100*self.infostats_kunnallisvero_distrib/np.reshape(np.sum(self.infostats_kunnallisvero_distrib,1),(-1,1))
+        vero_ratio=100*(self.infostats_kunnallisvero_distrib+self.infostats_valtionvero_distrib)/(np.reshape(np.sum(self.infostats_valtionvero_distrib,1),(-1,1))+np.reshape(np.sum(self.infostats_kunnallisvero_distrib,1),(-1,1)))
+        
+        if figname is not None:
+            self.plot_states(vero_ratio,ylabel='Valtioneronmaksajien osuus tilassa [%]',stack=True,figname=figname+'_stack')
+        else:
+            self.plot_states(vero_ratio,ylabel='Valtioneronmaksajien osuus tilassa [%]',stack=True)
+
+        if figname is not None:
+            self.plot_states(valtionvero_ratio,ylabel='Veronmaksajien osuus tilassa [%]',stack=True,figname=figname+'_stack')
+        else:
+            self.plot_states(valtionvero_ratio,ylabel='Veronmaksajien osuus tilassa [%]',stack=True)
+
+        if figname is not None:
+            self.plot_states(kunnallisvero_ratio,ylabel='Kunnallisveron maksajien osuus tilassa [%]',stack=True,figname=figname+'_stack')
+        else:
+            self.plot_states(kunnallisvero_ratio,ylabel='Kunnallisveron maksajien osuus tilassa [%]',stack=True)
+            
+        valtionvero_osuus,kunnallisvero_osuus,vero_osuus=self.comp_taxratios()
+        
+        print('Valtionveron maksajien osuus\n{}'.format(self.v2_states(valtionvero_osuus)))
+        print('Kunnallisveron maksajien osuus\n{}'.format(self.v2_states(kunnallisvero_osuus)))
+        print('Veronmaksajien osuus\n{}'.format(self.v2_states(vero_osuus)))
+        
+    def group_taxes(self,ratios):
+        vv_osuus=np.zeros((ratios.shape[0],3))
+        vv_osuus[:,0]=ratios[:,0]+ratios[:,4]+ratios[:,5]+ratios[:,6]+\
+                      ratios[:,7]+ratios[:,8]+ratios[:,9]+ratios[:,11]+\
+                      ratios[:,12]
+        vv_osuus[:,1]=ratios[:,1]+ratios[:,10]
+        vv_osuus[:,2]=ratios[:,2]+ratios[:,3]+ratios[:,8]+ratios[:,9]
+        return vv_osuus
+
+    def comp_taxratios(self,grouped=False):
+        valtionvero_osuus=100*np.sum(self.infostats_valtionvero_distrib,0)/np.sum(self.infostats_valtionvero_distrib)
+        kunnallisvero_osuus=100*np.sum(self.infostats_kunnallisvero_distrib,0)/np.sum(self.infostats_kunnallisvero_distrib)
+        vero_osuus=100*(np.sum(self.infostats_kunnallisvero_distrib,0)+np.sum(self.infostats_valtionvero_distrib,0))/(np.sum(self.infostats_kunnallisvero_distrib)+np.sum(self.infostats_valtionvero_distrib))
+        
+        if grouped:
+            vv_osuus=self.group_taxes(valtionvero_osuus)
+            kv_osuus=self.group_taxes(kunnallisvero_osuus)
+            v_osuus=self.group_taxes(vero_osuus)
+        else:
+            vv_osuus=valtionvero_osuus
+            kv_osuus=kunnallisvero_osuus
+            v_osuus=vero_osuus
+        
+        return vv_osuus,kv_osuus,v_osuus
+        
+    def v2_states(self,x):
+        return 'Ansiosidonnaisella {:.2f}\nKokoaikatyössä {:.2f}\nVanhuuseläkeläiset {:.2f}\nTyökyvyttömyyseläkeläiset {:.2f}\n'.format(x[0],x[1],x[2],x[3])+\
+          'Putkessa {:.2f}\nÄitiysvapaalla {:.2f}\nIsyysvapaalla {:.2f}\nKotihoidontuella {:.2f}\n'.format(x[4],x[5],x[6],x[7])+\
+          'VE+OA {:.2f}\nVE+kokoaika {:.2f}\nOsa-aikatyö {:.2f}\nTyövoiman ulkopuolella {:.2f}\n'.format(x[8],x[9],x[10],x[11])+\
+          'Opiskelija/Armeija {:.2f}\nTM-tuki {:.2f}\n'.format(x[12],x[13])
 
     def plot_emp(self,figname=None):
 
@@ -1955,6 +2013,7 @@ class EpisodeStats():
         
         print('Gini coefficient is {}'.format(G))
         
+        self.plot_emp(figname=figname)
         if self.version>0:
             self.plot_outsider()
         
@@ -1968,7 +2027,6 @@ class EpisodeStats():
         df = pd.DataFrame.from_dict(keskikesto,orient='index',columns=['0-6 kk','6-12 kk','12-18 kk','18-24kk','yli 24 kk'])
         print(tabulate(df, headers='keys', tablefmt='psql', floatfmt=",.2f"))
         
-        self.plot_emp(figname=figname)
         if self.version>0:
             print('Lisäpäivillä on {:.0f} henkilöä'.format(self.count_putki()))
         self.plot_unemp(unempratio=True,figname=figname)
@@ -1980,6 +2038,7 @@ class EpisodeStats():
             
         self.plot_sal()
         if self.version>0:
+            self.plot_taxes()
             self.plot_pinkslip()
             self.plot_outsider()
             self.plot_student()
@@ -2279,6 +2338,8 @@ class EpisodeStats():
         _ = f.create_dataset('infostats_asumistuki', data=self.infostats_asumistuki, dtype=ftype)
         _ = f.create_dataset('infostats_valtionvero', data=self.infostats_valtionvero, dtype=ftype)
         _ = f.create_dataset('infostats_kunnallisvero', data=self.infostats_kunnallisvero, dtype=ftype)
+        _ = f.create_dataset('infostats_valtionvero_distrib', data=self.infostats_valtionvero_distrib, dtype=ftype)
+        _ = f.create_dataset('infostats_kunnallisvero_distrib', data=self.infostats_kunnallisvero_distrib, dtype=ftype)
         _ = f.create_dataset('infostats_ptel', data=self.infostats_ptel, dtype=ftype)
         _ = f.create_dataset('infostats_tyotvakmaksu', data=self.infostats_tyotvakmaksu, dtype=ftype)
         _ = f.create_dataset('infostats_tyoelake', data=self.infostats_tyoelake, dtype=ftype)
@@ -2305,7 +2366,7 @@ class EpisodeStats():
         _ = f.create_dataset('infostats_children_under7', data=self.infostats_children_under7, dtype=int)
         _ = f.create_dataset('infostats_unempwagebasis', data=self.infostats_unempwagebasis, dtype=ftype)
         _ = f.create_dataset('infostats_unempwagebasis_acc', data=self.infostats_unempwagebasis_acc, dtype=ftype)
-        _ = f.create_dataset('infostats_toe', data=self.infostats_children_under7, dtype=int)
+        _ = f.create_dataset('infostats_toe', data=self.infostats_toe, dtype=int)
         _ = f.create_dataset('params', data=self.params, dtype=ftype)
         
         f.close()
@@ -2375,6 +2436,10 @@ class EpisodeStats():
             self.infostats_sairauspaivaraha=f.get('infostats_sairauspaivaraha').value
             self.infostats_toimeentulotuki=f.get('infostats_toimeentulotuki').value
             self.infostats_tulot_netto=f.get('infostats_tulot_netto').value
+
+        if 'infostats_valtionvero_distrib' in f.keys(): # older runs do not have these
+            self.infostats_valtionvero_distrib=f.get('infostats_valtionvero_distrib').value
+            self.infostats_kunnallisvero_distrib=f.get('infostats_kunnallisvero_distrib').value
 
         if 'infostats_pinkslip' in f.keys(): # older runs do not have these
             self.infostats_pinkslip=f.get('infostats_pinkslip').value      
