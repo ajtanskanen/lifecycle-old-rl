@@ -36,7 +36,7 @@ class EpisodeStats():
         
         if version is not None:
             self.version=version
-            
+
         self.n_employment=n_emps
         self.n_time=n_time
         self.timestep=timestep # 0.25 = 3kk askel
@@ -87,6 +87,7 @@ class EpisodeStats():
         self.stat_wage_reduction_g=np.zeros((self.n_time,n_emps,self.n_groups))
         self.infostats_group=np.zeros((self.n_pop,1))
         self.infostats_taxes=np.zeros((self.n_time,1))
+        self.infostats_taxes_distrib=np.zeros((self.n_time,n_emps))
         self.infostats_etuustulo=np.zeros((self.n_time,1))
         self.infostats_perustulo=np.zeros((self.n_time,1))
         self.infostats_palkkatulo=np.zeros((self.n_time,1))
@@ -116,7 +117,8 @@ class EpisodeStats():
         self.infostats_paid_tyel_pension=np.zeros((self.n_time,self.n_pop))
         self.infostats_sairausvakuutus=np.zeros((self.n_time,self.n_pop))
         self.infostats_pvhoitomaksu=np.zeros((self.n_time,self.n_pop))
-        self.infostats_ylevero=np.zeros((self.n_time,self.n_pop))
+        self.infostats_ylevero=np.zeros((self.n_time,1))
+        self.infostats_ylevero_distrib=np.zeros((self.n_time,n_emps))
         self.infostats_irr=np.zeros((self.n_pop,1))
         self.infostats_npv0=np.zeros((self.n_pop,1))
         self.infostats_mother_in_workforce=np.zeros((self.n_time,1))
@@ -178,6 +180,7 @@ class EpisodeStats():
                 
                 if q is not None:
                     self.infostats_taxes[t]+=q['verot']*self.timestep*12
+                    self.infostats_taxes_distrib[t,newemp]+=q['verot']*self.timestep*12
                     self.infostats_etuustulo[t]+=q['etuustulo_brutto']*self.timestep*12
                     self.infostats_perustulo[t]+=q['perustulo']*self.timestep*12
                     self.infostats_palkkatulo[t]+=q['palkkatulot']*self.timestep*12
@@ -202,7 +205,8 @@ class EpisodeStats():
                     self.infostats_paid_tyel_pension[t,n]=q['puhdas_tyoelake']*self.timestep*12
                     self.infostats_sairausvakuutus[t,n]=q['sairausvakuutus']*self.timestep*12
                     self.infostats_pvhoitomaksu[t,n]=q['pvhoito']*self.timestep*12
-                    self.infostats_ylevero[t,n]=q['ylevero']*self.timestep*12
+                    self.infostats_ylevero[t]=q['ylevero']*self.timestep*12
+                    self.infostats_ylevero_distrib[t,newemp]=q['ylevero']*self.timestep*12
                     self.infostats_children_under3[t,n]=c3
                     self.infostats_children_under7[t,n]=c7             
                     self.infostats_npv0[n]=q['multiplier']
@@ -1310,17 +1314,25 @@ class EpisodeStats():
             
         valtionvero_osuus,kunnallisvero_osuus,vero_osuus=self.comp_taxratios()
         
-        print('Valtionveron maksajien osuus\n{}'.format(self.v2_states(valtionvero_osuus)))
-        print('Kunnallisveron maksajien osuus\n{}'.format(self.v2_states(kunnallisvero_osuus)))
-        print('Veronmaksajien osuus\n{}'.format(self.v2_states(vero_osuus)))
+        print('Valtionveron maksajien osuus\n{}'.format(self.v2_groupstates(valtionvero_osuus)))
+        print('Kunnallisveron maksajien osuus\n{}'.format(self.v2_groupstates(kunnallisvero_osuus)))
+        print('Veronmaksajien osuus\n{}'.format(self.v2_groupstates(vero_osuus)))
         
     def group_taxes(self,ratios):
-        vv_osuus=np.zeros((ratios.shape[0],3))
-        vv_osuus[:,0]=ratios[:,0]+ratios[:,4]+ratios[:,5]+ratios[:,6]+\
-                      ratios[:,7]+ratios[:,8]+ratios[:,9]+ratios[:,11]+\
-                      ratios[:,12]
-        vv_osuus[:,1]=ratios[:,1]+ratios[:,10]
-        vv_osuus[:,2]=ratios[:,2]+ratios[:,3]+ratios[:,8]+ratios[:,9]
+        if len(ratios.shape)>1:
+            vv_osuus=np.zeros((ratios.shape[0],3))
+            vv_osuus[:,0]=ratios[:,0]+ratios[:,4]+ratios[:,5]+ratios[:,6]+\
+                          ratios[:,7]+ratios[:,8]+ratios[:,9]+ratios[:,11]+\
+                          ratios[:,12]
+            vv_osuus[:,1]=ratios[:,1]+ratios[:,10]
+            vv_osuus[:,2]=ratios[:,2]+ratios[:,3]+ratios[:,8]+ratios[:,9]
+        else:
+            vv_osuus=np.zeros((3))
+            vv_osuus[0]=ratios[0]+ratios[4]+ratios[5]+ratios[6]+\
+                          ratios[7]+ratios[8]+ratios[9]+ratios[11]+\
+                          ratios[12]
+            vv_osuus[1]=ratios[1]+ratios[10]
+            vv_osuus[2]=ratios[2]+ratios[3]+ratios[8]+ratios[9]
         return vv_osuus
 
     def comp_taxratios(self,grouped=False):
@@ -1339,11 +1351,39 @@ class EpisodeStats():
         
         return vv_osuus,kv_osuus,v_osuus
         
+    def comp_verokiila(self):
+        demog,demog2=self.get_demog()
+        scalex=demog2/self.n_pop
+
+        valtionvero_osuus=np.sum(self.infostats_valtionvero_distrib*scalex,0)
+        kunnallisvero_osuus=np.sum(self.infostats_kunnallisvero_distrib*scalex,0)
+        taxes_distrib=np.sum(self.infostats_taxes_distrib*scalex,0)
+        taxes=self.group_taxes(taxes_distrib)
+
+        q=self.comp_budget()
+        q2=self.comp_participants(scale=True)
+        htv=q2['palkansaajia']
+        muut_tulot=q['muut tulot']
+        tC=0.2*max(0,q['tyotulosumma']-taxes[1])
+        kiila=(taxes[1]+q['ta_maksut']+tC)/(q['tyotulosumma']+q['ta_maksut'])
+        qq={}
+        qq['tI']=taxes[1]/q['tyotulosumma']
+        qq['tC']=tC/q['tyotulosumma']
+        qq['tP']=q['ta_maksut']/q['tyotulosumma']
+                
+        #print(qq)
+                
+        return kiila,qq
+        
     def v2_states(self,x):
         return 'Ansiosidonnaisella {:.2f}\nKokoaikatyössä {:.2f}\nVanhuuseläkeläiset {:.2f}\nTyökyvyttömyyseläkeläiset {:.2f}\n'.format(x[0],x[1],x[2],x[3])+\
           'Putkessa {:.2f}\nÄitiysvapaalla {:.2f}\nIsyysvapaalla {:.2f}\nKotihoidontuella {:.2f}\n'.format(x[4],x[5],x[6],x[7])+\
           'VE+OA {:.2f}\nVE+kokoaika {:.2f}\nOsa-aikatyö {:.2f}\nTyövoiman ulkopuolella {:.2f}\n'.format(x[8],x[9],x[10],x[11])+\
           'Opiskelija/Armeija {:.2f}\nTM-tuki {:.2f}\n'.format(x[12],x[13])
+
+    def v2_groupstates(self,xx):
+        x=self.group_taxes(xx)
+        return 'Etuudella olevat {:.2f}\nTyössä {:.2f}\nEläkkeellä {:.2f}\n'.format(x[0],x[1],x[2])
 
     def plot_emp(self,figname=None):
 
@@ -2331,6 +2371,7 @@ class EpisodeStats():
         _ = f.create_dataset('popunemprightleft', data=self.popunemprightleft, dtype=ftype)
         _ = f.create_dataset('popunemprightused', data=self.popunemprightused, dtype=ftype)
         _ = f.create_dataset('infostats_taxes', data=self.infostats_taxes, dtype=ftype)
+        _ = f.create_dataset('infostats_taxes_distrib', data=self.infostats_taxes_distrib, dtype=ftype)
         _ = f.create_dataset('infostats_etuustulo', data=self.infostats_etuustulo, dtype=ftype)
         _ = f.create_dataset('infostats_perustulo', data=self.infostats_perustulo, dtype=ftype)
         _ = f.create_dataset('infostats_palkkatulo', data=self.infostats_palkkatulo, dtype=ftype)
@@ -2361,6 +2402,7 @@ class EpisodeStats():
         _ = f.create_dataset('infostats_sairausvakuutus', data=self.infostats_sairausvakuutus, dtype=ftype)
         _ = f.create_dataset('infostats_pvhoitomaksu', data=self.infostats_pvhoitomaksu, dtype=ftype)
         _ = f.create_dataset('infostats_ylevero', data=self.infostats_ylevero, dtype=ftype)
+        _ = f.create_dataset('infostats_ylevero_distrib', data=self.infostats_ylevero_distrib, dtype=ftype)
         _ = f.create_dataset('infostats_mother_in_workforce', data=self.infostats_mother_in_workforce, dtype=ftype)
         _ = f.create_dataset('infostats_children_under3', data=self.infostats_children_under3, dtype=int)
         _ = f.create_dataset('infostats_children_under7', data=self.infostats_children_under7, dtype=int)
@@ -2440,6 +2482,8 @@ class EpisodeStats():
         if 'infostats_valtionvero_distrib' in f.keys(): # older runs do not have these
             self.infostats_valtionvero_distrib=f.get('infostats_valtionvero_distrib').value
             self.infostats_kunnallisvero_distrib=f.get('infostats_kunnallisvero_distrib').value
+            self.infostats_taxes_distrib=f.get('infostats_taxes_distrib').value
+            self.infostats_ylevero_distrib=f.get('infostats_ylevero_distrib').value     
 
         if 'infostats_pinkslip' in f.keys(): # older runs do not have these
             self.infostats_pinkslip=f.get('infostats_pinkslip').value      
@@ -2537,6 +2581,7 @@ class EpisodeStats():
             q['asumistuki']+q['kotihoidontuki']
         q['verot+maksut']=q['valtionvero']+q['kunnallisvero']+q['ptel']+q['tyotvakmaksu']+\
             q['ylevero']+q['sairausvakuutusmaksu']
+        q['ta_maksut']=0.2057*q['tyotulosumma'] # karkea
         q['tulot_netto']=q['tyotulosumma']+q['etuusmeno']-q['verot+maksut']
         q['muut tulot']=q['etuusmeno']-q['verot+maksut']
 
@@ -2573,7 +2618,8 @@ class EpisodeStats():
         q['pvhoitomaksu']=np.sum(self.infostats_pvhoitomaksu*scalex)
         q['ylevero']=np.sum(self.infostats_ylevero*scalex)
         q['tulot_netto']=np.sum(self.infostats_tulot_netto*scalex)
-
+        q['ta_maksut']=q['tyoelake_maksu']-q['ptel']+(0.2057-0.1695)*q['tyotulosumma'] # karkea
+        
         return q
 
     def comp_participants(self,scale=False):

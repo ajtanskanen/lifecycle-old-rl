@@ -228,7 +228,8 @@ class Lifecycle():
                 'additional_tyel_premium': self.additional_tyel_premium, 
                 'additional_income_tax_high': self.additional_income_tax_high,
                 'additional_kunnallisvero': self.additional_kunnallisvero,
-                'scale_tyel_accrual': self.scale_tyel_accrual}
+                'scale_tyel_accrual': self.scale_tyel_accrual,
+                'perustulo': self.perustulo}
             #self.n_acts = 4
             #if self.mortality:
             #    self.n_employment = 16
@@ -690,16 +691,25 @@ class Lifecycle():
     def render_laffer(self,load=None,figname=None):
         if load is not None:
             self.episodestats.load_sim(load)
-            rew=self.episodestats.comp_total_reward()
-        else:
-            rew=self.episodestats.comp_total_reward()
+            
+        rew=self.episodestats.comp_total_reward()
             
         q=self.episodestats.comp_budget()
         q2=self.episodestats.comp_participants(scale=True)
         htv=q2['palkansaajia']
         muut_tulot=q['muut tulot']
+        tC=0.2*max(0,q['tyotulosumma']-q['verot+maksut'])
+        kiila,qc=self.episodestats.comp_verokiila()
+
+        #
+        #qq={}
+        #qq['tI']=q['verot+maksut']/q['tyotulosumma']
+        #qq['tC']=tC/q['tyotulosumma']
+        #qq['tP']=q['ta_maksut']/q['tyotulosumma']
+        #
+        #print(qq,qc)
             
-        return rew,q['tyotulosumma'],q['verot+maksut'],htv,muut_tulot
+        return rew,q['tyotulosumma'],q['verot+maksut'],htv,muut_tulot,kiila
    
     def load_sim(self,load=None):
         self.episodestats.load_sim(load)
@@ -1038,11 +1048,14 @@ class Lifecycle():
     def comp_aggkannusteet(self,n=None,savefile=None):
         self.episodestats.comp_aggkannusteet(self.env.ben,n=n,savefile=savefile)
         
-    def plot_aggkannusteet(self,loadfile,baseloadfile=None):
-        self.episodestats.plot_aggkannusteet(self.env.ben,loadfile,baseloadfile=baseloadfile)
+    def plot_aggkannusteet(self,loadfile,baseloadfile=None,figname=None,label=None,baselabel=None):
+        self.episodestats.plot_aggkannusteet(self.env.ben,loadfile,baseloadfile=baseloadfile,figname=figname,
+                                             label=label,baselabel=baselabel)
         
     def comp_taxratios(self,grouped=True):
         return self.episodestats.comp_taxratios(grouped=grouped)
         
+    def comp_verokiila(self,grouped=True):
+        return self.episodestats.comp_verokiila(grouped=grouped)
     
         

@@ -649,7 +649,7 @@ class SimStats(EpisodeStats):
 
     def plot_compare_csvirta(self,m1,m2,lbl):
         nc1=np.reshape(np.cumsum(m1),m1.shape)
-        print(m1.shape,np.cumsum(m1).shape)
+        #print(m1.shape,np.cumsum(m1).shape)
         nc2=np.reshape(np.cumsum(m2),m1.shape)
         fig,ax=plt.subplots()
         x=np.linspace(self.min_age,self.max_age,self.n_time)
@@ -725,15 +725,15 @@ class SimStats(EpisodeStats):
         num=0    
         for popp in range(n):
             for t in np.arange(0,self.n_time,10):
-                employment_state=self.popempstate[t,popp]
+                employment_state=int(self.popempstate[t,popp])
             
                 if employment_state in set([0,1,4,7,10,13]):
                     if employment_state in set([0,4]):
-                        old_wage=self.infostats_unempwagebasis[t,popp]
+                        old_wage=self.infostats_unempwagebasis_acc[t,popp]
                     elif employment_state in set([13]):
                         old_wage=0
                     else:
-                        old_wage=self.infostats_unempwagebasis_acc[t,popp]
+                        old_wage=self.infostats_unempwagebasis[t,popp]
                         
                     if self.infostats_toe[t,popp]>0.5:
                         toe=1
@@ -757,6 +757,7 @@ class SimStats(EpisodeStats):
                     osa_tva+=osa_tvax
                     
                     #print('p={}\np2={}\nold_wage={}\ne={}\ntoe={}\n'.format(p,p2,old_wage,employment_state,toe))
+                    #print('ika={} popp={} old_wage={} e={} toe={}\n'.format(ika,popp,old_wage,employment_state,toe))
                     
             tqdm_e.update(1)
             tqdm_e.set_description("Pop " + str(popp))
@@ -780,7 +781,7 @@ class SimStats(EpisodeStats):
             f.close()        
 
 
-    def plot_aggkannusteet(self,ben,loadfile,baseloadfile=None):
+    def plot_aggkannusteet(self,ben,loadfile,baseloadfile=None,figname=None,label=None,baselabel=None):
         f = h5py.File(loadfile, 'r')
         netto=f.get('netto').value
         eff=f.get('eff').value
@@ -799,21 +800,22 @@ class SimStats(EpisodeStats):
             basetva=f.get('tva').value
             baseosatva=f.get('osa_tva').value
             f.close()        
-        
-        
-        ben.plot_insentives(netto,eff,tva,osa_tva,min_salary=min_salary,max_salary=max_salary,
-            step_salary=step_salary,basenetto=basenetto,baseeff=baseeff,basetva=basetva,baseosatva=baseosatva)
-
+            
+            ben.plot_insentives(netto,eff,tva,osa_tva,min_salary=min_salary,max_salary=max_salary,figname=figname,
+                step_salary=step_salary,basenetto=basenetto,baseeff=baseeff,basetva=basetva,baseosatva=baseosatva,
+                otsikko=label,otsikkobase=baselabel)
+        else:
+            ben.plot_insentives(netto,eff,tva,osa_tva,min_salary=min_salary,max_salary=max_salary,figname=figname,
+                step_salary=step_salary,otsikko=label,otsikkobase=baselabel)
             
     def setup_p(self,wage,old_wage,pension,employment_state,time_in_state,
                 children_under3,children_under7,children_under18,ika,
-                irtisanottu=0,tyohistoria=0,karenssia_jaljella=0,perustulo=0,include_children=0):
+                irtisanottu=0,tyohistoria=0,karenssia_jaljella=0,include_children=0):
         '''
         asettaa p:n parametrien mukaiseksi
         '''
         p={}
 
-        p['perustulo']=perustulo
         p['opiskelija']=0
         p['toimeentulotuki_vahennys']=0
         p['ika']=ika
@@ -835,7 +837,7 @@ class SimStats(EpisodeStats):
         p['veromalli']=0
         p['kuntaryhma']=3
         p['lapsia_kotihoidontuella']=0
-        p['tyottomyyden_kesto']=1
+        p['tyottomyyden_kesto']=0
         p['puoliso_tyottomyyden_kesto']=10
         p['isyysvapaalla']=0
         p['aitiysvapaalla']=0
@@ -856,6 +858,7 @@ class SimStats(EpisodeStats):
                 p['t']=0
                 p['vakiintunutpalkka']=old_wage/12
                 p['saa_ansiopaivarahaa']=1
+                p['tyottomyyden_kesto']=time_in_state
                     
                 if irtisanottu<1 and karenssia_jaljella>0:
                     p['saa_ansiopaivarahaa']=0
@@ -908,7 +911,7 @@ class SimStats(EpisodeStats):
             p['saa_ansiopaivarahaa']=1
         elif employment_state==7: # hoitovapaa
             p['kotihoidontuella']=1
-            if self.include_children:
+            if include_children:
                 p['lapsia_paivahoidossa']=0
                 p['lapsia_kotihoidontuella']=children_under7
             else:
@@ -985,4 +988,4 @@ class SimStats(EpisodeStats):
         else:
             pass
         
-        return p        
+        return p
