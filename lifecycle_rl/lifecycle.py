@@ -50,7 +50,8 @@ class Lifecycle():
                     osittainen_perustulo=None,gamma=None,exploration=None,exploration_ratio=None,
                     irr_vain_tyoelake=None,additional_income_tax=None,additional_tyel_premium=None,
                     additional_kunnallisvero=None,additional_income_tax_high=None,
-                    year=2018,version=2,scale_tyel_accrual=None,preferencenoise_level=None):                    
+                    year=2018,version=2,scale_tyel_accrual=None,preferencenoise_level=None,
+                    scale_additional_tyel_accrual=None,valtionverotaso=None,perustulo_asetettava=None):                    
         '''
         Alusta muuttujat
         '''
@@ -94,6 +95,9 @@ class Lifecycle():
         self.additional_kunnallisvero=0.0
         self.additional_income_tax_high=0.0
         self.scale_tyel_accrual=False
+        self.scale_additional_tyel_accrual=0
+        self.perustulo_asetettava=None
+        self.valtionverotaso=None
 
         if callback_minsteps is not None:
             self.callback_minsteps=callback_minsteps
@@ -115,6 +119,12 @@ class Lifecycle():
 
         if additional_income_tax_high is not None:
             self.additional_income_tax_high=additional_income_tax_high
+            
+        if perustulo_asetettava is not None:
+            self.perustulo_asetettava=perustulo_asetettava
+
+        if valtionverotaso is not None:
+            self.valtionverotaso=valtionverotaso
 
         if plotdebug is not None:
             self.plotdebug=plotdebug
@@ -177,6 +187,9 @@ class Lifecycle():
             
         if scale_tyel_accrual is not None:
             self.scale_tyel_accrual=scale_tyel_accrual
+            
+        if scale_additional_tyel_accrual is not None:
+            self.scale_additional_tyel_accrual=scale_additional_tyel_accrual
 
         if env is not None:
             self.environment=env
@@ -229,7 +242,9 @@ class Lifecycle():
                 'additional_income_tax_high': self.additional_income_tax_high,
                 'additional_kunnallisvero': self.additional_kunnallisvero,
                 'scale_tyel_accrual': self.scale_tyel_accrual,
-                'perustulo': self.perustulo}
+                'scale_additional_tyel_accrual': self.scale_additional_tyel_accrual,
+                'perustulo': self.perustulo, 'valtionverotaso': self.valtionverotaso,
+                'perustulo_asetettava': self.perustulo_asetettava}
             #self.n_acts = 4
             #if self.mortality:
             #    self.n_employment = 16
@@ -696,11 +711,13 @@ class Lifecycle():
             
         q=self.episodestats.comp_budget()
         q2=self.episodestats.comp_participants(scale=True)
-        htv=q2['palkansaajia']
+        htv=q2['htv']
+        palkansaajia=q2['palkansaajia']
         muut_tulot=q['muut tulot']
         tC=0.2*max(0,q['tyotulosumma']-q['verot+maksut'])
         kiila,qc=self.episodestats.comp_verokiila()
-
+        #tyollaste,_,tyotaste,_,_=self.episodestats.comp_employed()
+        tyollaste,tyotaste=0,0
         #
         #qq={}
         #qq['tI']=q['verot+maksut']/q['tyotulosumma']
@@ -709,7 +726,7 @@ class Lifecycle():
         #
         #print(qq,qc)
             
-        return rew,q['tyotulosumma'],q['verot+maksut'],htv,muut_tulot,kiila
+        return rew,q['tyotulosumma'],q['verot+maksut'],htv,muut_tulot,kiila,tyollaste,tyotaste,palkansaajia
    
     def load_sim(self,load=None):
         self.episodestats.load_sim(load)

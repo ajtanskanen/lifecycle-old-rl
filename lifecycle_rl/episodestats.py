@@ -2633,7 +2633,8 @@ class EpisodeStats():
         q={}
         if self.version>0:
             q['yhteensä']=np.sum(np.sum(self.empstate[:,:],1)*scalex)
-            q['palkansaajia']=np.sum((self.empstate[:,1]+0.5*self.empstate[:,10]+0.5*self.empstate[:,8]+self.empstate[:,9])*scalex)
+            q['palkansaajia']=np.sum((self.empstate[:,1]+self.empstate[:,10]+self.empstate[:,8]+self.empstate[:,9])*scalex)
+            q['htv']=np.sum((self.empstate[:,1]+0.5*self.empstate[:,10]+0.5*self.empstate[:,8]+self.empstate[:,9])*scalex)
             q['ansiosidonnaisella']=np.sum((self.empstate[:,0]+self.empstate[:,4])*scalex)
             q['tmtuella']=np.sum(self.empstate[:,13]*scalex)
             q['isyysvapaalla']=np.sum(self.empstate[:,6]*scalex)
@@ -2642,6 +2643,7 @@ class EpisodeStats():
         else:
             q['yhteensä']=np.sum(np.sum(self.empstate[:,:],1)*scalex)
             q['palkansaajia']=np.sum((self.empstate[:,1])*scalex)
+            q['htv']=np.sum((self.empstate[:,1])*scalex)
             q['ansiosidonnaisella']=np.sum((self.empstate[:,0])*scalex)
             q['tmtuella']=np.sum(self.empstate[:,1]*0)
             q['isyysvapaalla']=np.sum(self.empstate[:,1]*0)
