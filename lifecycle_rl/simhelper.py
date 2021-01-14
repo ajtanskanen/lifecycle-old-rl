@@ -2,7 +2,7 @@
 
     simhelper.py
 
-    implements methods that help in interpreting simulation results
+    implements methods that help in interpreting multiple simulation results with a variety of parameters
 
 '''
 
@@ -17,28 +17,52 @@ import locale
 from tabulate import tabulate
 import pandas as pd
 from tqdm import tqdm_notebook as tqdm
+from . lifecycle import Lifecycle
 
-class SimHelpher():
-    def plot_stats(self,datafile,baseline=None,ref=None,xlabel=None,dire=None):
+class SimHelper():
+    def plot_stats(self,datafile,baseline=None,ref=None,xlabel=None,dire=None,plot_kiila=True):
         additional_income_tax,total_verot,total_rew,total_ps,total_htv,kiila,muut,tyollaste,tyotaste,tyossa=self.load_data(datafile)
         mean_rew,mean_verot,mean_ps,mean_htv,mean_muut=self.comp_means(datafile)
 
         if baseline is not None:
             baseline_tax,baseline_verot,baseline_rew,baseline_ps,baseline_htv,baseline_kiila,baseline_muut=self.load_data(baseline)
+            if plot_kiila:
+                self.plot_verokiila(additional_income_tax,kiila,ref_additional_tax=baseline_tax,ref_kiila=baseline_kiila)
+
             self.plot_taxes(additional_income_tax,mean_rew,mean_verot,mean_ps,mean_htv,mean_muut,
                        ref_additional_tax=baseline_tax,ref_mean_verot=baseline_verot,ref_mean_ps=baseline_ps,
                        ref_mean_htv=baseline_htv,ref_mean_muut=baseline_muut,ref_mean_rew=baseline_rew,
                        xlabel=xlabel,dire=dire)
         elif ref is not None:
             ref_rew,ref_verot,ref_ps,ref_htv,ref_muut,ref_kiila=self.get_refstats(ref,scale=additional_income_tax)
+            if plot_kiila:
+                self.plot_verokiila(additional_income_tax,kiila,ref_additional_tax=additional_income_tax,ref_kiila=ref_kiila)
             self.plot_taxes(additional_income_tax,mean_rew,mean_verot,mean_ps,mean_htv,mean_muut,
                        ref_additional_tax=additional_income_tax,ref_mean_verot=ref_verot,ref_mean_ps=ref_ps,
                        ref_mean_htv=ref_htv,ref_mean_muut=ref_muut,ref_mean_rew=ref_rew,xlabel=xlabel,dire=dire)
         else:
+            self.plot_verokiila(additional_income_tax,kiila)
             self.plot_taxes(additional_income_tax,mean_rew,mean_verot,mean_ps,mean_htv,mean_muut,xlabel=xlabel,dire=dire)
+            self.plot_elasticity(kiila,mean_htv)
+            #self.plot_taxes_prop(additional_income_tax,TELosuus_vero,xlabel='Verokiila')
 
         self.plot_total(additional_income_tax,total_rew,total_verot,total_htv,total_ps)
 
+    def plot_elasticity(self,additional_income_tax,htv,dire=None,label1=None,label2=None,xlabel='Muutos [%-yks]',scale=1):
+        el=self.comp_elasticity(additional_income_tax,htv)
+        fig,ax=plt.subplots()
+        ax.plot(scale*additional_income_tax,el,label=label1)
+        plt.title('Elasticity')
+        #if ref_additional_tax is not None:
+        #    ax.plot(scale*ref_additional_tax,ref_mean_rew,label=label2)
+        ax.legend()
+        ax.set_ylabel('Elasticity')
+        ax.set_xlabel(xlabel)
+        if dire is not None:
+            plt.savefig(dire+'elasticity.eps', format='eps')
+            plt.savefig(dire+'elasticity.png', format='png')
+            print('dire',dire)
+        plt.show()
 
     def plot_taxes(self,additional_tax,mean_rew,mean_verot,mean_ps,mean_htv,mean_muut,
                    ref_additional_tax=None,ref_mean_verot=None,ref_mean_ps=None,ref_mean_htv=None,ref_mean_muut=None,
@@ -55,7 +79,7 @@ class SimHelpher():
         ax.plot(scale*additional_tax,mean_rew,label=label1)
         plt.title('Reward')
         if ref_additional_tax is not None:
-            ax.plot(scale*ref_additional_tax,ref_mean_rew.T,label=label2)
+            ax.plot(scale*ref_additional_tax,ref_mean_rew,label=label2)
         ax.legend()
         ax.set_ylabel('Hyöty')
         ax.set_xlabel(xlabel)
@@ -68,7 +92,7 @@ class SimHelpher():
         fig,ax=plt.subplots()
         ax.plot(scale*additional_tax,mean_ps,label=label1)
         if ref_additional_tax is not None:
-            ax.plot(scale*ref_additional_tax,ref_mean_ps.T,label=label2)
+            ax.plot(scale*ref_additional_tax,ref_mean_ps,label=label2)
         #print(mean_ps)
         plt.title('Palkkasumma')
         ax.set_ylabel('Palkkasumma [euroa]')
@@ -82,7 +106,7 @@ class SimHelpher():
         fig,ax=plt.subplots()
         ax.plot(scale*additional_tax,mean_verot,label=label1)
         if ref_additional_tax is not None:
-            ax.plot(scale*ref_additional_tax,ref_mean_verot.T,label=label2)
+            ax.plot(scale*ref_additional_tax,ref_mean_verot,label=label2)
         plt.title('Verot ja veronluonteiset maksut')
         ax.legend()
         ax.set_ylabel('Verot [euroa]')
@@ -95,7 +119,7 @@ class SimHelpher():
         fig,ax=plt.subplots()
         ax.plot(scale*additional_tax,mean_htv,label=label1)
         if ref_additional_tax is not None:
-            ax.plot(scale*ref_additional_tax,ref_mean_htv.T,label=label2)
+            ax.plot(scale*ref_additional_tax,ref_mean_htv,label=label2)
         plt.title('Työnteko')
         ax.legend()
         ax.set_ylabel('Henkilötyövuodet')
@@ -108,7 +132,7 @@ class SimHelpher():
         fig,ax=plt.subplots()
         ax.plot(scale*additional_tax,mean_muut,label=label1)
         if ref_additional_tax is not None:
-            ax.plot(scale*ref_additional_tax,ref_mean_muut.T,label=label2)
+            ax.plot(scale*ref_additional_tax,ref_mean_muut,label=label2)
         ax.legend()
         ax.set_ylabel('Muut tulot [euroa]')
         ax.set_xlabel(xlabel)
@@ -152,11 +176,15 @@ class SimHelpher():
         plt.title('proportion of taxes paid by the retired')
         plt.show()
 
-    def plot_verokiila(self,additional_tax,kiila,xlabel=None):
+    def plot_verokiila(self,additional_tax,kiila,xlabel=None,dire=None,ref_additional_tax=None,ref_kiila=None):
         fig,ax=plt.subplots()
         ax.plot(100*additional_tax,100*kiila)
+        if ref_additional_tax is not None:
+            ax.plot(scale*ref_additional_tax,ref_kiila,label=label2)
         ax.set_ylabel('Verokiila [%]')
         ax.set_xlabel('Lisävero [%-yks]')
+        if dire is not None:
+            plt.savefig(dire+'verot_kaikki.png', format='png')
         plt.show()
 
 
@@ -209,7 +237,7 @@ class SimHelpher():
         return additional_income_tax,total_verot,total_rew,total_ps,total_htv,total_kiila,total_muut,total_tyollaste,total_tyotaste,total_tyossa
 
     def comp_means(self,filename):
-        additional_income_tax,total_verot,total_rew,total_ps,total_htv,total_kiila,total_muut,_,_,_=load_data(filename)
+        additional_income_tax,total_verot,total_rew,total_ps,total_htv,total_kiila,total_muut,_,_,_=self.load_data(filename)
         mean_rew=np.mean(total_rew,axis=1).reshape(-1, 1)
         mean_verot=np.mean(total_verot,axis=1).reshape(-1, 1)
         mean_ps=np.mean(total_ps,axis=1).reshape(-1, 1)
@@ -220,7 +248,7 @@ class SimHelpher():
 
     def get_refstats(self,filename,scale=None):
         additional_income_tax,total_verot,total_rew,total_ps,total_htv,total_kiila,total_muut,_,_,_=\
-            load_data(filename)
+            self.load_data(filename)
         z=np.where(np.abs(additional_income_tax)<0.001)
 
         if scale is not None:
@@ -241,7 +269,8 @@ class SimHelpher():
         return baseline_rew,baseline_verot,baseline_ps,baseline_htv,baseline_muut,baseline_kiila
 
 
-    def comp_stats(self,taxresults,additional,datafile,repeats):
+    def comp_stats(self,taxresults,additional,datafile,repeats,minimal=False,mortality=False,perustulo=False,
+                    randomness=True,pinkslip=True,plotdebug=False):
         k=0
         total_verot=np.zeros(( additional.shape[0],repeats))
         total_rew=np.zeros(( additional.shape[0],repeats))
@@ -290,20 +319,25 @@ class SimHelpher():
                 osuus_kunnallisvero[k,repeat,:]=kvosuus
                 osuus_valtionvero[k,repeat,:]=vvosuus
             k=k+1
+            
+        #self.comp_elasticity(additional,total_htv)
 
-        save_data(datafile,additional,total_verot,total_rew,total_ps,total_htv,
+        self.save_data(datafile,additional,total_verot,total_rew,total_ps,total_htv,
                   total_kiila,total_muut_tulot,total_tyollaste,total_tyotaste,total_tyossa,
                   osuus_vero,osuus_kunnallisvero,osuus_valtionvero)
 
     def comp_elasticity(self,x,y):
         xl=x.shape[0]
         yl=x.shape[0]    
-        el=np.zeros(xl.shape[0])
+        el=np.zeros((xl,1))
+        print(x,y)
     
         for k in range(1,xl):
-            dx=(x[k+1]-x[k])/x[k]
-            dy=(y[k+1]-y[k])/y[k]        
+            dx=(-x[k]+x[k-1])/(1-x[k])
+            dy=(y[k]-y[k-1])/y[k]        
             el[k]=dy/dx
+            
+            print('{}: {} vs {}'.format(k,(x[k]-x[k-1]),dy))
         
         return el    
     

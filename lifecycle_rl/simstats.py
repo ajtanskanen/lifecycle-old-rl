@@ -2,7 +2,7 @@
 
     simstats.py
 
-    implements statistic for multiple runs
+    implements statistic for multiple runs of a single model
 
 '''
 

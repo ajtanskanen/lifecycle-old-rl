@@ -127,6 +127,7 @@ class EpisodeStats():
         self.infostats_unempwagebasis=np.zeros((self.n_time,self.n_pop))
         self.infostats_unempwagebasis_acc=np.zeros((self.n_time,self.n_pop))
         self.infostats_toe=np.zeros((self.n_time,self.n_pop))
+        self.infostats_ove=np.zeros((self.n_time,n_emps))
 
     def add(self,n,act,r,state,newstate,q=None,debug=False,plot=False,aveV=None): 
         
@@ -135,14 +136,21 @@ class EpisodeStats():
             newemp,_,newsal,a2,tis,next_wage=self.env.state_decode(newstate)
             g=0
             bu=0
+            ove=0
         elif self.version==1:
             # v1
             emp,_,_,_,a,_,_,_,_,_,_,_,_,_=self.env.state_decode(state) # current employment state
             newemp,g,newpen,newsal,a2,tis,paidpens,pink,toe,ura,oof,bu,wr,p=self.env.state_decode(newstate)
-        else: 
+            ove=0
+        elif self.version==2:
             # v2
             emp,_,_,_,a,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_=self.env.state_decode(state) # current employment state
             newemp,g,newpen,newsal,a2,tis,paidpens,pink,toe,ura,bu,wr,upr,uw,uwr,pr,c3,c7,c18,unemp_left,aa,toe58=self.env.state_decode(newstate)
+            ove=0
+        else:
+            # v3
+            emp,_,_,_,a,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_=self.env.state_decode(state) # current employment state
+            newemp,g,newpen,newsal,a2,tis,paidpens,pink,toe,ura,bu,wr,upr,uw,uwr,pr,c3,c7,c18,unemp_left,aa,toe58,ove=self.env.state_decode(newstate)
     
         t=int(np.round((a2-self.min_age)*self.inv_timestep))#-1
         if a2>a and newemp>=0: # new state is not reset (age2>age)
@@ -177,6 +185,7 @@ class EpisodeStats():
                 self.infostats_unempwagebasis[t,n]=uw
                 self.infostats_unempwagebasis_acc[t,n]=uwr
                 self.infostats_toe[t,n]=toe
+                self.infostats_ove[t,newemp]+=ove
                 
                 if q is not None:
                     self.infostats_taxes[t]+=q['verot']*self.timestep*12
@@ -1888,6 +1897,9 @@ class EpisodeStats():
         plt.plot(x,self.time_in_state[:,0]/self.empstate[:,0])
         plt.show()
 
+    def plot_ove(self):
+        self.plot_ratiostates(self.infostats_ove,ylabel='Ove',stack=False)
+
     def plot_reward(self):
         self.plot_ratiostates(self.rewstate,ylabel='Keskireward tilassa',stack=False)
         self.plot_ratiostates(self.rewstate,ylabel='Keskireward tilassa',stack=False,no_ve=True)
@@ -2069,6 +2081,10 @@ class EpisodeStats():
         
         if self.version>0:
             print('Lisäpäivillä on {:.0f} henkilöä'.format(self.count_putki()))
+
+        if self.version>2:
+            self.plot_ove()
+
         self.plot_unemp(unempratio=True,figname=figname)
         self.plot_unemp(unempratio=False)
         self.plot_unemp_shares()
@@ -2093,7 +2109,7 @@ class EpisodeStats():
             self.plot_career()
             self.plot_toe()
             self.plot_wage_reduction()
-        
+            
         self.plot_distrib(label='Jakauma ansiosidonnainen+tmtuki+putki, no max age',ansiosid=True,tmtuki=True,putki=True,outsider=False)
         self.plot_distrib(label='Jakauma ansiosidonnainen+tmtuki+putki, jakso päättynyt ennen 50v ikää',ansiosid=True,tmtuki=True,putki=True,outsider=False,max_age=50,figname=figname)
         
@@ -2409,6 +2425,7 @@ class EpisodeStats():
         _ = f.create_dataset('infostats_unempwagebasis', data=self.infostats_unempwagebasis, dtype=ftype)
         _ = f.create_dataset('infostats_unempwagebasis_acc', data=self.infostats_unempwagebasis_acc, dtype=ftype)
         _ = f.create_dataset('infostats_toe', data=self.infostats_toe, dtype=int)
+        _ = f.create_dataset('infostats_ove', data=self.infostats_ove, dtype=int)
         _ = f.create_dataset('params', data=self.params, dtype=ftype)
         
         f.close()
@@ -2482,6 +2499,8 @@ class EpisodeStats():
         if 'infostats_valtionvero_distrib' in f.keys(): # older runs do not have these
             self.infostats_valtionvero_distrib=f.get('infostats_valtionvero_distrib').value
             self.infostats_kunnallisvero_distrib=f.get('infostats_kunnallisvero_distrib').value
+            
+        if 'infostats_taxes_distrib' in f.keys(): # older runs do not have these
             self.infostats_taxes_distrib=f.get('infostats_taxes_distrib').value
             self.infostats_ylevero_distrib=f.get('infostats_ylevero_distrib').value     
 
@@ -2523,6 +2542,9 @@ class EpisodeStats():
         else:
             self.n_pop=np.sum(self.empstate[0,:])
             
+        if 'infostats_ove' in f.keys():
+            self.infostats_ove=f.get('infostats_ove').value
+
         if 'infostats_children_under3' in f.keys():
             self.infostats_children_under3=f.get('infostats_children_under3').value
             self.infostats_children_under7=f.get('infostats_children_under7').value
