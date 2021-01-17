@@ -51,7 +51,8 @@ class Lifecycle():
                     irr_vain_tyoelake=None,additional_income_tax=None,additional_tyel_premium=None,
                     additional_kunnallisvero=None,additional_income_tax_high=None,
                     year=2018,version=2,scale_tyel_accrual=None,preferencenoise_level=None,
-                    scale_additional_tyel_accrual=None,valtionverotaso=None,perustulo_asetettava=None):                    
+                    scale_additional_tyel_accrual=None,valtionverotaso=None,perustulo_asetettava=None,
+                    porrasta_toe=None,include_halftoe=None):                    
         '''
         Alusta muuttujat
         '''
@@ -98,6 +99,8 @@ class Lifecycle():
         self.scale_additional_tyel_accrual=0
         self.perustulo_asetettava=None
         self.valtionverotaso=None
+        self.include_halftoe=None
+        self.porrasta_toe=None
 
         if callback_minsteps is not None:
             self.callback_minsteps=callback_minsteps
@@ -198,6 +201,11 @@ class Lifecycle():
         if use_sigma_reduction is not None:
             self.use_sigma_reduction=use_sigma_reduction
 
+        if include_halftoe is not None:
+            self.include_halftoe=include_halftoe
+        if porrasta_toe is not None:
+            self.porrasta_toe=porrasta_toe
+            
         # alustetaan gym-environment
         if minimal:
             #if EK:
@@ -244,7 +252,9 @@ class Lifecycle():
                 'scale_tyel_accrual': self.scale_tyel_accrual,
                 'scale_additional_tyel_accrual': self.scale_additional_tyel_accrual,
                 'perustulo': self.perustulo, 'valtionverotaso': self.valtionverotaso,
-                'perustulo_asetettava': self.perustulo_asetettava}
+                'perustulo_asetettava': self.perustulo_asetettava, 
+                'include_halftoe': self.include_halftoe,
+                'porrasta_toe': self.porrasta_toe}
             #self.n_acts = 4
             #if self.mortality:
             #    self.n_employment = 16
@@ -350,6 +360,7 @@ class Lifecycle():
             
         max_grad_norm=0.001
         kfac_clip=0.001
+        n_cpu_tf_sess=4
         
         if cont:
             learning_rate=0.25*learning_rate
@@ -364,43 +375,44 @@ class Lifecycle():
                 from stable_baselines.common.policies import MlpPolicy 
                 if tensorboard:
                     model = A2C.load(loadname, env=env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
-                                     tensorboard_log=self.tenb_dir, policy_kwargs=policy_kwargs,lr_schedule=learning_schedule)
+                                     tensorboard_log=self.tenb_dir, policy_kwargs=policy_kwargs,lr_schedule=learning_schedule,
+                                     n_cpu_tf_sess=n_cpu_tf_sess)
                 else:
                     model = A2C.load(loadname, env=env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
-                                     policy_kwargs=policy_kwargs,lr_schedule=learning_schedule)
+                                     policy_kwargs=policy_kwargs,lr_schedule=learning_schedule,n_cpu_tf_sess=n_cpu_tf_sess)
             elif rlmodel in set(['small_acktr','acktr','large_acktr','deep_acktr','leaky_acktr']):
                 from stable_baselines.common.policies import MlpPolicy 
                 if tensorboard:
                     model = ACKTR.load(loadname, env=env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
                                        tensorboard_log=self.tenb_dir, learning_rate=scaled_learning_rate,kfac_clip=kfac_clip,
                                        policy_kwargs=policy_kwargs,max_grad_norm=max_grad_norm,gae_lambda=gae_lambda,vf_coef=vf_coef,
-                                       full_tensorboard_log=full_tensorboard_log,lr_schedule=learning_schedule)
+                                       full_tensorboard_log=full_tensorboard_log,lr_schedule=learning_schedule,n_cpu_tf_sess=n_cpu_tf_sess)
                 else:
                     model = ACKTR.load(loadname, env=env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,kfac_clip=kfac_clip,
                                        learning_rate=np.sqrt(batch)*learning_rate,vf_coef=vf_coef,gae_lambda=gae_lambda,
-                                       policy_kwargs=policy_kwargs,max_grad_norm=max_grad_norm,lr_schedule=learning_schedule)
+                                       policy_kwargs=policy_kwargs,max_grad_norm=max_grad_norm,lr_schedule=learning_schedule,n_cpu_tf_sess=n_cpu_tf_sess)
             elif rlmodel=='small_lnacktr' or rlmodel=='lnacktr':
                 from stable_baselines.common.policies import MlpLnLstmPolicy 
                 if tensorboard:
                     model = ACKTR.load(loadname, env=env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
                                        tensorboard_log=self.tenb_dir, learning_rate=scaled_learning_rate, 
                                        policy_kwargs=policy_kwargs,max_grad_norm=max_grad_norm,kfac_clip=kfac_clip,
-                                       full_tensorboard_log=full_tensorboard_log,lr_schedule=learning_schedule)
+                                       full_tensorboard_log=full_tensorboard_log,lr_schedule=learning_schedule,n_cpu_tf_sess=n_cpu_tf_sess)
                 else:
                     model = ACKTR.load(loadname, env=env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
                                        learning_rate=np.sqrt(batch)*learning_rate,kfac_clip=kfac_clip,
-                                       policy_kwargs=policy_kwargs,max_grad_norm=max_grad_norm,lr_schedule=learning_schedule)
+                                       policy_kwargs=policy_kwargs,max_grad_norm=max_grad_norm,lr_schedule=learning_schedule,n_cpu_tf_sess=n_cpu_tf_sess)
             elif rlmodel=='lstm':
                 from stable_baselines.common.policies import MlpPolicy,MlpLstmPolicy 
                 if tensorboard:
                     model = ACKTR.load(loadname, env=env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
                                        tensorboard_log=self.tenb_dir,learning_rate=scaled_learning_rate, 
                                        policy_kwargs=policy_kwargs,max_grad_norm=max_grad_norm,
-                                       full_tensorboard_log=full_tensorboard_log,lr_schedule=learning_schedule)
+                                       full_tensorboard_log=full_tensorboard_log,lr_schedule=learning_schedule,n_cpu_tf_sess=n_cpu_tf_sess)
                 else:
                     model = ACKTR.load(loadname, env=env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
                                        learning_rate=scaled_learning_rate, policy_kwargs=policy_kwargs,
-                                       max_grad_norm=max_grad_norm,lr_schedule=learning_schedule)
+                                       max_grad_norm=max_grad_norm,lr_schedule=learning_schedule,n_cpu_tf_sess=n_cpu_tf_sess)
             else:
                 if tensorboard:
                     from stable_baselines.deepq.policies import MlpPolicy # for DQN
@@ -425,25 +437,26 @@ class Lifecycle():
                     model = ACKTR(MlpPolicy, env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
                                 tensorboard_log=self.tenb_dir, learning_rate=scaled_learning_rate,kfac_clip=kfac_clip,
                                 policy_kwargs=policy_kwargs,max_grad_norm=max_grad_norm,gae_lambda=gae_lambda,vf_coef=vf_coef,
-                                full_tensorboard_log=full_tensorboard_log,lr_schedule=learning_schedule)
+                                full_tensorboard_log=full_tensorboard_log,lr_schedule=learning_schedule,n_cpu_tf_sess=n_cpu_tf_sess)
                 else:
                     model = ACKTR(MlpPolicy, env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,kfac_clip=kfac_clip,
                                 learning_rate=scaled_learning_rate, max_grad_norm=max_grad_norm,gae_lambda=gae_lambda,vf_coef=vf_coef,
-                                policy_kwargs=policy_kwargs,lr_schedule=learning_schedule)
+                                policy_kwargs=policy_kwargs,lr_schedule=learning_schedule,n_cpu_tf_sess=n_cpu_tf_sess)
             elif rlmodel=='small_lnacktr' or rlmodel=='lnacktr':
                 from stable_baselines.common.policies import MlpLnLstmPolicy 
                 if tensorboard:
                     model = ACKTR(MlpLstmPolicy, env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
                                 tensorboard_log=self.tenb_dir, learning_rate=scaled_learning_rate, 
-                                policy_kwargs=policy_kwargs,max_grad_norm=max_grad_norm,full_tensorboard_log=full_tensorboard_log,lr_schedule=learning_schedule)
+                                policy_kwargs=policy_kwargs,max_grad_norm=max_grad_norm,full_tensorboard_log=full_tensorboard_log,
+                                lr_schedule=learning_schedule,n_cpu_tf_sess=n_cpu_tf_sess)
                 else:
                     model = ACKTR(MlpLstmPolicy, env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
-                                learning_rate=scaled_learning_rate, 
+                                learning_rate=scaled_learning_rate,n_cpu_tf_sess=n_cpu_tf_sess, 
                                 policy_kwargs=policy_kwargs,max_grad_norm=max_grad_norm,lr_schedule=learning_schedule)
             elif rlmodel=='lstm':
                 from stable_baselines.common.policies import MlpPolicy,MlpLstmPolicy 
                 model = ACKTR(MlpLstmPolicy, env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
-                            tensorboard_log=self.tenb_dir, learning_rate=learning_rate, 
+                            tensorboard_log=self.tenb_dir, learning_rate=learning_rate,n_cpu_tf_sess=n_cpu_tf_sess, 
                             policy_kwargs=policy_kwargs,max_grad_norm=max_grad_norm,lr_schedule=learning_schedule)
             else:
                 from stable_baselines.deepq.policies import MlpPolicy # for DQN

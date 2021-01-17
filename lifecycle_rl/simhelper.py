@@ -16,13 +16,14 @@ from scipy.stats import norm
 import locale
 from tabulate import tabulate
 import pandas as pd
+#import smoothfit
 from tqdm import tqdm_notebook as tqdm
 from . lifecycle import Lifecycle
 
 class SimHelper():
     def plot_stats(self,datafile,baseline=None,ref=None,xlabel=None,dire=None,plot_kiila=True):
         additional_income_tax,total_verot,total_rew,total_ps,total_htv,kiila,muut,tyollaste,tyotaste,tyossa=self.load_data(datafile)
-        mean_rew,mean_verot,mean_ps,mean_htv,mean_muut=self.comp_means(datafile)
+        mean_rew,mean_verot,mean_ps,mean_htv,mean_muut,mean_kiila=self.comp_means(datafile)
 
         if baseline is not None:
             baseline_tax,baseline_verot,baseline_rew,baseline_ps,baseline_htv,baseline_kiila,baseline_muut=self.load_data(baseline)
@@ -43,7 +44,7 @@ class SimHelper():
         else:
             self.plot_verokiila(additional_income_tax,kiila)
             self.plot_taxes(additional_income_tax,mean_rew,mean_verot,mean_ps,mean_htv,mean_muut,xlabel=xlabel,dire=dire)
-            self.plot_elasticity(kiila,mean_htv)
+            self.plot_elasticity(mean_kiila,mean_htv)
             #self.plot_taxes_prop(additional_income_tax,TELosuus_vero,xlabel='Verokiila')
 
         self.plot_total(additional_income_tax,total_rew,total_verot,total_htv,total_ps)
@@ -62,6 +63,14 @@ class SimHelper():
             plt.savefig(dire+'elasticity.eps', format='eps')
             plt.savefig(dire+'elasticity.png', format='png')
             print('dire',dire)
+            
+#         a=np.min(scale*additional_income_tax)
+#         b=np.max(scale*additional_income_tax)
+#         u = smoothfit.fit1d(scale*additional_income_tax,el, a, b, 1000, degree=1, lmbda=1.0e-6)
+#         x = numpy.linspace(a, b, 201)
+#         vals = [u(xx) for xx in x]
+#         plt.plot(x, vals, "-", label="smooth fit")
+#             
         plt.show()
 
     def plot_taxes(self,additional_tax,mean_rew,mean_verot,mean_ps,mean_htv,mean_muut,
@@ -243,8 +252,9 @@ class SimHelper():
         mean_ps=np.mean(total_ps,axis=1).reshape(-1, 1)
         mean_htv=np.mean(total_htv,axis=1).reshape(-1, 1)
         mean_muut=np.mean(total_muut,axis=1).reshape(-1, 1)
+        mean_kiila=np.mean(total_kiila,axis=1).reshape(-1, 1)
 
-        return mean_rew,mean_verot,mean_ps,mean_htv,mean_muut
+        return mean_rew,mean_verot,mean_ps,mean_htv,mean_muut,mean_kiila
 
     def get_refstats(self,filename,scale=None):
         additional_income_tax,total_verot,total_rew,total_ps,total_htv,total_kiila,total_muut,_,_,_=\

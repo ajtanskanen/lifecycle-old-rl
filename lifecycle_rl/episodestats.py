@@ -14,12 +14,12 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 import seaborn as sns
 from scipy.stats import norm
-import locale
+#import locale
 from tabulate import tabulate
 import pandas as pd
 from tqdm import tqdm_notebook as tqdm
 
-locale.setlocale(locale.LC_ALL, 'fi_FI')
+#locale.setlocale(locale.LC_ALL, 'fi_FI')
 
 class EpisodeStats():
     def __init__(self,timestep,n_time,n_emps,n_pop,env,minimal,min_age,max_age,min_retirementage,year=2018,version=2,params=None):
