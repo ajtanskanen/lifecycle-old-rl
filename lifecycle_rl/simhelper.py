@@ -280,7 +280,7 @@ class SimHelper():
 
 
     def comp_stats(self,taxresults,additional,datafile,repeats,minimal=False,mortality=False,perustulo=False,
-                    randomness=True,pinkslip=True,plotdebug=False):
+                    randomness=True,pinkslip=True,plotdebug=False,start_repeat=0):
         k=0
         total_verot=np.zeros(( additional.shape[0],repeats))
         total_rew=np.zeros(( additional.shape[0],repeats))
@@ -305,7 +305,7 @@ class SimHelper():
             verot=[]
             htv=[]
             muut_tulot=[]
-            for repeat in range(0,repeats):
+            for repeat in range(start_repeat,repeats):
                 num=int(np.round(100*tax))
                 print('computing extra tax {} repeat {}'.format(tax,repeat))
                 results=taxresults+'_{}_{}'.format(num,repeat)

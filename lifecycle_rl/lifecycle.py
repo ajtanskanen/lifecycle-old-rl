@@ -12,9 +12,10 @@ import gym
 from gym import spaces, logger, utils, error
 from gym.utils import seeding
 import numpy as np
-from fin_benefits import Benefits
+#from fin_benefits import Benefits
 import matplotlib.pyplot as plt
 import gym_unemployment
+#import cygym_unemployment
 import h5py
 import tensorflow as tf
 from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -24,6 +25,9 @@ from . episodestats import EpisodeStats
 from . simstats import SimStats
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # or any {'0', '1', '2'}
+os.environ['OMP_NUM_THREADS'] = '4'  # or any {'0', '1', '2'}
+OMP_NUM_THREADS=4
+
 import warnings
 # https://stackoverflow.com/questions/15777951/how-to-suppress-pandas-future-warning
 warnings.simplefilter(action='ignore', category=FutureWarning)
@@ -293,7 +297,7 @@ class Lifecycle():
         else:
             return int((age-self.min_age)*self.inv_timestep)
 
-    def get_multiprocess_env(self,rlmodel,debug=False,arch=None):
+    def get_multiprocess_env(self,rlmodel,debug=False,arch=None,predict=False):
 
         if arch is not None:
             print('arch',arch)
@@ -316,7 +320,10 @@ class Lifecycle():
                 policy_kwargs = dict(act_fun=tf.nn.leaky_relu, net_arch=arch) 
             else:
                 policy_kwargs = dict(act_fun=tf.nn.leaky_relu, net_arch=[256, 256, 16]) 
-            n_cpu = 8 # 12 # 20
+            if predict:
+                n_cpu = 20
+            else:
+                n_cpu = 8 # 12 # 20
         elif rlmodel=='small_acktr' or rlmodel=='small_lnacktr':
             policy_kwargs = dict(act_fun=tf.nn.relu, net_arch=[256, 256, 128]) 
             n_cpu = 4 #8
@@ -342,11 +349,13 @@ class Lifecycle():
         return policy_kwargs,n_cpu
 
     def setup_rlmodel(self,rlmodel,loadname,env,batch,policy_kwargs,learning_rate,
-                      cont,max_grad_norm=None,tensorboard=True,verbose=1,n_cpu=1,learning_schedule='linear',
+                      cont,max_grad_norm=None,tensorboard=False,verbose=1,n_cpu=1,learning_schedule='linear',
                       vf=None,gae_lambda=None):
         '''
         Alustaa RL-mallin ajoa varten
         '''
+        n_cpu_tf_sess=4 #n_cpu #4
+        #batch=max(1,int(np.ceil(batch/n_cpu)))
         batch=max(1,int(np.ceil(batch/n_cpu)))
         
         full_tensorboard_log=True
@@ -360,7 +369,6 @@ class Lifecycle():
             
         max_grad_norm=0.001
         kfac_clip=0.001
-        n_cpu_tf_sess=4
         
         if cont:
             learning_rate=0.25*learning_rate
@@ -540,7 +548,6 @@ class Lifecycle():
         '''
         Opetusrutiini
         '''
-        
         self.best_mean_reward, self.n_steps = -np.inf, 0
 
         if pop is not None:
@@ -564,19 +571,20 @@ class Lifecycle():
 
         gkwargs=self.gym_kwargs.copy()
         gkwargs.update({'train':True})
-        
+    
         nonvec=False
         if nonvec:
             env=self.env
         else:
             if use_vecmonitor:
-                env = SubprocVecEnv([lambda: self.make_env(self.environment, i, gkwargs, use_monitor=False) for i in range(n_cpu)])
+                env = SubprocVecEnv([lambda: self.make_env(self.environment, i, gkwargs, use_monitor=False) for i in range(n_cpu)], start_method='spawn')
                 env = VecMonitor(env,filename=self.log_dir+'monitor.csv')
             else:
-                env = SubprocVecEnv([lambda: self.make_env(self.environment, i, gkwargs, use_monitor=use_callback) for i in range(n_cpu)])
+                env = SubprocVecEnv([lambda: self.make_env(self.environment, i, gkwargs, use_monitor=use_callback) for i in range(n_cpu)], start_method='spawn')
+                #env = ShmemVecEnv([lambda: self.make_env(self.environment, i, gkwargs, use_monitor=use_callback) for i in range(n_cpu)], start_method='fork')
 
-            if False:
-                env = DummyVecEnv([lambda: gym.make(self.environment,kwargs=gkwargs) for i in range(n_cpu)])
+            #if False:
+                #env = DummyVecEnv([lambda: gym.make(self.environment,kwargs=gkwargs) for i in range(n_cpu)])
 
         normalize=False
         if normalize:
@@ -610,7 +618,7 @@ class Lifecycle():
         return val
         
     def setup_model(self,debug=False,rlmodel='acktr',plot=True,load=None,pop=None,
-                    deterministic=False,arch=None):
+                    deterministic=False,arch=None,predict=False):
 
         if pop is not None:
             self.n_pop=pop
@@ -629,7 +637,8 @@ class Lifecycle():
         print('simulating ',self.loadname)
 
         # multiprocess environment
-        policy_kwargs,n_cpu=self.get_multiprocess_env(rlmodel,debug=debug,arch=arch)
+        policy_kwargs,n_cpu=self.get_multiprocess_env(rlmodel,debug=debug,arch=arch,predict=predict)
+        n_cpu_tf_sess=4
 
         nonvec=False
         if nonvec:
@@ -649,13 +658,13 @@ class Lifecycle():
         print('predicting...')
 
         if self.rlmodel=='a2c':
-            model = A2C.load(load, env=env, verbose=1,gamma=self.gamma, policy_kwargs=policy_kwargs)
+            model = A2C.load(load, env=env, verbose=1,gamma=self.gamma, policy_kwargs=policy_kwargs,n_cpu_tf_sess=n_cpu_tf_sess)
         elif self.rlmodel in set(['acktr','small_acktr','lnacktr','small_lnacktr','deep_acktr','leaky_acktr']):
-            model = ACKTR.load(load, env=env, verbose=1,gamma=self.gamma, policy_kwargs=policy_kwargs)
+            model = ACKTR.load(load, env=env, verbose=1,gamma=self.gamma, policy_kwargs=policy_kwargs,n_cpu_tf_sess=n_cpu_tf_sess)
         elif self.rlmodel=='trpo':
-            model = TRPO.load(load, env=env, verbose=1,gamma=self.gamma, policy_kwargs=policy_kwargs)
+            model = TRPO.load(load, env=env, verbose=1,gamma=self.gamma, policy_kwargs=policy_kwargs,n_cpu_tf_sess=n_cpu_tf_sess)
         elif self.rlmodel=='dqn':
-            model = DQN.load(load, env=env, verbose=1,gamma=self.gamma,prioritized_replay=True,policy_kwargs=policy_kwargs)
+            model = DQN.load(load, env=env, verbose=1,gamma=self.gamma,prioritized_replay=True,policy_kwargs=policy_kwargs,n_cpu_tf_sess=n_cpu_tf_sess)
         else:
             error('unknown model')
 
@@ -665,7 +674,7 @@ class Lifecycle():
                  deterministic=False,save='results/testsimulate',arch=None):
 
         model,env,n_cpu=self.setup_model(debug=debug,rlmodel=rlmodel,plot=plot,load=load,pop=pop,
-                 deterministic=deterministic,arch=arch)
+                 deterministic=deterministic,arch=arch,predict=True)
 
         states = env.reset()
         n=n_cpu-1
@@ -677,15 +686,14 @@ class Lifecycle():
             act, predstate = model.predict(states,deterministic=deterministic)
             newstate, rewards, dones, infos = env.step(act)
 
-            done=False
+            #done=False
             for k in range(n_cpu):
                 if dones[k]:
-                    terminal_state=infos[k]['terminal_observation']  
-                    self.episodestats.add(pop_num[k],act[k],rewards[k],states[k],terminal_state,infos[k],debug=debug)
+                    self.episodestats.add(pop_num[k],act[k],rewards[k],states[k],infos[k]['terminal_observation'] ,infos[k],debug=debug)
                     tqdm_e.update(1)
                     n+=1
                     tqdm_e.set_description("Pop " + str(n))
-                    done=True
+                    #done=True
                     pop_num[k]=n
                 else:
                     self.episodestats.add(pop_num[k],act[k],rewards[k],states[k],newstate[k],infos[k],debug=debug)
@@ -746,70 +754,93 @@ class Lifecycle():
    
     def run_dummy(self,strategy='emp',debug=False,pop=None):
         '''
-        Lasketaan työllisyysasteet ikäluokittain
+        Lasketaan työllisyysasteet ikäluokittain satunnaisella politiikalla
+        hyödyllinen unemp-envin profilointiin
         '''
+        
+        self.n_pop=pop
 
-        self.episodestats.reset()
+        self.episodestats.reset(self.timestep,self.n_time,self.n_employment,self.n_pop,
+                                self.env,self.minimal,self.min_age,self.max_age,self.min_retirementage,self.year)
         if pop is not None:
             self.n_pop=pop
 
         print('simulating...')
-
-        initial=(0,0,0,0,self.min_age,0,0)
+        tqdm_e = tqdm(range(int(self.n_pop)), desc='Population', leave=True, unit=" p")
+        
         self.env.seed(1234) 
-        states = env.reset()
-        n=0
+        state = self.env.reset()
+        age=self.min_age
         p=np.zeros(self.n_pop)
+        n_cpu=1
+        n=0
         pop_num=np.array([k for k in range(n_cpu)])
+        v=2 # versio
         while n<self.n_pop:
-            emp,_,_,_,age=self.env.state_decode(state) # current employment state
-
-            if strategy=='random':
-                act=np.random.randint(3)
-            elif strategy=='emp':
-                if age>=self.min_retirementage:
-                    if emp!=2:
-                        act=2
-                    else:
-                        act=0
-                else:
-                    if emp==0:
-                        act=1
-                    else:
-                        act=0
-            elif strategy=='unemp':
-                if age>=self.retirement_age:
-                    if emp!=2:
-                        act=2
-                    else:
-                        act=0
-                else:
-                    if emp==1:
-                        act=1
-                    else:
-                        act=0
-            elif strategy=='alt':
-                if age>=self.min_retirementage:
-                    if emp!=2:
-                        act=2
-                    else:
-                        act=0
-                else:
-                    act=1
-
-            newstate,r,done,_=self.env.step(act)
-            self.episodestats.add(pop_num[0],act,r,state,newstate,debug=debug)
-            state=newstate
+            #print('agent {}'.format(n))
+            tqdm_e.update(1)
+            tqdm_e.set_description("Pop " + str(n))
+            
+            done=False
             pop_num[0]=n
+            
+            while not done:
+                if v==1:
+                    emp,_,_,_,age=self.env.state_decode(state) # current employment state
+                elif v==3:
+                    emp,_,_,_,age,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_=self.env.state_decode(state) # current employment state
+                else:
+                    emp,_,_,_,age,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_=self.env.state_decode(state) # current employment state            
 
-            if done:
-                if debug:
-                    print('done')
-                break
+                if strategy=='random':
+                    act=np.random.randint(3)
+                elif strategy=='emp':
+                    if age>=self.min_retirementage:
+                        if emp!=2:
+                            act=2
+                        else:
+                            act=0
+                    else:
+                        if emp==0:
+                            act=1
+                        else:
+                            act=0
+                elif strategy=='unemp':
+                    if age>=self.retirement_age:
+                        if emp!=2:
+                            act=2
+                        else:
+                            act=0
+                    else:
+                        if emp==1:
+                            act=1
+                        else:
+                            act=0
+                elif strategy=='alt':
+                    if age>=self.min_retirementage:
+                        if emp!=2:
+                            act=2
+                        else:
+                            act=0
+                    else:
+                        act=1
+
+                newstate,r,done,_=self.env.step(act)
+                
+                if done:
+                    n=n+1
+                    if debug:
+                        print('done')
+                    newstate=self.env.reset()
+                    break
+                else:
+                    self.episodestats.add(pop_num[0],act,r,state,newstate,debug=debug)
+                    
+                state=newstate
 
         #self.plot_stats(5)
-        self.plot_stats()
-        self.plot_reward()
+        #self.plot_stats()
+        #self.plot_reward()
 
     def compare_with(self,cc2,label1='vaihtoehto',label2='perus',figname=None,grayscale=False,dash=True):
         '''

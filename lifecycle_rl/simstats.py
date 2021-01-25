@@ -225,6 +225,8 @@ class SimStats(EpisodeStats):
         m_median=np.median(emp_tyolliset_osuus,axis=0)
         s_emp=np.std(emp_tyolliset_osuus,axis=0)
         m_best=emp_tyolliset_osuus[best_emp,:]
+        um_mean=np.mean(emp_tyottomat_osuus,axis=0)
+        um_median=np.median(emp_tyottomat_osuus,axis=0)
 
         if self.minimal:
             print('Työllisyyden keskiarvo {:.0f} htv mediaani {:.0f} htv std {:.0f} htv'.format(mean_htv,median_htv,std_htv))
@@ -280,6 +282,17 @@ class SimStats(EpisodeStats):
         ax.plot(x,100*m_best,label='paras')
         emp_statsratio=100*self.emp_stats()
         ax.plot(x,emp_statsratio,label='havainto')
+        ax.legend()
+        plt.show()
+
+        fig,ax=plt.subplots()
+        ax.set_xlabel('Ikä [v]')
+        ax.set_ylabel('Työttömyysaste [%]')
+        x=np.linspace(self.min_age,self.max_age,self.n_time)
+        ax.plot(x,100*um_mean,label='keskiarvo')
+        ax.plot(x,100*um_median,label='mediaani')
+        #unemp_statsratio=100*self.unemp_stats()
+        #ax.plot(x,unemp_statsratio,label='havainto')
         ax.legend()
         plt.show()
 
@@ -445,9 +458,9 @@ class SimStats(EpisodeStats):
         ax.set_xlabel('Ikä [v]')
         ax.set_ylabel('cumsum työllisyys [lkm]')
         x=np.linspace(self.min_age,self.max_age,self.n_time)
-        cs=self.timestep*np.cumsum(h_mean2[1:]-h_mean1[1:])
-        c2=self.timestep*np.cumsum(h_mean1[1:])
-        c1=self.timestep*np.cumsum(h_mean2[1:])
+        cs=np.cumsum(h_mean2[1:]-h_mean1[1:])
+        c2=np.cumsum(h_mean1[1:])
+        c1=np.cumsum(h_mean2[1:])
         ax.plot(x[1:],cs,label=label1)
         #emp_statsratio=100*self.emp_stats()
         #ax.plot(x,emp_statsratio,label='havainto')
