@@ -15,7 +15,7 @@ import numpy as np
 #from fin_benefits import Benefits
 import matplotlib.pyplot as plt
 import gym_unemployment
-#import cygym_unemployment
+import cygym_unemployment
 import h5py
 import tensorflow as tf
 from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -732,13 +732,16 @@ class Lifecycle():
             
         q=self.episodestats.comp_budget()
         q2=self.episodestats.comp_participants(scale=True)
+        kokotyossa,osatyossa=self.episodestats.comp_parttime_aggregate()
         htv=q2['htv']
         palkansaajia=q2['palkansaajia']
         muut_tulot=q['muut tulot']
         tC=0.2*max(0,q['tyotulosumma']-q['verot+maksut'])
         kiila,qc=self.episodestats.comp_verokiila()
-        #tyollaste,_,tyotaste,_,_=self.episodestats.comp_employed()
-        tyollaste,tyotaste=0,0
+        tyollaste,_=self.episodestats.comp_employed_aggregate()
+        tyotaste=self.episodestats.comp_unemployed_aggregate()
+        print(tyollaste,tyotaste)
+        #tyollaste,tyotaste=0,0
         #
         #qq={}
         #qq['tI']=q['verot+maksut']/q['tyotulosumma']
@@ -747,7 +750,7 @@ class Lifecycle():
         #
         #print(qq,qc)
             
-        return rew,q['tyotulosumma'],q['verot+maksut'],htv,muut_tulot,kiila,tyollaste,tyotaste,palkansaajia
+        return rew,q['tyotulosumma'],q['verot+maksut'],htv,muut_tulot,kiila,tyollaste,tyotaste,palkansaajia,osatyossa
    
     def load_sim(self,load=None):
         self.episodestats.load_sim(load)
