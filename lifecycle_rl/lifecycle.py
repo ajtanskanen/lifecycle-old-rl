@@ -54,7 +54,7 @@ class Lifecycle():
                     osittainen_perustulo=None,gamma=None,exploration=None,exploration_ratio=None,
                     irr_vain_tyoelake=None,additional_income_tax=None,additional_tyel_premium=None,
                     additional_kunnallisvero=None,additional_income_tax_high=None,
-                    year=2018,version=2,scale_tyel_accrual=None,preferencenoise_level=None,
+                    year=2018,version=3,scale_tyel_accrual=None,preferencenoise_level=None,
                     scale_additional_tyel_accrual=None,valtionverotaso=None,perustulo_asetettava=None,
                     porrasta_toe=None,include_halftoe=None):                    
         '''
@@ -354,7 +354,7 @@ class Lifecycle():
         '''
         Alustaa RL-mallin ajoa varten
         '''
-        n_cpu_tf_sess=4 #n_cpu #4
+        n_cpu_tf_sess=16 #n_cpu #4 vai n_cpu??
         #batch=max(1,int(np.ceil(batch/n_cpu)))
         batch=max(1,int(np.ceil(batch/n_cpu)))
         

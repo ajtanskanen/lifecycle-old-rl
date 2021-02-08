@@ -22,7 +22,7 @@ from tqdm import tqdm_notebook as tqdm
 #locale.setlocale(locale.LC_ALL, 'fi_FI')
 
 class EpisodeStats():
-    def __init__(self,timestep,n_time,n_emps,n_pop,env,minimal,min_age,max_age,min_retirementage,year=2018,version=2,params=None):
+    def __init__(self,timestep,n_time,n_emps,n_pop,env,minimal,min_age,max_age,min_retirementage,year=2018,version=3,params=None):
         self.version=version
         self.reset(timestep,n_time,n_emps,n_pop,env,minimal,min_age,max_age,min_retirementage,year,params=params)
         print('version',version)
