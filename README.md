@@ -1,13 +1,17 @@
-# Elinkaarimalli
-
-Elinkaarimallissa yksilöt maksimoivat omaa odotettua hyötyää tarkasteluhetkestä eteenpäin.
-Malli riippu fin_benefits:ssä toteutetusta suomalaisesta sosiaaliturvalaskelmista, joista
-saatavaa hyötyä verrataan työnteon tuottamaan nettotuloon.
-
-Malli on toteutettu Python-kielellä, ja helpoimmin malli voi ajaa unemployment_with_RL_3:n 
-avulla. Mallia voi ajaa suoraan Colabissa. 
-
 # Life cycle model
+
+The life cycle model describes agents making optimal decisions in the framework of 
+Finnish social security. The main interest in this setting is how changes in the social security
+impacts employment. 
+
+The library depends on separate econogym and on benefits modules that implement
+various states of agents and the benefits of social security scheme. The optimal 
+behavior of the agents is solved using Reinforcement Learning library stable baselines.
+
+The library reproduces the observed employment rates in Finland quite well, at all ages
+from 20-70 separately for women and men. 
+
+The model is written in Python.
 
 Description of the lifecycle model can be found (in Finnish!) from articles (Tanskanen, 2019a; Tanskanen, 2019b).
 
