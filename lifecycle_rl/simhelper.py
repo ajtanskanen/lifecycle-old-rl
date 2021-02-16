@@ -431,6 +431,7 @@ class SimHelper():
                 num=int(np.round(100*tax))
                 print('computing extra tax {} repeat {}'.format(tax,repeat))
                 results=taxresults+'_{}_{}'.format(num,repeat)
+                print(results)
                 r,qps,qv,h,muut,kiila,tyoll,tyot,lkm,osatyo_osuus=cc.render_laffer(load=results)
                 vvosuus,kvosuus,vosuus=cc.comp_taxratios(grouped=True)
                 rew.append(r)

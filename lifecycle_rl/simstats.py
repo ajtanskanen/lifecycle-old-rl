@@ -468,7 +468,7 @@ class SimStats(EpisodeStats):
         #ax.legend()
         plt.show()
 
-        demog1,demog2=self.get_demog()
+        demog2=self.get_demog()
         fig,ax=plt.subplots()
         ax.set_xlabel('Ikä [v]')
         ax.set_ylabel('cumsum työllisyys [lkm]')
@@ -696,6 +696,7 @@ class SimStats(EpisodeStats):
         #print(tyoll_virta1.shape)
         m1=np.mean(tyoll_virta1,axis=0,keepdims=True).transpose()
         m2=np.mean(tyoll_virta2,axis=0,keepdims=True).transpose()
+        fig,ax=plt.subplots()
         plt.plot(m1,label=label1)
         plt.plot(m2,label=label2)
         ax.set_xlabel('Aika')

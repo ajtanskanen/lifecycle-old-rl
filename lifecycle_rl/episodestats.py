@@ -18,6 +18,7 @@ from scipy.stats import norm
 from tabulate import tabulate
 import pandas as pd
 from tqdm import tqdm_notebook as tqdm
+from . empstats import Empstats
 
 #locale.setlocale(locale.LC_ALL, 'fi_FI')
 
@@ -56,6 +57,9 @@ class EpisodeStats():
         else:
             self.n_groups=6
             
+        self.empstats=Empstats(year=self.year,max_age=self.max_age,n_groups=self.n_groups,timestep=self.timestep,n_time=self.n_time,
+                                min_age=self.min_age)
+        
         n_emps=self.n_employment
         self.empstate=np.zeros((self.n_time,n_emps))
         self.gempstate=np.zeros((self.n_time,n_emps,self.n_groups))
@@ -1102,7 +1106,7 @@ class EpisodeStats():
     def plot_compare_virrat(self,virta1,virta2,min_time=25,max_time=65,label1='perus',label2='vaihtoehto',virta_label='työllisyys',ymin=None,ymax=None):
         x=np.linspace(self.min_age,self.max_age,self.n_time)
         
-        demog,demog2=self.get_demog()
+        demog2=self.empstats.get_demog()
         
         scaled1=virta1*demog2/self.n_pop #/self.alive
         scaled2=virta2*demog2/self.n_pop #/self.alive
@@ -1177,10 +1181,10 @@ class EpisodeStats():
         
         tyollisyysaste_m,osatyoaste_m,tyottomyysaste_m,ka_tyottomyysaste=self.comp_gempratios(gender='men',unempratio=False)
         tyollisyysaste_w,osatyoaste_w,tyottomyysaste_w,ka_tyottomyysaste=self.comp_gempratios(gender='women',unempratio=False)
-        emp_statsratio_m=self.emp_stats(g=1)[:-1]*100
-        emp_statsratio_w=self.emp_stats(g=2)[:-1]*100
-        unemp_statsratio_m=self.unemp_stats(g=1)[:-1]*100
-        unemp_statsratio_w=self.unemp_stats(g=2)[:-1]*100
+        emp_statsratio_m=self.empstats.emp_stats(g=1)[:-1]*100
+        emp_statsratio_w=self.empstats.emp_stats(g=2)[:-1]*100
+        unemp_statsratio_m=self.empstats.unemp_stats(g=1)[:-1]*100
+        unemp_statsratio_w=self.empstats.unemp_stats(g=2)[:-1]*100
         
         w1=1.0
         w2=3.0
@@ -1201,7 +1205,7 @@ class EpisodeStats():
         x=np.linspace(self.min_age,self.max_age,self.n_time)
         fig,ax=plt.subplots()
         ax.plot(x,100*(self.empstate[:,11]+self.empstate[:,5]+self.empstate[:,7])/self.alive[:,0],label='työvoiman ulkopuolella, ei opiskelija, sis. vanh.vapaat')
-        emp_statsratio=100*self.outsider_stats()    
+        emp_statsratio=100*self.empstats.outsider_stats()    
         ax.plot(x,emp_statsratio,label='havainto')
         ax.set_xlabel('Ikä [v]')
         ax.set_ylabel('Osuus tilassa [%]')
@@ -1212,9 +1216,9 @@ class EpisodeStats():
         fig,ax=plt.subplots()
         ax.plot(x,100*np.sum(self.gempstate[:,11,3:5]+self.gempstate[:,5,3:5]+self.gempstate[:,7,3:5],1,keepdims=True)/np.sum(self.galive[:,3:5],1,keepdims=True),label='työvoiman ulkopuolella, naiset')
         ax.plot(x,100*np.sum(self.gempstate[:,11,0:2]+self.gempstate[:,5,0:2]+self.gempstate[:,7,0:2],1,keepdims=True)/np.sum(self.galive[:,3:5],1,keepdims=True),label='työvoiman ulkopuolella, miehet')
-        emp_statsratio=100*self.outsider_stats(g=1)    
+        emp_statsratio=100*self.empstats.outsider_stats(g=1)    
         ax.plot(x,emp_statsratio,label='havainto, naiset')
-        emp_statsratio=100*self.outsider_stats(g=2)    
+        emp_statsratio=100*self.empstats.outsider_stats(g=2)    
         ax.plot(x,emp_statsratio,label='havainto, miehet')
         ax.set_xlabel('Ikä [v]')
         ax.set_ylabel('Osuus tilassa [%]')
@@ -1244,7 +1248,7 @@ class EpisodeStats():
         x=np.linspace(self.min_age,self.max_age,self.n_time)
         fig,ax=plt.subplots()
         ax.plot(x+self.timestep,100*self.empstate[:,12]/self.alive[:,0],label='opiskelija tai armeijassa')
-        emp_statsratio=100*self.student_stats()
+        emp_statsratio=100*self.empstats.student_stats()
         ax.plot(x,emp_statsratio,label='havainto')
         ax.set_xlabel('Ikä [v]')
         ax.set_ylabel('Osuus tilassa [%]')
@@ -1282,9 +1286,9 @@ class EpisodeStats():
             x=np.linspace(self.min_age,self.max_age,self.n_time)
             ax.plot(x,osuus,label=leg)
             
-        emp_statsratio=100*self.student_stats(g=1)
+        emp_statsratio=100*self.empstats.student_stats(g=1)
         ax.plot(x,emp_statsratio,label='havainto, naiset')
-        emp_statsratio=100*self.student_stats(g=2)
+        emp_statsratio=100*self.empstats.student_stats(g=2)
         ax.plot(x,emp_statsratio,label='havainto, miehet')
         ax.set_xlabel('Ikä [v]')
         ax.set_ylabel('Osuus tilassa [%]')
@@ -1310,9 +1314,9 @@ class EpisodeStats():
             x=np.linspace(self.min_age,self.max_age,self.n_time)
             ax.plot(x,osuus,label=leg)
             
-        emp_statsratio=100*self.disab_stat(g=1)
+        emp_statsratio=100*self.empstats.disab_stat(g=1)
         ax.plot(x,emp_statsratio,label='havainto, naiset')
-        emp_statsratio=100*self.disab_stat(g=2)
+        emp_statsratio=100*self.empstats.disab_stat(g=2)
         ax.plot(x,emp_statsratio,label='havainto, miehet')
         ax.set_xlabel('Ikä [v]')
         ax.set_ylabel('Osuus tilassa [%]')
@@ -1379,7 +1383,7 @@ class EpisodeStats():
         return vv_osuus,kv_osuus,v_osuus
         
     def comp_verokiila(self):
-        demog,demog2=self.get_demog()
+        demog2=self.empstats.get_demog()
         scalex=demog2/self.n_pop
 
         valtionvero_osuus=np.sum(self.infostats_valtionvero_distrib*scalex,0)
@@ -1420,7 +1424,7 @@ class EpisodeStats():
         fig,ax=plt.subplots()
         ax.plot(x,tyollisyysaste,label='työllisyysaste')
         ax.plot(x,tyottomyysaste,label='työttömien osuus')
-        emp_statsratio=100*self.emp_stats()
+        emp_statsratio=100*self.empstats.emp_stats()
         ax.plot(x,emp_statsratio,ls='--',label='havainto')
         ax.set_xlabel('Ikä [v]')
         ax.set_ylabel('Osuus tilassa [%]')
@@ -1495,13 +1499,13 @@ class EpisodeStats():
         x=np.linspace(self.min_age,self.max_age,self.n_time)
         if unempratio:
             tyollisyysaste,osatyoaste,tyottomyysaste,ka_tyottomyysaste=self.comp_empratios(self.empstate,self.alive,unempratio=True)
-            unempratio_stat=100*self.unempratio_stats()
+            unempratio_stat=100*self.empstats.unempratio_stats()
             labeli='keskimääräinen työttömyysaste '+str(ka_tyottomyysaste)      
             ylabeli='Työttömyysaste [%]'
             labeli2='työttömyysaste'
         else:
             tyollisyysaste,osatyoaste,tyottomyysaste,ka_tyottomyysaste=self.comp_empratios(self.empstate,self.alive,unempratio=False)
-            unempratio_stat=100*self.unemp_stats()  
+            unempratio_stat=100*self.empstats.unemp_stats()  
             labeli='keskimääräinen työttömien osuus väestöstö '+str(ka_tyottomyysaste)
             ylabeli='Työttömien osuus väestöstö [%]'
             labeli2='työttömien osuus väestöstö'
@@ -1549,13 +1553,13 @@ class EpisodeStats():
             lstyle='--'            
             
         if unempratio:
-            ax.plot(x,100*self.unempratio_stats(g=1),ls=lstyle,label='havainto, naiset')
-            ax.plot(x,100*self.unempratio_stats(g=2),ls=lstyle,label='havainto, miehet')
+            ax.plot(x,100*self.empstats.unempratio_stats(g=1),ls=lstyle,label='havainto, naiset')
+            ax.plot(x,100*self.empstats.unempratio_stats(g=2),ls=lstyle,label='havainto, miehet')
             labeli='keskimääräinen työttömyysaste '+str(ka_tyottomyysaste)      
             ylabeli='Työttömyysaste [%]'
         else:
-            ax.plot(x,100*self.unemp_stats(g=1),ls=lstyle,label='havainto, naiset')
-            ax.plot(x,100*self.unemp_stats(g=2),ls=lstyle,label='havainto, miehet')
+            ax.plot(x,100*self.empstats.unemp_stats(g=1),ls=lstyle,label='havainto, naiset')
+            ax.plot(x,100*self.empstats.unemp_stats(g=2),ls=lstyle,label='havainto, miehet')
             labeli='keskimääräinen työttömien osuus väestöstö '+str(ka_tyottomyysaste)
             ylabeli='Työttömien osuus väestöstö [%]'
             
@@ -1645,9 +1649,9 @@ class EpisodeStats():
             ax.plot(x,tyollisyysaste,color=color,label='työllisyysaste {}'.format(leg))
             #ax.plot(x,tyottomyysaste,label='työttömyys {}'.format(leg))
             
-        emp_statsratio=100*self.emp_stats(g=2)
+        emp_statsratio=100*self.empstats.emp_stats(g=2)
         ax.plot(x,emp_statsratio,ls=lstyle,color='darkgray',label='havainto, miehet')
-        emp_statsratio=100*self.emp_stats(g=1)
+        emp_statsratio=100*self.empstats.emp_stats(g=1)
         ax.plot(x,emp_statsratio,ls=lstyle,color='black',label='havainto, naiset')
         ax.set_xlabel('Ikä [v]')
         ax.set_ylabel('Osuus tilassa [%]')
@@ -1677,12 +1681,12 @@ class EpisodeStats():
     def count_putki(self,emps=None):
         if emps is None:
             piped=np.reshape(self.empstate[:,4],(self.empstate[:,4].shape[0],1))
-            demog,demog2=self.get_demog()
+            demog2=self.empstats.get_demog()
             putkessa=self.timestep*np.nansum(piped[1:]/self.alive[1:]*demog2[1:])
             return putkessa
         else:
             piped=np.reshape(emps[:,4],(emps[:,4].shape[0],1))
-            demog,demog2=self.get_demog()
+            demog2=self.empstats.get_demog()
             alive=np.sum(emps,axis=1,keepdims=True)
             putkessa=self.timestep*np.nansum(piped[1:]/alive[1:]*demog2[1:])
             return putkessa
@@ -1861,45 +1865,45 @@ class EpisodeStats():
         self.plot_states(siirtyneet_ratio,ylabel='Siirtyneet osa-aikatyöhön tilasta',stack=True,
                         yminlim=0,ymaxlim=min(100,1.1*np.nanmax(np.cumsum(siirtyneet_ratio,1))))
 
-    def plot_army(self):
-        x=np.linspace(self.min_age,self.max_age,self.n_time)
-        fig,ax=plt.subplots()
-        ax.plot(x,100*self.empstate[:,14]/self.alive[:,0],label='armeijassa ja siviilipalveluksessa olevat')
-        emp_statsratio=100*self.army_stats()
-        ax.plot(x,emp_statsratio,label='havainto')
-        ax.set_xlabel('Ikä [v]')
-        ax.set_ylabel('Osuus tilassa [%]')
-        ax.legend()
-        plt.show()
-
-    def plot_group_army(self):
-        fig,ax=plt.subplots()
-        for gender in range(2):
-            if gender==0:
-                leg='Armeija Miehet'
-                opiskelijat=np.sum(self.gempstate[:,14,0:3],axis=1)
-                alive=np.zeros((self.galive.shape[0],1))
-                alive[:,0]=np.sum(self.galive[:,0:3],1)
-            else:
-                leg='Armeija Naiset'
-                opiskelijat=np.sum(self.gempstate[:,14,3:6],axis=1)
-                alive=np.zeros((self.galive.shape[0],1))
-                alive[:,0]=np.sum(self.galive[:,3:6],1)
-        
-            opiskelijat=np.reshape(opiskelijat,(self.galive.shape[0],1))
-            osuus=100*opiskelijat/alive
-            x=np.linspace(self.min_age,self.max_age,self.n_time)
-            ax.plot(x,osuus,label=leg)
-            
-        emp_statsratio=100*self.army_stats(g=1)
-        ax.plot(x,emp_statsratio,label='havainto, naiset')
-        emp_statsratio=100*self.army_stats(g=2)
-        ax.plot(x,emp_statsratio,label='havainto, miehet')
-        ax.set_xlabel('Ikä [v]')
-        ax.set_ylabel('Osuus tilassa [%]')
-        ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
-        plt.show()
-        
+#     def plot_army(self):
+#         x=np.linspace(self.min_age,self.max_age,self.n_time)
+#         fig,ax=plt.subplots()
+#         ax.plot(x,100*self.empstate[:,14]/self.alive[:,0],label='armeijassa ja siviilipalveluksessa olevat')
+#         emp_statsratio=100*self.army_stats()
+#         ax.plot(x,emp_statsratio,label='havainto')
+#         ax.set_xlabel('Ikä [v]')
+#         ax.set_ylabel('Osuus tilassa [%]')
+#         ax.legend()
+#         plt.show()
+# 
+#     def plot_group_army(self):
+#         fig,ax=plt.subplots()
+#         for gender in range(2):
+#             if gender==0:
+#                 leg='Armeija Miehet'
+#                 opiskelijat=np.sum(self.gempstate[:,14,0:3],axis=1)
+#                 alive=np.zeros((self.galive.shape[0],1))
+#                 alive[:,0]=np.sum(self.galive[:,0:3],1)
+#             else:
+#                 leg='Armeija Naiset'
+#                 opiskelijat=np.sum(self.gempstate[:,14,3:6],axis=1)
+#                 alive=np.zeros((self.galive.shape[0],1))
+#                 alive[:,0]=np.sum(self.galive[:,3:6],1)
+#         
+#             opiskelijat=np.reshape(opiskelijat,(self.galive.shape[0],1))
+#             osuus=100*opiskelijat/alive
+#             x=np.linspace(self.min_age,self.max_age,self.n_time)
+#             ax.plot(x,osuus,label=leg)
+#             
+#         emp_statsratio=100*self.army_stats(g=1)
+#         ax.plot(x,emp_statsratio,label='havainto, naiset')
+#         emp_statsratio=100*self.army_stats(g=2)
+#         ax.plot(x,emp_statsratio,label='havainto, miehet')
+#         ax.set_xlabel('Ikä [v]')
+#         ax.set_ylabel('Osuus tilassa [%]')
+#         ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
+#         plt.show()
+#         
 
     def plot_ave_stay(self):
         self.plot_ratiostates(self.time_in_state,ylabel='Ka kesto tilassa',stack=False)
@@ -2200,182 +2204,6 @@ class EpisodeStats():
         plt.title(title)
         plt.show()
         
-    def map_ratios(self,ratio,min_age=18,max_age=70):
-        emp_ratio=np.zeros(self.n_time)
-        for a in range(min_age,max_age):
-            emp_ratio[self.map_age(a):self.map_age(a+1)]=ratio[a-min_age]
-            
-        return emp_ratio
-        
-    def emp_stats(self,g=0):
-        '''
-        työssä olevien osuus väestöstö
-        Lähde: Tilastokeskus
-        '''
-        if self.year==2018:
-            if g==0: # kaikki
-                emp=np.array([0.299,0.455,0.464,0.548,0.569,0.602,0.649,0.682,0.709,0.732,0.743,0.755,0.761,0.772,0.779,0.784,0.791,0.798,0.806,0.811,0.812,0.824,0.824,0.833,0.835,0.837,0.836,0.832,0.832,0.829,0.825,0.821,0.819,0.816,0.811,0.806,0.799,0.791,0.776,0.766,0.753,0.730,0.686,0.630,0.568,0.382,0.218,0.143,0.108,0.088,0.012,0.003,0.002])
-            elif g==1: # naiset
-                emp=np.array([0.34,0.531,0.556,0.569,0.587,0.623,0.669,0.688,0.705,0.726,0.729,0.737,0.744,0.751,0.756,0.766,0.772,0.780,0.792,0.797,0.801,0.817,0.821,0.832,0.836,0.839,0.840,0.839,0.837,0.840,0.836,0.835,0.831,0.831,0.828,0.825,0.819,0.815,0.802,0.794,0.782,0.761,0.715,0.665,0.596,0.401,0.222,0.137,0.100,0.082,0.012,0.004,0.003])
-            else: # miehet
-                emp=np.array([0.257,0.384,0.377,0.527,0.553,0.582,0.629,0.676,0.713,0.737,0.755,0.772,0.777,0.792,0.801,0.802,0.808,0.815,0.818,0.823,0.823,0.830,0.828,0.835,0.834,0.835,0.833,0.825,0.826,0.817,0.815,0.807,0.807,0.801,0.793,0.786,0.780,0.768,0.750,0.738,0.724,0.698,0.655,0.594,0.539,0.362,0.214,0.149,0.116,0.095,0.012,0.002,0.002])
-        else: # 2019, päivitä
-            if g==0: # kaikki
-                emp=np.array([0.311,0.473,0.469,0.543,0.566,0.599,0.639,0.682,0.710,0.723,0.742,0.751,0.757,0.762,0.768,0.777,0.780,0.787,0.795,0.803,0.806,0.810,0.819,0.821,0.831,0.831,0.832,0.832,0.825,0.826,0.824,0.821,0.816,0.813,0.809,0.803,0.794,0.787,0.781,0.765,0.752,0.731,0.700,0.649,0.593,0.460,0.243,0.160,0.118,0.091,0.025,0.013,0.010])
-            elif g==1: # naiset
-                emp=np.array([0.36,0.552,0.563,0.570,0.592,0.621,0.658,0.698,0.717,0.720,0.733,0.737,0.737,0.745,0.743,0.754,0.761,0.769,0.778,0.790,0.795,0.802,0.815,0.819,0.831,0.834,0.838,0.840,0.835,0.835,0.838,0.834,0.832,0.829,0.827,0.825,0.816,0.809,0.808,0.794,0.782,0.762,0.731,0.680,0.627,0.486,0.255,0.162,0.118,0.088,0.022,0.011,0.008])
-            else: # miehet
-                emp=np.array([0.261,0.400,0.382,0.518,0.541,0.577,0.621,0.667,0.704,0.727,0.751,0.764,0.777,0.778,0.792,0.798,0.798,0.803,0.810,0.815,0.817,0.817,0.823,0.823,0.830,0.828,0.827,0.824,0.816,0.819,0.811,0.808,0.800,0.796,0.791,0.782,0.772,0.766,0.754,0.737,0.721,0.699,0.667,0.617,0.557,0.434,0.230,0.159,0.118,0.094,0.027,0.015,0.012])
-
-        return self.map_ratios(emp)
-        
-        
-    def disab_stat(self,g):
-        '''
-        Työkyvyttömyyselökkeellö olevien osuus väestöstö
-        Lähde: ETK
-        '''
-        if self.year==2018:
-            if g==1:
-                ratio=np.array([0,0,0.014412417,0.017866162,0.019956194,0.019219484,0.022074491,0.022873602,0.024247334,0.025981477,0.025087389,0.023162522,0.025013013,0.023496079,0.025713399,0.025633996,0.028251301,0.028930719,0.028930188,0.030955287,0.031211716,0.030980726,0.035395247,0.03522291,0.035834422,0.036878386,0.040316277,0.044732619,0.046460599,0.050652725,0.054797849,0.057018324,0.0627497,0.067904263,0.072840649,0.079978222,0.083953327,0.092811744,0.106671337,0.119490669,0.129239815,0.149503982,0.179130081,0.20749958,0.22768029,0.142296259,0.135142865,0.010457403,0,0,0,0,0])
-            else:
-                ratio=np.array([0,0,0.0121151,0.0152247,0.0170189,0.0200570,0.0196213,0.0208018,0.0215082,0.0223155,0.0220908,0.0213913,0.0214263,0.0242843,0.0240043,0.0240721,0.0259648,0.0263371,0.0284309,0.0270143,0.0286249,0.0305952,0.0318945,0.0331264,0.0350743,0.0368707,0.0401613,0.0431067,0.0463718,0.0487914,0.0523801,0.0569297,0.0596571,0.0669273,0.0713361,0.0758116,0.0825295,0.0892805,0.1047429,0.1155854,0.1336167,0.1551418,0.1782882,0.2106220,0.2291799,0.1434176,0.1301574,0.0110726,0,0,0,0,0])
-        else: # 2019, päivitä
-            if g==1:
-                ratio=np.array([0,0,0.014412417,0.017866162,0.019956194,0.019219484,0.022074491,0.022873602,0.024247334,0.025981477,0.025087389,0.023162522,0.025013013,0.023496079,0.025713399,0.025633996,0.028251301,0.028930719,0.028930188,0.030955287,0.031211716,0.030980726,0.035395247,0.03522291,0.035834422,0.036878386,0.040316277,0.044732619,0.046460599,0.050652725,0.054797849,0.057018324,0.0627497,0.067904263,0.072840649,0.079978222,0.083953327,0.092811744,0.106671337,0.119490669,0.129239815,0.149503982,0.179130081,0.20749958,0.22768029,0.142296259,0.135142865,0.010457403,0,0,0,0,0])
-            else:
-                ratio=np.array([0,0,0.0121151,0.0152247,0.0170189,0.0200570,0.0196213,0.0208018,0.0215082,0.0223155,0.0220908,0.0213913,0.0214263,0.0242843,0.0240043,0.0240721,0.0259648,0.0263371,0.0284309,0.0270143,0.0286249,0.0305952,0.0318945,0.0331264,0.0350743,0.0368707,0.0401613,0.0431067,0.0463718,0.0487914,0.0523801,0.0569297,0.0596571,0.0669273,0.0713361,0.0758116,0.0825295,0.0892805,0.1047429,0.1155854,0.1336167,0.1551418,0.1782882,0.2106220,0.2291799,0.1434176,0.1301574,0.0110726,0,0,0,0,0])
-            
-        return self.map_ratios(ratio)
-        
-    def student_stats(self,g=0):
-        '''
-        Opiskelijoiden osuus väestöstö
-        Lähde: Tilastokeskus
-        '''
-        if self.year==2018:
-            if g==0: # kaikki
-                emp_ratio=np.array([0.686,0.270,0.241,0.269,0.271,0.251,0.205,0.157,0.121,0.095,0.075,0.061,0.055,0.046,0.037,0.035,0.031,0.028,0.026,0.025,0.023,0.021,0.019,0.019,0.016,0.015,0.014,0.014,0.013,0.013,0.012,0.011,0.010,0.009,0.009,0.007,0.007,0.006,0.007,0.006,0.004,0.004,0.003,0.003,0.002,0.002,0.002,0.002,0.001,0.001,0.001,0.002,0.001])
-            elif g==1: # naiset
-                emp_ratio=np.array([0.607,0.282,0.283,0.289,0.270,0.230,0.183,0.150,0.123,0.099,0.088,0.078,0.068,0.062,0.058,0.054,0.051,0.049,0.043,0.040,0.038,0.032,0.030,0.029,0.027,0.024,0.022,0.021,0.020,0.018,0.017,0.016,0.015,0.012,0.011,0.011,0.010,0.009,0.008,0.006,0.005,0.005,0.003,0.002,0.002,0.002,0.002,0.002,0.002,0.001,0.001,0.001,0.001])
-            else: # miehet
-                emp_ratio=np.array([0.686,0.270,0.241,0.269,0.271,0.251,0.205,0.157,0.121,0.095,0.075,0.061,0.055,0.046,0.037,0.035,0.031,0.028,0.026,0.025,0.023,0.021,0.019,0.019,0.016,0.015,0.014,0.014,0.013,0.013,0.012,0.011,0.010,0.009,0.009,0.007,0.007,0.006,0.007,0.006,0.004,0.004,0.003,0.003,0.002,0.002,0.002,0.002,0.001,0.001,0.001,0.002,0.001])
-        else: # 2019, päivitä
-            if g==0: # kaikki
-                emp_ratio=np.array([0.634,0.261,0.264,0.286,0.276,0.245,0.199,0.155,0.123,0.102,0.082,0.071,0.065,0.058,0.053,0.046,0.045,0.042,0.039,0.033,0.034,0.031,0.029,0.026,0.024,0.023,0.020,0.019,0.019,0.017,0.016,0.015,0.013,0.012,0.011,0.010,0.010,0.009,0.007,0.007,0.006,0.005,0.003,0.003,0.002,0.002,0.002,0.002,0.002,0.001,0.002,0.001,0.001])
-            elif g==1: # naiset
-                emp_ratio=np.array([0.587,0.271,0.283,0.293,0.274,0.238,0.191,0.151,0.122,0.107,0.089,0.080,0.076,0.068,0.065,0.058,0.056,0.053,0.050,0.043,0.042,0.040,0.035,0.033,0.030,0.029,0.025,0.024,0.024,0.021,0.020,0.018,0.016,0.014,0.013,0.012,0.012,0.011,0.009,0.008,0.006,0.005,0.004,0.003,0.002,0.002,0.002,0.002,0.002,0.001,0.002,0.001,0.001])
-            else: # miehet
-                emp_ratio=np.array([0.686,0.270,0.241,0.269,0.271,0.251,0.205,0.157,0.121,0.095,0.075,0.061,0.055,0.046,0.037,0.035,0.031,0.028,0.026,0.025,0.023,0.021,0.019,0.019,0.016,0.015,0.014,0.014,0.013,0.013,0.012,0.011,0.010,0.009,0.009,0.007,0.007,0.006,0.007,0.006,0.004,0.004,0.003,0.003,0.002,0.002,0.002,0.002,0.001,0.001,0.001,0.002,0.001])
-
-        return self.map_ratios(emp_ratio)+self.army_stats(g=g)
-        
-    def army_stats(self,g=0):
-        '''
-        Armeijassa olevien osuus väestöstö
-        Lähde: Tilastokeskus
-        '''
-        if self.year==2018:
-            if g==0: # kaikki
-                emp_ratio=np.array([0.000,0.112,0.089,0.015,0.006,0.004,0.002,0.002,0.001,0.001,0.001,0.001,0.000,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0])
-            elif g==1: # naiset
-                emp_ratio=np.array([0.00014,0.00771,0.00362,0.00179,0.001,0.001,0.000,0.000,0.000,0.000,0.000,0.000,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0])
-            else: # miehet
-                emp_ratio=np.array([0.000,0.112,0.089,0.015,0.006,0.004,0.002,0.002,0.001,0.001,0.001,0.001,0.000,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0])
-        else: # 2019, päivitä
-            if g==0: # kaikki
-                emp_ratio=np.array([0.000,0.060,0.040,0.006,0.003,0.001,0.001,0.001,0.001,0.001,0.000,0.000,0.000,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0])
-            elif g==1: # naiset
-                emp_ratio=np.array([0.00007,0.00827,0.00396,0.00159,0.001,0.001,0.000,0.000,0.000,0.000,0.000,0.000,0.000,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0])
-            else: # miehet
-                emp_ratio=np.array([0.000,0.112,0.089,0.015,0.006,0.004,0.002,0.002,0.001,0.001,0.001,0.001,0.000,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0])
-
-        return self.map_ratios(emp_ratio)
-        
-    def outsider_stats(self,g=0):
-        '''
-        Työelämän ulkopuolella olevien osuus väestöstö
-        Lähde: Tilastokeskus
-        '''
-        if self.year==2018:
-            if g==0: # kaikki
-                emp_ratio=np.array([0.027,0.097,0.111,0.067,0.063,0.063,0.063,0.066,0.071,0.072,0.075,0.076,0.076,0.076,0.073,0.071,0.069,0.064,0.061,0.059,0.058,0.054,0.051,0.045,0.044,0.043,0.042,0.042,0.041,0.039,0.039,0.040,0.039,0.039,0.038,0.039,0.039,0.040,0.041,0.041,0.040,0.040,0.038,0.036,0.033,0.017,0.009,0.006,0.004,0.004,0.003,0.004,0.004])
-            elif g==1: # naiset
-                emp_ratio=np.array([0.025,0.089,0.074,0.064,0.066,0.070,0.072,0.079,0.087,0.090,0.096,0.097,0.098,0.096,0.095,0.090,0.085,0.079,0.072,0.071,0.068,0.061,0.057,0.049,0.045,0.045,0.042,0.041,0.040,0.037,0.038,0.038,0.037,0.035,0.036,0.035,0.037,0.038,0.038,0.038,0.038,0.038,0.038,0.036,0.034,0.019,0.010,0.006,0.004,0.004,0.003,0.004,0.004])
-            else: # miehet
-                emp_ratio=np.array([0.029,0.104,0.146,0.071,0.060,0.057,0.055,0.055,0.055,0.055,0.055,0.056,0.056,0.057,0.053,0.054,0.054,0.049,0.050,0.048,0.049,0.047,0.046,0.042,0.043,0.042,0.043,0.042,0.042,0.042,0.039,0.042,0.040,0.043,0.041,0.043,0.040,0.042,0.043,0.044,0.042,0.041,0.038,0.037,0.031,0.016,0.007,0.005,0.004,0.004,0.003,0.003,0.003])
-        else: # 2019
-            if g==0: # kaikki
-                emp_ratio=np.array([0.028,0.096,0.111,0.068,0.062,0.065,0.065,0.066,0.070,0.075,0.075,0.079,0.079,0.079,0.079,0.075,0.074,0.070,0.068,0.063,0.060,0.058,0.054,0.051,0.046,0.044,0.044,0.043,0.043,0.042,0.041,0.040,0.040,0.041,0.039,0.040,0.043,0.042,0.042,0.043,0.042,0.042,0.041,0.046,0.050,0.032,0.011,0.007,0.004,0.004,0.004,0.004,0.004])
-            elif g==1: # naiset
-                emp_ratio=np.array([0.027,0.086,0.071,0.062,0.061,0.068,0.072,0.075,0.082,0.090,0.093,0.099,0.101,0.100,0.101,0.096,0.092,0.086,0.083,0.075,0.071,0.066,0.060,0.055,0.049,0.044,0.043,0.042,0.041,0.040,0.038,0.038,0.037,0.038,0.037,0.036,0.040,0.041,0.039,0.041,0.041,0.040,0.041,0.045,0.048,0.032,0.011,0.007,0.004,0.004,0.004,0.004,0.004])
-            else: # miehet
-                emp_ratio=np.array([0.030,0.106,0.148,0.074,0.063,0.061,0.058,0.058,0.058,0.060,0.058,0.060,0.057,0.058,0.059,0.055,0.057,0.055,0.053,0.053,0.050,0.050,0.049,0.047,0.043,0.043,0.045,0.044,0.045,0.045,0.043,0.042,0.044,0.044,0.041,0.043,0.046,0.043,0.045,0.045,0.044,0.044,0.041,0.047,0.052,0.031,0.010,0.006,0.004,0.004,0.005,0.004,0.004])
-        
-        return self.map_ratios(emp_ratio)
-        
-    def tyotjakso_stats(self):
-        '''
-        Päättyneiden työttömyysjaksojen jakauma
-        '''
-        d=[]
-        
-    def pensioner_stats(self,g=0):
-        '''
-        Eläkkeellä olevien osuus väestöstö
-        Lähde: Tilastokeskus
-        '''
-        if self.year==2018:
-            if g==0: # kaikki
-                emp_ratio=np.array([ 0.011,0.014,0.016,0.016,0.018,0.019,0.019,0.021,0.020,0.019,0.020,0.021,0.022,0.022,0.024,0.024,0.025,0.025,0.026,0.026,0.029,0.029,0.030,0.031,0.034,0.037,0.039,0.042,0.045,0.047,0.052,0.056,0.060,0.065,0.070,0.076,0.088,0.098,0.110,0.128,0.159,0.196,0.277,0.533,0.741,0.849,0.888,0.908,0.983,0.992,0.993 ])
-            elif g==1: # naiset
-                emp_ratio=np.array([ 0.010,0.013,0.014,0.016,0.016,0.017,0.018,0.018,0.018,0.018,0.017,0.020,0.020,0.020,0.022,0.021,0.023,0.022,0.023,0.024,0.025,0.026,0.027,0.029,0.031,0.034,0.036,0.038,0.041,0.044,0.047,0.052,0.055,0.058,0.062,0.066,0.077,0.085,0.097,0.111,0.142,0.177,0.258,0.518,0.735,0.855,0.896,0.916,0.983,0.991,0.992 ])
-            else: # miehet
-                emp_ratio=np.array([ 0.012,0.016,0.018,0.017,0.019,0.020,0.021,0.023,0.022,0.021,0.022,0.021,0.024,0.024,0.026,0.026,0.026,0.028,0.028,0.027,0.032,0.032,0.033,0.033,0.036,0.041,0.042,0.045,0.049,0.051,0.056,0.060,0.065,0.072,0.078,0.086,0.099,0.112,0.123,0.144,0.178,0.216,0.297,0.549,0.748,0.843,0.880,0.901,0.982,0.993,0.993 ])
-        else: # 2019, päivitä
-            if g==0: # kaikki
-                emp_ratio=np.array([ 0.011,0.014,0.016,0.016,0.018,0.019,0.019,0.021,0.020,0.019,0.020,0.021,0.022,0.022,0.024,0.024,0.025,0.025,0.026,0.026,0.029,0.029,0.030,0.031,0.034,0.037,0.039,0.042,0.045,0.047,0.052,0.056,0.060,0.065,0.070,0.076,0.088,0.098,0.110,0.128,0.159,0.196,0.277,0.533,0.741,0.849,0.888,0.908,0.983,0.992,0.993 ])
-            elif g==1: # naiset
-                emp_ratio=np.array([ 0.010,0.013,0.014,0.016,0.016,0.017,0.018,0.018,0.018,0.018,0.017,0.020,0.020,0.020,0.022,0.021,0.023,0.022,0.023,0.024,0.025,0.026,0.027,0.029,0.031,0.034,0.036,0.038,0.041,0.044,0.047,0.052,0.055,0.058,0.062,0.066,0.077,0.085,0.097,0.111,0.142,0.177,0.258,0.518,0.735,0.855,0.896,0.916,0.983,0.991,0.992 ])
-            else: # miehet
-                emp_ratio=np.array([ 0.012,0.016,0.018,0.017,0.019,0.020,0.021,0.023,0.022,0.021,0.022,0.021,0.024,0.024,0.026,0.026,0.026,0.028,0.028,0.027,0.032,0.032,0.033,0.033,0.036,0.041,0.042,0.045,0.049,0.051,0.056,0.060,0.065,0.072,0.078,0.086,0.099,0.112,0.123,0.144,0.178,0.216,0.297,0.549,0.748,0.843,0.880,0.901,0.982,0.993,0.993 ])
-        
-
-        return self.map_ratios(emp_ratio)
-        
-    def unemp_stats(self,g=0):
-        '''
-        Työttömien osuus väestöstö
-        Lähde: Tilastokeskus
-        '''
-        emp_ratio=np.zeros(self.n_time)
-        if self.year==2018:
-            if g==0:
-                emp_ratio=np.array([0.018,0.101,0.104,0.083,0.077,0.075,0.075,0.078,0.078,0.078,0.080,0.080,0.081,0.077,0.079,0.078,0.076,0.075,0.074,0.072,0.074,0.070,0.071,0.068,0.069,0.069,0.069,0.072,0.072,0.074,0.076,0.078,0.078,0.078,0.081,0.081,0.082,0.084,0.087,0.087,0.089,0.097,0.108,0.131,0.115,0.062,0.030,0,0,0,0,0,0])
-            elif g==1: # naiset
-                emp_ratio=np.array([0.016,0.082,0.073,0.063,0.062,0.060,0.060,0.065,0.066,0.066,0.069,0.070,0.072,0.071,0.071,0.070,0.071,0.070,0.069,0.070,0.070,0.065,0.066,0.064,0.065,0.064,0.065,0.065,0.066,0.066,0.068,0.067,0.070,0.070,0.069,0.071,0.071,0.072,0.074,0.076,0.076,0.083,0.097,0.116,0.105,0.057,0.031,0,0,0,0,0,0])
-            else: # miehet
-                emp_ratio=np.array([0.019,0.119,0.133,0.102,0.091,0.089,0.089,0.091,0.089,0.089,0.091,0.089,0.089,0.083,0.085,0.085,0.080,0.081,0.080,0.075,0.077,0.075,0.074,0.072,0.073,0.074,0.074,0.078,0.076,0.083,0.085,0.089,0.087,0.086,0.092,0.091,0.094,0.096,0.101,0.099,0.102,0.110,0.120,0.146,0.125,0.066,0.028,0,0,0,0,0,0])
-        else: # 2019
-            if g==0:
-                emp_ratio=np.array([0.019,0.100,0.104,0.083,0.076,0.072,0.077,0.077,0.077,0.079,0.079,0.077,0.079,0.080,0.078,0.079,0.078,0.076,0.074,0.075,0.074,0.074,0.070,0.071,0.069,0.071,0.070,0.071,0.073,0.073,0.075,0.077,0.080,0.080,0.081,0.083,0.083,0.086,0.087,0.089,0.091,0.097,0.105,0.117,0.116,0.079,0.030,0,0,0,0,0,0])
-            elif g==1: # naiset
-                emp_ratio=np.array([0.017,0.074,0.068,0.060,0.057,0.056,0.060,0.058,0.062,0.064,0.066,0.065,0.066,0.068,0.070,0.071,0.069,0.069,0.066,0.067,0.068,0.068,0.064,0.065,0.062,0.064,0.063,0.062,0.064,0.066,0.064,0.067,0.068,0.068,0.068,0.068,0.070,0.072,0.072,0.072,0.076,0.082,0.090,0.104,0.102,0.072,0.029,0,0,0,0,0,0])
-            else: # miehet
-                emp_ratio=np.array([0.021,0.124,0.137,0.104,0.094,0.088,0.093,0.094,0.092,0.093,0.090,0.089,0.090,0.092,0.086,0.087,0.086,0.083,0.083,0.082,0.079,0.080,0.077,0.077,0.075,0.078,0.078,0.080,0.081,0.080,0.086,0.086,0.092,0.091,0.094,0.098,0.097,0.099,0.103,0.107,0.107,0.112,0.121,0.131,0.130,0.087,0.031,0,0,0,0,0,0])
-        
-        return self.map_ratios(emp_ratio)
-
-    def unempratio_stats(self,g=0):
-        '''
-        Työttömien osuus väestöstö
-        Lähde: Tilastokeskus
-        '''
-        emp_ratio=self.emp_stats(g=g)
-        unemp_ratio=self.unemp_stats(g=g)
-        ratio=unemp_ratio/(emp_ratio+unemp_ratio)
-        return ratio # ei mapata, on jo tehty!
-
     def save_sim(self,filename):
         f = h5py.File(filename, 'w')
         ftype='float64'
@@ -2633,7 +2461,7 @@ class EpisodeStats():
         return q
         
     def comp_budget(self,scale=True):
-        demog,demog2=self.get_demog()
+        demog2=self.empstats.get_demog()
 
         scalex=demog2/self.n_pop
         
@@ -2671,7 +2499,7 @@ class EpisodeStats():
         '''
         Lukumäärätiedot (EI HTV!)
         '''
-        demog,demog2=self.get_demog()
+        demog2=self.empstats.get_demog()
 
         scalex=np.squeeze(demog2/self.n_pop*self.timestep)
         
@@ -2701,7 +2529,7 @@ class EpisodeStats():
         '''
         Lukumäärätiedot (EI HTV!)
         '''
-        demog,demog2=self.get_demog()
+        demog2=self.empstats.get_demog()
 
         scalex=demog2/self.n_pop
         
@@ -2720,7 +2548,7 @@ class EpisodeStats():
         '''
         HTV-tiedot
         '''
-        demog,demog2=self.get_demog()
+        demog2=self.empstats.get_demog()
 
         scalex=demog2/self.n_pop
         htv=6*52
@@ -2751,7 +2579,7 @@ class EpisodeStats():
             e=70
         else:
             s=21
-            e=63.5
+            e=60 #63.5
 
         tyoll_osuus1,htv_osuus1,tyot_osuus1,kokotyo_osuus1,osatyo_osuus1=self.comp_employed(self.empstate)
         tyoll_osuus2,htv_osuus2,tyot_osuus2,kokotyo_osuus2,osatyo_osuus2=self.comp_employed(cc2.empstate)
@@ -2761,6 +2589,9 @@ class EpisodeStats():
         ansiosid_osuus2,tm_osuus2=self.comp_unemployed_detailed(cc2.empstate)
         #khh_osuus1=self.comp_kht(self.empstate)
         #khh_osuus2=self.comp_kht(cc2.empstate)
+        
+        self.comp_employment_stats()
+        cc2.comp_employment_stats()
         
         q1=self.comp_budget(scale=True)
         q2=cc2.comp_budget(scale=True)
@@ -2844,6 +2675,19 @@ class EpisodeStats():
         print('Työllisyysastevaikutus {:.0f}-{:.0f}-vuotiailla noin {:.2f} prosenttia ({:.2f} vs {:.2f})'.format(s,e,(tyollaste1-tyollaste2)*100,tyollaste1*100,tyollaste2*100))
         print('- kokoaikaisiin {:.0f}-{:.0f}-vuotiailla noin {:.2f} prosenttia ({:.2f} vs {:.2f})'.format(s,e,(kokota1-kokota2)*100,kokota1*100,kokota2*100))
         print('- osa-aikaisiin {:.0f}-{:.0f}-vuotiailla noin {:.2f} prosenttia ({:.2f} vs {:.2f})'.format(s,e,(osata1-osata2)*100,osata1*100,osata2*100))
+        
+        unemp_htv1=np.nansum(self.demogstates[:,0]+self.demogstates[:,4]+self.demogstates[:,13])
+        unemp_htv2=np.nansum(cc2.demogstates[:,0]+cc2.demogstates[:,4]+cc2.demogstates[:,13])
+        e_unemp_htv1=np.nansum(self.demogstates[:,0])
+        e_unemp_htv2=np.nansum(cc2.demogstates[:,0])
+        tm_unemp_htv1=np.nansum(self.demogstates[:,13])
+        tm_unemp_htv2=np.nansum(cc2.demogstates[:,13])
+        f_unemp_htv1=np.nansum(self.demogstates[:,4])
+        f_unemp_htv2=np.nansum(cc2.demogstates[:,4])
+        print('Työttömyysvaikutus {:.0f}-{:.0f}-vuotiaisiin noin {:.0f} htv'.format(s,e,unemp_htv1-unemp_htv2))
+        print('- ansiosidonnaiseen {:.0f}-{:.0f}-vuotiailla noin {:.0f} htv ({:.0f} vs {:.0f})'.format(s,e,(e_unemp_htv1-e_unemp_htv2),e_unemp_htv1,e_unemp_htv2))
+        print('- tm-tukeen {:.0f}-{:.0f}-vuotiailla noin {:.0f} työllistä ({:.0f} vs {:.0f})'.format(s,e,(tm_unemp_htv1-tm_unemp_htv2),tm_unemp_htv1,tm_unemp_htv2))
+        print('- putkeen {:.0f}-{:.0f}-vuotiailla noin {:.0f} työllistä ({:.0f} vs {:.0f})'.format(s,e,(f_unemp_htv1-f_unemp_htv2),f_unemp_htv1,f_unemp_htv2))
         
         # epävarmuus
         delta=1.96*1.0/np.sqrt(self.n_pop)
@@ -3025,41 +2869,9 @@ class EpisodeStats():
             tm_osuus=(emp[:,13])/np.sum(emp,1)
             
         return ansiosid_osuus,tm_osuus
-            
-    def get_demog(self):
-        # vuosi 2019
-        if self.year==2019:
-            demog=np.array([58939,59711,
-                            60796,59796,62211,64230,66911,69316,69568,72329,71682,72790,  # 20-29 y
-                            71313,71434,68069,68967,70985,72961,74223,73437,70361,69800,  # 30-39 y
-                            69056,69134,69773,69996,68516,65276,59488,61407,63138,65064,  # 40-49 y
-                            66339,70970,72571,72862,73052,74260,74821,73880,73260,72650,  # 50-59 y
-                            72007,69453,72098,73585,72476,72173,70726,72730,69771,71560,  # 60-69 y
-                            73079,73689,72408,69492,61063,47990,44814,35182,49918,34273  # 70-79 y
-                            ])
-        else: # 2018
-            demog=np.array([59600,60710,
-                            59640,61894,63720,66388,68734,69063,71766,71153,72182,70708,
-                            70898,67638,68548,70664,72648,73972,73161,70145,69593,68880,
-                            69052,69678,69956,68421,65258,59442,61378,63178,65147,66433,
-                            71078,72753,73031,73207,74480,75114,74138,73574,72991,72416,
-                            69831,72549,74158,73129,72894,71459,73497,70572,72530,74150,
-                            74793,73683,70796,62308,49080,45971,36179,51476,35499,40134  # 70-79 y
-                            ])
-                        
-        demog2=np.zeros((self.n_time,1))
-        k2=0
-        for k in np.arange(self.min_age,self.max_age,self.timestep):
-            ind=int(np.floor(k))-self.min_age
-            demog2[k2]=demog[ind]
-            k2+=1
-            
-        demog2[-2:]=demog2[-3]
-
-        return demog,demog2
-        
+    
     def comp_tyollisyys_stats(self,emp,scale_time=True,start=20,end=63.5,full=False,tyot_stats=False,agg=False,shapes=False):
-        demog,demog2=self.get_demog()
+        demog2=self.empstats.get_demog()
               
         if scale_time:
             scale=self.timestep
@@ -3104,9 +2916,31 @@ class EpisodeStats():
                 return htv,tyollvaikutus,haj,tyollaste,tyollosuus,osatyollvaikutus,kokotyollvaikutus,osatyollaste,kokotyollaste
             else:
                 return htv,tyollvaikutus,haj,tyollaste,tyollosuus
+                
+    def comp_employment_stats(self,scale_time=True):
+        demog2=self.empstats.get_demog()
+              
+        if scale_time:
+            scale=self.timestep
+        else:
+            scale=1.0
+            
+        min_cage=self.map_age(self.min_age)
+        max_cage=self.map_age(self.max_age)+1
+        
+        scalex=np.squeeze(demog2/self.n_pop*self.timestep)
+        
+        d=np.squeeze(demog2[min_cage:max_cage])
+        
+        self.ratiostates=self.empstate/self.alive
+        self.demogstates=(self.empstate.T*scalex).T
+        self.stats_employed=self.demogstates[:,0]+self.demogstates[:,10]+self.demogstates[:,8]+self.demogstates[:,9]
+        self.stats_parttime=self.demogstates[:,10]+self.demogstates[:,8]
+        self.stats_unemployed=self.demogstates[:,0]+self.demogstates[:,4]+self.demogstates[:,13]
+        self.stats_all=np.sum(self.demogstates,1)
 
     def comp_state_stats(self,state,scale_time=True,start=20,end=63.5,ratio=False):
-        demog,demog2=self.get_demog()
+        demog2=self.empstats.get_demog()
               
         if scale_time:
             scale=self.timestep
