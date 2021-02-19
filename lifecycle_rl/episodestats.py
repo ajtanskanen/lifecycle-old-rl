@@ -157,8 +157,8 @@ class EpisodeStats():
             jasen=0
         else:
             # v3
-            emp,_,_,_,a,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_=self.env.state_decode(state) # current employment state
-            newemp,g,newpen,newsal,a2,tis,paidpens,pink,toe,ura,bu,wr,upr,uw,uwr,pr,c3,c7,c18,unemp_left,aa,toe58,ove,jasen=self.env.state_decode(newstate)
+            emp,_,_,_,a,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_=self.env.state_decode(state) # current employment state
+            newemp,g,newpen,newsal,a2,tis,paidpens,pink,toe,toek,ura,bu,wr,upr,uw,uwr,pr,c3,c7,c18,unemp_left,aa,toe58,ove,jasen=self.env.state_decode(newstate)
     
         t=int(np.round((a2-self.min_age)*self.inv_timestep))#-1
         if a2>a and newemp>=0: # new state is not reset (age2>age)
