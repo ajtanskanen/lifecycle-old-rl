@@ -56,7 +56,7 @@ class Lifecycle():
                     additional_kunnallisvero=None,additional_income_tax_high=None,
                     year=2018,version=3,scale_tyel_accrual=None,preferencenoise_level=None,
                     scale_additional_tyel_accrual=None,valtionverotaso=None,perustulo_asetettava=None,
-                    porrasta_toe=None,include_halftoe=None):                    
+                    porrasta_toe=None,include_halftoe=None,include_ove=None):                    
         '''
         Alusta muuttujat
         '''
@@ -105,6 +105,7 @@ class Lifecycle():
         self.valtionverotaso=None
         self.include_halftoe=None
         self.porrasta_toe=None
+        self.include_ove=False
 
         if callback_minsteps is not None:
             self.callback_minsteps=callback_minsteps
@@ -209,6 +210,9 @@ class Lifecycle():
             self.include_halftoe=include_halftoe
         if porrasta_toe is not None:
             self.porrasta_toe=porrasta_toe
+        if include_ove is not None:
+            self.include_ove=include_ove
+
             
         # alustetaan gym-environment
         if minimal:
@@ -258,7 +262,8 @@ class Lifecycle():
                 'perustulo': self.perustulo, 'valtionverotaso': self.valtionverotaso,
                 'perustulo_asetettava': self.perustulo_asetettava, 
                 'include_halftoe': self.include_halftoe,
-                'porrasta_toe': self.porrasta_toe}
+                'porrasta_toe': self.porrasta_toe,
+                'include_ove': self.include_ove}
             #self.n_acts = 4
             #if self.mortality:
             #    self.n_employment = 16

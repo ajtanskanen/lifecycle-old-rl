@@ -1258,7 +1258,7 @@ class EpisodeStats():
     def plot_kassanjasen(self):
         x=np.linspace(self.min_age,self.max_age,self.n_time)
         fig,ax=plt.subplots()
-        ax.plot(x+self.timestep,100*self.infostats_kassanjasen[:]/self.alive[:,0],label='kassa jäsenien osuus')
+        ax.plot(x+self.timestep,100*self.infostats_kassanjasen[:]/self.alive[:,0],label='työttömyyskassan jäsenien osuus kaikista')
         ax.set_xlabel('Ikä [v]')
         ax.set_ylabel('Osuus tilassa [%]')
         ax.legend()
