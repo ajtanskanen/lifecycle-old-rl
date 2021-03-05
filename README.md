@@ -35,12 +35,12 @@ The library is described in articles
       journal={arXiv preprint arXiv:2010.13471},
       year={2020}
     }
-	
-	@misc{lifecycle_rl_kak,
-	  author = {Antti J. Tanskanen},
-	  title = {Unelmoivatko robotit ansiosidonnaisesta sosiaaliturvasta?},
-	  year = {2019},
-	  publisher = {},
-	  journal = {KAK},
-	  howpublished = {TBD},
-	}	
+    
+    @article{tanskanen2020tyollisyysvaikutuksien,
+      title={Ty{\"o}llisyysvaikutuksien arviointia teko{\"a}lyll{\"a}: Unelmoivatko robotit ansiosidonnaisesta sosiaaliturvasta},
+      author={Tanskanen, Antti J},
+      journal={Kansantaloudellinen aikakauskirja},
+      volume={2},
+      pages={292--321},
+      year={2020}
+    }
