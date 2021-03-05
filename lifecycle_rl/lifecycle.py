@@ -56,7 +56,7 @@ class Lifecycle():
                     additional_kunnallisvero=None,additional_income_tax_high=None,
                     year=2018,version=3,scale_tyel_accrual=None,preferencenoise_level=None,
                     scale_additional_tyel_accrual=None,valtionverotaso=None,perustulo_asetettava=None,
-                    porrasta_toe=None,include_halftoe=None,include_ove=None):                    
+                    porrasta_toe=None,include_halftoe=None,include_ove=None,min_retirementage=None,max_retirementage=None):                    
         '''
         Alusta muuttujat
         '''
@@ -171,6 +171,12 @@ class Lifecycle():
             
         if porrasta_1askel is not None:
             self.porrasta_1askel=porrasta_1askel
+            
+        if max_retirementage is not None:
+            self.max_retirementage=max_retirementage
+            
+        if min_retirementage is not None:
+            self.min_retirementage=min_retirementage
 
         if gamma is not None:
             self.gamma=gamma
@@ -743,6 +749,7 @@ class Lifecycle():
         muut_tulot=q['muut tulot']
         tC=0.2*max(0,q['tyotulosumma']-q['verot+maksut'])
         kiila,qc=self.episodestats.comp_verokiila()
+        kiila2,qcb=self.episodestats.comp_verokiila_kaikki_ansiot()
         tyollaste,_=self.episodestats.comp_employed_aggregate()
         tyotaste=self.episodestats.comp_unemployed_aggregate()
         print(tyollaste,tyotaste)
@@ -755,7 +762,7 @@ class Lifecycle():
         #
         #print(qq,qc)
             
-        return rew,q['tyotulosumma'],q['verot+maksut'],htv,muut_tulot,kiila,tyollaste,tyotaste,palkansaajia,osatyossa
+        return rew,q['tyotulosumma'],q['verot+maksut'],htv,muut_tulot,kiila,tyollaste,tyotaste,palkansaajia,osatyossa,kiila2
    
     def load_sim(self,load=None):
         self.episodestats.load_sim(load)
@@ -861,9 +868,9 @@ class Lifecycle():
     def run_results(self,steps1=100,steps2=100,pop=1_000,rlmodel='acktr',twostage=False,
                save='saved/perusmalli',debug=False,simut='simut',results='results/simut_res',
                stats='results/simut_stats',deterministic=True,train=True,predict=True,
-               batch1=1,batch2=100,cont=False,start_from=None,plot=False,callback_minsteps=None,
+               batch1=1,batch2=100,cont=False,start_from=None,callback_minsteps=None,
                verbose=1,plotdebug=None,max_grad_norm=None,learning_rate=0.25,log_interval=10,
-               learning_schedule='linear',vf=None,arch=None,gae_lambda=None):
+               learning_schedule='linear',vf=None,arch=None,gae_lambda=None,plot=None):
    
         '''
         run_results
@@ -897,8 +904,6 @@ class Lifecycle():
             #print('predict...')
             self.predict_protocol(pop=pop,rlmodel=rlmodel,load=save,plotdebug=plotdebug,
                           debug=debug,deterministic=deterministic,results=results,arch=arch)
-        if plot:
-            self.render(load=results)
           
     def run_protocol(self,steps1=2_000_000,steps2=1_000_000,rlmodel='acktr',
                debug=False,batch1=1,batch2=1000,cont=False,twostage=False,log_interval=10,

@@ -1351,19 +1351,21 @@ class EpisodeStats():
         
     def group_taxes(self,ratios):
         if len(ratios.shape)>1:
-            vv_osuus=np.zeros((ratios.shape[0],3))
+            vv_osuus=np.zeros((ratios.shape[0],4))
             vv_osuus[:,0]=ratios[:,0]+ratios[:,4]+ratios[:,5]+ratios[:,6]+\
                           ratios[:,7]+ratios[:,8]+ratios[:,9]+ratios[:,11]+\
-                          ratios[:,12]
+                          ratios[:,12]+ratios[:,13]
             vv_osuus[:,1]=ratios[:,1]+ratios[:,10]
             vv_osuus[:,2]=ratios[:,2]+ratios[:,3]+ratios[:,8]+ratios[:,9]
+            vv_osuus[:,3]=ratios[:,1]+ratios[:,10]+ratios[:,8]+ratios[:,9]
         else:
-            vv_osuus=np.zeros((3))
+            vv_osuus=np.zeros((4))
             vv_osuus[0]=ratios[0]+ratios[4]+ratios[5]+ratios[6]+\
                           ratios[7]+ratios[8]+ratios[9]+ratios[11]+\
-                          ratios[12]
+                          ratios[12]+ratios[13]
             vv_osuus[1]=ratios[1]+ratios[10]
             vv_osuus[2]=ratios[2]+ratios[3]+ratios[8]+ratios[9]
+            vv_osuus[3]=ratios[1]+ratios[10]+ratios[8]+ratios[9]
         return vv_osuus
 
     def comp_taxratios(self,grouped=False):
@@ -1395,10 +1397,38 @@ class EpisodeStats():
         q2=self.comp_participants(scale=True)
         htv=q2['palkansaajia']
         muut_tulot=q['muut tulot']
-        tC=0.2*max(0,q['tyotulosumma']-taxes[1])
-        kiila=(taxes[1]+q['ta_maksut']+tC)/(q['tyotulosumma']+q['ta_maksut'])
+        # kulutuksen verotus
+        tC=0.2*max(0,q['tyotulosumma']-taxes[3])
+        # (työssäolevien verot + ta-maksut + kulutusvero)/(työtulosumma + ta-maksut)
+        kiila=(taxes[3]+q['ta_maksut']+tC)/(q['tyotulosumma']+q['ta_maksut'])
         qq={}
-        qq['tI']=taxes[1]/q['tyotulosumma']
+        qq['tI']=taxes[3]/q['tyotulosumma']
+        qq['tC']=tC/q['tyotulosumma']
+        qq['tP']=q['ta_maksut']/q['tyotulosumma']
+                
+        #print(qq)
+                
+        return kiila,qq
+        
+    def comp_verokiila_kaikki_ansiot(self):
+        demog2=self.empstats.get_demog()
+        scalex=demog2/self.n_pop
+
+        valtionvero_osuus=np.sum(self.infostats_valtionvero_distrib*scalex,0)
+        kunnallisvero_osuus=np.sum(self.infostats_kunnallisvero_distrib*scalex,0)
+        taxes_distrib=np.sum(self.infostats_taxes_distrib*scalex,0)
+        taxes=self.group_taxes(taxes_distrib)
+
+        q=self.comp_budget()
+        q2=self.comp_participants(scale=True)
+        htv=q2['palkansaajia']
+        muut_tulot=q['muut tulot']
+        # kulutuksen verotus
+        tC=0.2*max(0,q['tyotulosumma']-taxes[3])
+        # (työssäolevien verot + ta-maksut + kulutusvero)/(työtulosumma + ta-maksut)
+        kiila=(taxes[0]+q['ta_maksut']+tC)/(q['tyotulosumma']+q['verotettava etuusmeno']+q['ta_maksut'])
+        qq={}
+        qq['tI']=taxes[0]/q['tyotulosumma']
         qq['tC']=tC/q['tyotulosumma']
         qq['tP']=q['ta_maksut']/q['tyotulosumma']
                 
@@ -2492,6 +2522,7 @@ class EpisodeStats():
         q['ylevero']=np.sum(self.infostats_ylevero*scalex)
         q['tulot_netto']=np.sum(self.infostats_tulot_netto*scalex)
         q['ta_maksut']=q['tyoelake_maksu']-q['ptel']+(0.2057-0.1695)*q['tyotulosumma'] # karkea
+        q['verotettava etuusmeno']=q['kokoelake']+q['ansiopvraha']+q['aitiyspaivaraha']+q['isyyspaivaraha']
         
         return q
 
@@ -2809,6 +2840,7 @@ class EpisodeStats():
         else:
             tyot_osuus=(emp[:,0]+emp[:,4]+emp[:,13])/nn
         
+        #print(f'tyot_osuus {tyot_osuus}')
         unemp=self.comp_state_stats(tyot_osuus,start=start,end=end,ratio=True)
             
         return unemp
@@ -2940,17 +2972,21 @@ class EpisodeStats():
         self.stats_all=np.sum(self.demogstates,1)
 
     def comp_state_stats(self,state,scale_time=True,start=20,end=63.5,ratio=False):
-        demog2=self.empstats.get_demog()
+        demog2=np.squeeze(self.empstats.get_demog())
               
-        if scale_time:
-            scale=self.timestep
-        else:
-            scale=1.0
+        #if scale_time:
+        #    scale=self.timestep
+        #else:
+        #    scale=1.0
 
         min_cage=self.map_age(start)
         max_cage=self.map_age(end)+1
         
-        vaikutus=np.round(scale*np.sum(demog2[min_cage:max_cage]*state[min_cage:max_cage]))/np.sum(demog2[min_cage:max_cage])
+        #vaikutus=np.round(scale*np.sum(demog2[min_cage:max_cage]*state[min_cage:max_cage]))/np.sum(demog2[min_cage:max_cage])
+        vaikutus=np.sum(demog2[min_cage:max_cage]*state[min_cage:max_cage])/np.sum(demog2[min_cage:max_cage])
+        x=np.sum(demog2[min_cage:max_cage]*state[min_cage:max_cage])
+        y=np.sum(demog2[min_cage:max_cage])
+        #print(f'vaikutus {vaikutus} x {x} y {y}\n s {state[min_cage:max_cage]} mean {np.mean(state[min_cage:max_cage])}\n d {demog2[min_cage:max_cage]}')
             
         return vaikutus
 

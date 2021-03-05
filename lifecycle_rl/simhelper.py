@@ -23,7 +23,7 @@ from . lifecycle import Lifecycle
 class SimHelper():
     def plot_stats(self,datafile,baseline=None,ref=None,xlabel=None,dire=None,plot_kiila=True,percent_scale=False):
         additional_income_tax,total_verot,total_rew,total_ps,total_htv,kiila,muut,tyollaste,tyotaste,tyossa,\
-            osatyoratio,osuus_vero,osuus_kunnallisvero,osuus_valtionvero=self.load_data(datafile)
+            osatyoratio,kiila_kaikki,osuus_vero,osuus_kunnallisvero,osuus_valtionvero=self.load_data(datafile)
         mean_rew,mean_verot,mean_ps,mean_htv,mean_muut,mean_kiila,mean_tyossa,mean_osatyoratio,mean_tyotaste=self.comp_means(datafile)
 
         self.plot_tyossa(additional_income_tax,mean_tyossa,mean_htv,xlabel=xlabel,percent_scale=percent_scale,dire=dire)
@@ -52,7 +52,10 @@ class SimHelper():
             
         self.plot_elasticity(mean_kiila,mean_htv,xlabel='Verokiila',ylabel='Työnmäärän jousto',dire=dire,percent_scale=percent_scale)
         self.plot_elasticity(mean_kiila,mean_tyossa,xlabel='Verokiila',ylabel='Työnteon jousto',dire=dire,percent_scale=percent_scale)
+        self.plot_elasticity(additional_income_tax,mean_htv,xlabel='Veromuutos',ylabel='Työnmäärän jousto',dire=dire,percent_scale=percent_scale,diff=False)
+        self.plot_elasticity(additional_income_tax,mean_tyossa,xlabel='Veromuutos',ylabel='Työnteon jousto',dire=dire,percent_scale=percent_scale,diff=False)
         self.plot_osatyo(additional_income_tax,mean_osatyoratio,xlabel=xlabel,ylabel='Osuus [%-yks]',dire=dire,percent_scale=percent_scale)
+        
         self.plot_veroosuudet(additional_income_tax,osuus_vero,osuus_kunnallisvero,osuus_valtionvero)
 
         self.plot_total(additional_income_tax,total_rew,total_verot,total_htv,total_ps) #,percent_scale=percent_scale)
@@ -78,7 +81,8 @@ class SimHelper():
         self.plot_osuus(additional_income_tax,kunnallis,label1=label1,xlabel=xlabel,ylabel='Etuudensaajien osuus kunnallisverosta',dire=dire,percent_scale=percent_scale)
         self.plot_osuus(additional_income_tax,valtio,label1=label1,xlabel=xlabel,ylabel='Etuudensaajien osuus ansiotuloverosta',dire=dire,percent_scale=percent_scale)
     
-    def plot_osuus(self,x,y,dire=None,label1=None,label2=None,xlabel='Muutos [%-yks]',percent_scale=False,ylabel='Elasticity',fname='elas'):
+    def plot_osuus(self,x,y,dire=None,label1=None,label2=None,xlabel='Muutos [%-yks]',
+                   percent_scale=False,ylabel='Elasticity',fname='elas'):
         if percent_scale:
             scale=100
         else:
@@ -99,14 +103,15 @@ class SimHelper():
             
         plt.show()
 
-    def plot_elasticity(self,additional_income_tax,htv,dire=None,label1=None,label2=None,xlabel='Muutos [%-yks]',percent_scale=False,ylabel='Elasticity'):
+    def plot_elasticity(self,additional_income_tax,htv,dire=None,label1=None,label2=None,
+                        xlabel='Muutos [%-yks]',percent_scale=False,ylabel='Elasticity',diff=True):
 #         if percent_scale:
 #             scale=100
 #         else:
 #             scale=1
     
-        el=self.comp_elasticity(additional_income_tax,htv)
-        self.plot_osuus(additional_income_tax,el,label1=label1,xlabel=xlabel,ylabel=ylabel,dire=dire,percent_scale=percent_scale)
+        el,elx=self.comp_elasticity(additional_income_tax,htv,diff=diff)
+        self.plot_osuus(elx,el,label1=label1,xlabel=xlabel,ylabel=ylabel,dire=dire,percent_scale=percent_scale)
 #         fig,ax=plt.subplots()
 #         ax.plot(scale*additional_income_tax,el,label=label1)
 #         plt.title('Elasticity')
@@ -173,7 +178,6 @@ class SimHelper():
             scale=1
 
         fig,ax=plt.subplots()
-        print(additional_tax,mean_rew)
         ax.plot(scale*additional_tax,mean_rew,label=label1)
         plt.title('Reward')
         if ref_additional_tax is not None:
@@ -191,7 +195,6 @@ class SimHelper():
         ax.plot(scale*additional_tax,mean_ps,label=label1)
         if ref_additional_tax is not None:
             ax.plot(scale*ref_additional_tax,ref_mean_ps,label=label2)
-        #print(mean_ps)
         plt.title('Palkkasumma')
         ax.set_ylabel('Palkkasumma [euroa]')
         ax.set_xlabel(xlabel)
@@ -241,20 +244,21 @@ class SimHelper():
         plt.title('Tarvittavat muut tulot')
         plt.show()
 
-    def plot_tyossa(self,additional_tax,mean_tyossa,mean_htv,ref_mean_htv=None,ref_additional_tax=None,label1='tyossa',label2='',xlabel='',dire=None,percent_scale=True):
+    def plot_tyossa(self,additional_tax,mean_tyossa,mean_htv,ref_mean_htv=None,ref_additional_tax=None,
+                    label1='Henkilöitä',label2='Henkilötyövuotta',xlabel='',dire=None,percent_scale=True):
         if percent_scale:
             scale=100
         else:
             scale=1
 
         fig,ax=plt.subplots()
-        ax.plot(scale*additional_tax,mean_htv,label='htv')
-        ax.plot(scale*additional_tax,mean_tyossa,label='tyossa')
+        ax.plot(scale*additional_tax,mean_htv,label=label2)
+        ax.plot(scale*additional_tax,mean_tyossa,label=label1)
         if ref_additional_tax is not None:
             ax.plot(scale*ref_additional_tax,ref_mean_htv,label=label2)
         plt.title('Työnteko')
         ax.legend()
-        ax.set_ylabel('Henkilötyövuodet')
+        ax.set_ylabel('Työnteko')
         ax.set_xlabel(xlabel)
         if dire is not None:
             plt.savefig(dire+'tyossa.eps', format='eps')
@@ -309,6 +313,7 @@ class SimHelper():
 
     def save_data(self,filename,additional_income_tax,total_verot,total_rew,total_ps,total_htv,
                   total_kiila,total_muut,total_tyollaste,total_tyotaste,total_tyossa,ratio_osatyo,
+                  total_kiila_kaikki_ansiot,
                   osuus_vero=None,osuus_kunnallisvero=None,osuus_valtionvero=None):
         f = h5py.File(filename, 'w')
         ftype='float64'
@@ -328,6 +333,8 @@ class SimHelper():
         _ = f.create_dataset('total_tyotaste', data=total_tyotaste, dtype=ftype)
         _ = f.create_dataset('total_tyossa', data=total_tyossa, dtype=ftype)
         _ = f.create_dataset('ratio_osatyo', data=ratio_osatyo, dtype=ftype)
+        _ = f.create_dataset('total_kiila_kaikki_ansiot', data=total_kiila_kaikki_ansiot, dtype=ftype)
+        
 
         f.close()
 
@@ -357,14 +364,17 @@ class SimHelper():
         osuus_vero=f.get('osuus_vero').value
         osuus_kunnallisvero=f.get('osuus_kunnallisvero').value
         osuus_valtionvero=f.get('osuus_valtionvero').value
+        total_kiila_kaikki_ansiot=f.get('total_kiila_kaikki_ansiot').value
 
         f.close()
 
         return additional_income_tax,total_verot,total_rew,total_ps,total_htv,total_kiila,total_muut,\
-               total_tyollaste,total_tyotaste,total_tyossa,ratio_osatyo,osuus_vero,osuus_kunnallisvero,osuus_valtionvero
+               total_tyollaste,total_tyotaste,total_tyossa,ratio_osatyo,total_kiila_kaikki_ansiot,\
+               osuus_vero,osuus_kunnallisvero,osuus_valtionvero
 
     def comp_means(self,filename):
-        additional_income_tax,total_verot,total_rew,total_ps,total_htv,total_kiila,total_muut,total_tyollaste,total_tyotaste,total_tyossa,ratio_osatyo,_,_,_=self.load_data(filename)
+        additional_income_tax,total_verot,total_rew,total_ps,total_htv,total_kiila,total_muut,\
+            total_tyollaste,total_tyotaste,total_tyossa,ratio_osatyo,total_kiila_kaikki_ansiot,_,_,_=self.load_data(filename)
         mean_rew=np.mean(total_rew,axis=1).reshape(-1, 1)
         mean_verot=np.mean(total_verot,axis=1).reshape(-1, 1)
         mean_ps=np.mean(total_ps,axis=1).reshape(-1, 1)
@@ -378,7 +388,7 @@ class SimHelper():
         return mean_rew,mean_verot,mean_ps,mean_htv,mean_muut,mean_kiila,mean_tyossa,mean_ratio_osatyo,mean_tyotaste
 
     def get_refstats(self,filename,scale=None):
-        additional_income_tax,total_verot,total_rew,total_ps,total_htv,total_kiila,total_muut,_,_,_=\
+        additional_income_tax,total_verot,total_rew,total_ps,total_htv,total_kiila,total_muut,_,_,_,_=\
             self.load_data(filename)
         z=np.where(np.abs(additional_income_tax)<0.001)
 
@@ -411,12 +421,13 @@ class SimHelper():
         total_tyotaste=np.zeros((additional.shape[0],repeats))
         total_muut_tulot=np.zeros((additional.shape[0],repeats))
         total_kiila=np.zeros((additional.shape[0],repeats))
+        total_kiila_kaikki_ansiot=np.zeros((additional.shape[0],repeats))
         total_tyossa=np.zeros((additional.shape[0],repeats))
         ratio_osatyo=np.zeros((additional.shape[0],repeats))
 
-        osuus_valtionvero=np.zeros(( additional.shape[0],repeats,3))
-        osuus_kunnallisvero=np.zeros(( additional.shape[0],repeats,3))
-        osuus_vero=np.zeros(( additional.shape[0],repeats,3))
+        osuus_valtionvero=np.zeros(( additional.shape[0],repeats,4))
+        osuus_kunnallisvero=np.zeros(( additional.shape[0],repeats,4))
+        osuus_vero=np.zeros(( additional.shape[0],repeats,4))
 
         for tax in additional:
             cc=Lifecycle(env='unemployment-v2',minimal=False,mortality=mortality,perustulo=False,
@@ -432,7 +443,7 @@ class SimHelper():
                 print('computing extra tax {} repeat {}'.format(tax,repeat))
                 results=taxresults+'_{}_{}'.format(num,repeat)
                 print(results)
-                r,qps,qv,h,muut,kiila,tyoll,tyot,lkm,osatyo_osuus=cc.render_laffer(load=results)
+                r,qps,qv,h,muut,kiila,tyoll,tyot,lkm,osatyo_osuus,kiila_kaikki_ansiot=cc.render_laffer(load=results)
                 vvosuus,kvosuus,vosuus=cc.comp_taxratios(grouped=True)
                 rew.append(r)
                 ps.append(qps)
@@ -445,6 +456,7 @@ class SimHelper():
                 total_htv[k,repeat]=h
                 total_muut_tulot[k,repeat]=muut
                 total_kiila[k,repeat]=kiila
+                total_kiila_kaikki_ansiot[k,repeat]=kiila_kaikki_ansiot
                 total_tyotaste[k,repeat]=tyot
                 total_tyollaste[k,repeat]=tyoll
                 total_tyossa[k,repeat]=lkm
@@ -458,21 +470,24 @@ class SimHelper():
 
         self.save_data(datafile,additional,total_verot,total_rew,total_ps,total_htv,
                   total_kiila,total_muut_tulot,total_tyollaste,total_tyotaste,total_tyossa,
-                  ratio_osatyo,osuus_vero,osuus_kunnallisvero,osuus_valtionvero)
+                  ratio_osatyo,total_kiila_kaikki_ansiot,osuus_vero,osuus_kunnallisvero,osuus_valtionvero)
 
-    def comp_elasticity(self,x,y):
+    def comp_elasticity(self,x,y,diff=False):
         xl=x.shape[0]
         yl=x.shape[0]    
-        el=np.zeros((xl,1))
-        #print(x,y)
+        el=np.zeros((xl-2,1))
+        elx=np.zeros((xl-2,1))
     
-        for k in range(1,xl-2):
-            #dx=(-x[k+1]+x[k-1])/(2*(1-x[k]))
-            dx=(-x[k+1]+x[k-1])/(2*x[k])
-            dy=(y[k]-y[k-1])/y[k]        
-            el[k]=dy/dx
+        for k in range(1,xl-1):
+            if diff:
+                dx=(-x[k+1]+x[k-1])/(2*x[k])
+            else:
+                dx=-x[k+1]+x[k-1]
+            dy=(y[k+1]-y[k-1])/(2*y[k])
+            el[k-1]=dy/dx
+            elx[k-1]=x[k]
             
-            print('{}: {} vs {}'.format(k,(x[k]-x[k-1]),dy))
+            #print('{}: {} vs {}'.format(k,(x[k]-x[k-1]),dy))
         
-        return el    
+        return el,elx
     
