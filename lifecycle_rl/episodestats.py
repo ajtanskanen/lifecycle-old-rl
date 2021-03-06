@@ -35,8 +35,12 @@ class EpisodeStats():
         self.minimal=minimal
         self.params=params
         
+        self.language='English'
+        
         if version is not None:
             self.version=version
+
+        self.setup_labels()
 
         self.n_employment=n_emps
         self.n_time=n_time
@@ -262,6 +266,39 @@ class EpisodeStats():
                 self.pysyneet[t,emp]+=1
         elif newemp<0:
             self.deceiced[t]+=1
+            
+    def setup_labels(self):
+        self.labels={}
+        if self.language=='English':
+            self.labels['age']='Age [y]'
+            self.labels['ratio']='Osuus tilassa [%]'
+            self.labels['unemp duration']='Length of unemployment [y]'
+            self.labels['scaled freq']='Scaled frequency'
+            self.labels['telp']='Employee pension premium'
+            self.labels['sairausvakuutus']='Health insurance'
+            self.labels['työttömyysvakuutusmaksu']='työttömyysvakuutusmaksu'
+            self.labels['puolison verot']='puolison verot'
+            self.labels['taxes']='Taxes'
+            self.labels['asumistuki']='Housing benefit'
+            self.labels['toimeentulotuki']='Supplementary benefit'
+            self.labels['tyottomyysturva']='Unemployment benefit'
+            self.labels['paivahoito']='Daycare'
+            self.labels['elake']='Pension'
+        else:
+            self.labels['age']='Ikä [v]'
+            self.labels['ratio']='Osuus tilassa [%]'
+            self.labels['unemp duration']='työttömyysjakson pituus [v]'
+            self.labels['scaled freq']='skaalattu taajuus'
+            self.labels['telp']='TEL-P'
+            self.labels['sairausvakuutus']='Sairausvakuutus'
+            self.labels['työttömyysvakuutusmaksu']='Työttömyysvakuutusmaksu'
+            self.labels['puolison verot']='puolison verot'
+            self.labels['taxes']='Verot'
+            self.labels['asumistuki']='Asumistuki'
+            self.labels['toimeentulotuki']='Toimeentulotuki'
+            self.labels['tyottomyysturva']='Työttömyysturva'
+            self.labels['paivahoito']='Päivähoito'
+            self.labels['elake']='Elake'    
     
     def map_age(self,age,start_zero=False):
         if start_zero:
@@ -716,7 +753,7 @@ class EpisodeStats():
     def plot_compare_empdistribs(self,emp_distrib,emp_distrib2,label='vaihtoehto'):
         fig,ax=plt.subplots()
         ax.set_xlabel('työsuhteen pituus [v]')
-        ax.set_ylabel('skaalattu taajuus')
+        ax.set_ylabel(self.labels['scaled freq'])
         ax.set_yscale('log')
         max_time=50
         nn_time = int(np.round((max_time)*self.inv_timestep))+1        
@@ -880,8 +917,9 @@ class EpisodeStats():
         scaled=scaled/np.sum(unemp_distrib)
         fig,ax=plt.subplots()
         self.plot_vlines_unemp(0.6)
-        ax.set_xlabel('työttömyysjakson pituus [v]')
-        ax.set_ylabel('skaalattu taajuus')
+        ax.set_xlabel(self.labels['unemp duration'])
+        ax.set_ylabel(self.labels['scaled freq'])
+        
         ax.plot(x[:-1],scaled)
         ax.set_yscale('log')
         plt.xlim(0,max)
@@ -1057,8 +1095,8 @@ class EpisodeStats():
         scaled=scaled/np.abs(np.sum(unemp_distrib))
         fig,ax=plt.subplots()
         #self.plot_vlines_unemp(0.6)
-        ax.set_xlabel('työttömyysjakson pituus [v]')
-        ax.set_ylabel('skaalattu taajuus')
+        ax.set_xlabel(self.labels['unemp duration'])
+        ax.set_ylabel(self.labels['scaled freq'])
         #x3=np.flip(x[:-1])
         #ax.plot(x3,scaled)
         ax.plot(x[:-1],scaled)
@@ -1084,7 +1122,7 @@ class EpisodeStats():
         fig,ax=plt.subplots()
         if not diff:
             self.plot_vlines_unemp(0.5)
-        ax.set_xlabel('Työttömyysjakson pituus [v]')
+        ax.set_xlabel(self.labels['unemp duration'])
         ax.set_ylabel('Osuus')
         if diff:
             ax.plot(x[:-1],scaled1-scaled2,label=label1+'-'+label2)
@@ -1113,7 +1151,7 @@ class EpisodeStats():
         
         fig,ax=plt.subplots()
         plt.xlim(min_time,max_time)
-        ax.set_xlabel('Ikä [v]')
+        ax.set_xlabel(self.labels['age'])
         ax.set_ylabel(virta_label+'virta')
         ax.plot(x,scaled1,label=label1)
         ax.plot(x,scaled2,label=label2)
@@ -1207,8 +1245,8 @@ class EpisodeStats():
         ax.plot(x,100*(self.empstate[:,11]+self.empstate[:,5]+self.empstate[:,7])/self.alive[:,0],label='työvoiman ulkopuolella, ei opiskelija, sis. vanh.vapaat')
         emp_statsratio=100*self.empstats.outsider_stats()    
         ax.plot(x,emp_statsratio,label='havainto')
-        ax.set_xlabel('Ikä [v]')
-        ax.set_ylabel('Osuus tilassa [%]')
+        ax.set_xlabel(self.labels['age'])
+        ax.set_ylabel(self.labels['ratio'])
         ax.legend()
         plt.show()
 
@@ -1220,8 +1258,8 @@ class EpisodeStats():
         ax.plot(x,emp_statsratio,label='havainto, naiset')
         emp_statsratio=100*self.empstats.outsider_stats(g=2)    
         ax.plot(x,emp_statsratio,label='havainto, miehet')
-        ax.set_xlabel('Ikä [v]')
-        ax.set_ylabel('Osuus tilassa [%]')
+        ax.set_xlabel(self.labels['age'])
+        ax.set_ylabel(self.labels['ratio'])
         ax.legend()
         plt.show()
         if printtaa:
@@ -1239,7 +1277,7 @@ class EpisodeStats():
         ax.plot(x,100*self.infostats_pinkslip[:,0]/self.empstate[:,0],label='ansiosidonnaisella')
         ax.plot(x,100*self.infostats_pinkslip[:,4]/self.empstate[:,4],label='putkessa')
         ax.plot(x,100*self.infostats_pinkslip[:,13]/self.empstate[:,13],label='työmarkkinatuella')
-        ax.set_xlabel('Ikä [v]')
+        ax.set_xlabel(self.labels['age'])
         ax.set_ylabel('Irtisanottujen osuus tilassa [%]')
         ax.legend()
         plt.show()
@@ -1250,8 +1288,8 @@ class EpisodeStats():
         ax.plot(x+self.timestep,100*self.empstate[:,12]/self.alive[:,0],label='opiskelija tai armeijassa')
         emp_statsratio=100*self.empstats.student_stats()
         ax.plot(x,emp_statsratio,label='havainto')
-        ax.set_xlabel('Ikä [v]')
-        ax.set_ylabel('Osuus tilassa [%]')
+        ax.set_xlabel(self.labels['age'])
+        ax.set_ylabel(self.labels['ratio'])
         ax.legend()
         plt.show()
         
@@ -1259,8 +1297,8 @@ class EpisodeStats():
         x=np.linspace(self.min_age,self.max_age,self.n_time)
         fig,ax=plt.subplots()
         ax.plot(x+self.timestep,100*self.infostats_kassanjasen[:]/self.alive[:,0],label='työttömyyskassan jäsenien osuus kaikista')
-        ax.set_xlabel('Ikä [v]')
-        ax.set_ylabel('Osuus tilassa [%]')
+        ax.set_xlabel(self.labels['age'])
+        ax.set_ylabel(self.labels['ratio'])
         ax.legend()
         plt.show()
         mini=np.nanmin(100*self.infostats_kassanjasen[:]/self.alive[:,0])
@@ -1290,8 +1328,8 @@ class EpisodeStats():
         ax.plot(x,emp_statsratio,label='havainto, naiset')
         emp_statsratio=100*self.empstats.student_stats(g=2)
         ax.plot(x,emp_statsratio,label='havainto, miehet')
-        ax.set_xlabel('Ikä [v]')
-        ax.set_ylabel('Osuus tilassa [%]')
+        ax.set_xlabel(self.labels['age'])
+        ax.set_ylabel(self.labels['ratio'])
         ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
         plt.show()
         
@@ -1318,8 +1356,8 @@ class EpisodeStats():
         ax.plot(x,emp_statsratio,label='havainto, naiset')
         emp_statsratio=100*self.empstats.disab_stat(g=2)
         ax.plot(x,emp_statsratio,label='havainto, miehet')
-        ax.set_xlabel('Ikä [v]')
-        ax.set_ylabel('Osuus tilassa [%]')
+        ax.set_xlabel(self.labels['age'])
+        ax.set_ylabel(self.labels['ratio'])
         ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
         plt.show()
         
@@ -1450,14 +1488,18 @@ class EpisodeStats():
 
         tyollisyysaste,osatyoaste,tyottomyysaste,ka_tyottomyysaste=self.comp_empratios(self.empstate,self.alive,unempratio=False)
 
+        age_label=self.labels['age']
+        ratio_label=self.labels['ratio']
+
+
         x=np.linspace(self.min_age,self.max_age,self.n_time)
         fig,ax=plt.subplots()
         ax.plot(x,tyollisyysaste,label='työllisyysaste')
         ax.plot(x,tyottomyysaste,label='työttömien osuus')
         emp_statsratio=100*self.empstats.emp_stats()
         ax.plot(x,emp_statsratio,ls='--',label='havainto')
-        ax.set_xlabel('Ikä [v]')
-        ax.set_ylabel('Osuus tilassa [%]')
+        ax.set_xlabel(age_label)
+        ax.set_ylabel(ratio_label)
         ax.legend()
         if figname is not None:
             plt.savefig(figname+'tyollisyysaste.eps', format='eps')
@@ -1472,20 +1514,20 @@ class EpisodeStats():
 
         empstate_ratio=100*self.empstate/self.alive
         if figname is not None:
-            self.plot_states(empstate_ratio,ylabel='Osuus tilassa [%]',stack=True,figname=figname+'_stack')
+            self.plot_states(empstate_ratio,ylabel=ratio_label,stack=True,figname=figname+'_stack')
         else:
-            self.plot_states(empstate_ratio,ylabel='Osuus tilassa [%]',stack=True)
+            self.plot_states(empstate_ratio,ylabel=ratio_label,stack=True)
 
         if self.version>0:
-            self.plot_states(empstate_ratio,ylabel='Osuus tilassa [%]',ylimit=20,stack=False)
-            self.plot_states(empstate_ratio,ylabel='Osuus tilassa [%]',parent=True,stack=False)
+            self.plot_states(empstate_ratio,ylabel=ratio_label,ylimit=20,stack=False)
+            self.plot_states(empstate_ratio,ylabel=ratio_label,parent=True,stack=False)
             self.plot_parents_in_work()
-            self.plot_states(empstate_ratio,ylabel='Osuus tilassa [%]',unemp=True,stack=False)
+            self.plot_states(empstate_ratio,ylabel=ratio_label,unemp=True,stack=False)
 
         if figname is not None:
-            self.plot_states(empstate_ratio,ylabel='Osuus tilassa [%]',start_from=60,stack=True,figname=figname+'_stack60')
+            self.plot_states(empstate_ratio,ylabel=ratio_label,start_from=60,stack=True,figname=figname+'_stack60')
         else:
-            self.plot_states(empstate_ratio,ylabel='Osuus tilassa [%]',start_from=60,stack=True)
+            self.plot_states(empstate_ratio,ylabel=ratio_label,start_from=60,stack=True)
 
     def plot_emp_by_gender(self,figname=None):
 
@@ -1530,18 +1572,29 @@ class EpisodeStats():
         if unempratio:
             tyollisyysaste,osatyoaste,tyottomyysaste,ka_tyottomyysaste=self.comp_empratios(self.empstate,self.alive,unempratio=True)
             unempratio_stat=100*self.empstats.unempratio_stats()
-            labeli='keskimääräinen työttömyysaste '+str(ka_tyottomyysaste)      
-            ylabeli='Työttömyysaste [%]'
-            labeli2='työttömyysaste'
+            if self.language=='Finnish':
+                labeli='keskimääräinen työttömyysaste '+str(ka_tyottomyysaste)      
+                ylabeli='Työttömyysaste [%]'
+                labeli2='työttömyysaste'
+            else:            
+                labeli='average unemployment rate '+str(ka_tyottomyysaste)      
+                ylabeli='Unemployment rate [%]'
+                labeli2='Unemployment rate'
         else:
             tyollisyysaste,osatyoaste,tyottomyysaste,ka_tyottomyysaste=self.comp_empratios(self.empstate,self.alive,unempratio=False)
             unempratio_stat=100*self.empstats.unemp_stats()  
-            labeli='keskimääräinen työttömien osuus väestöstö '+str(ka_tyottomyysaste)
-            ylabeli='Työttömien osuus väestöstö [%]'
-            labeli2='työttömien osuus väestöstö'
+            if self.language=='Finnish':
+                labeli='keskimääräinen työttömien osuus väestöstö '+str(ka_tyottomyysaste)
+                ylabeli='Työttömien osuus väestöstö [%]'
+                labeli2='työttömien osuus väestöstö'
+            else:
+                labeli='proportion of unemployed'+str(ka_tyottomyysaste)
+                ylabeli='Proportion of unemployed [%]'
+                labeli2='proportion of unemployed'
 
         fig,ax=plt.subplots()
-        ax.set_xlabel('Ikä [v]')
+        ax.set_xlabel(self.labels['age'])
+        
         ax.set_ylabel(ylabeli)
         ax.plot(x,unempratio_stat,ls='--',label='havainto')
         ax.plot(x,tyottomyysaste)
@@ -1550,7 +1603,7 @@ class EpisodeStats():
         plt.show()
 
         fig,ax=plt.subplots()
-        ax.set_xlabel('Ikä [v]')
+        ax.set_xlabel(self.labels['age'])
         ax.set_ylabel(ylabeli)
         ax.plot(x,unempratio_stat,label='havainto')
         pal=sns.color_palette("hls", self.n_employment)  # hls, husl, cubehelix
@@ -1593,7 +1646,7 @@ class EpisodeStats():
             labeli='keskimääräinen työttömien osuus väestöstö '+str(ka_tyottomyysaste)
             ylabeli='Työttömien osuus väestöstö [%]'
             
-        ax.set_xlabel('Ikä [v]')
+        ax.set_xlabel(self.labels['age'])
         ax.set_ylabel(ylabeli)
         if False:
             ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
@@ -1637,7 +1690,7 @@ class EpisodeStats():
         labeli='osatyöaste '#+str(ka_tyottomyysaste)      
         ylabeli='Osatyön osuus työnteosta [%]'
             
-        ax.set_xlabel('Ikä [v]')
+        ax.set_xlabel(self.labels['age'])
         ax.set_ylabel(ylabeli)
         if False:
             ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
@@ -1683,8 +1736,8 @@ class EpisodeStats():
         ax.plot(x,emp_statsratio,ls=lstyle,color='darkgray',label='havainto, miehet')
         emp_statsratio=100*self.empstats.emp_stats(g=1)
         ax.plot(x,emp_statsratio,ls=lstyle,color='black',label='havainto, naiset')
-        ax.set_xlabel('Ikä [v]')
-        ax.set_ylabel('Osuus tilassa [%]')
+        ax.set_xlabel(self.labels['age'])
+        ax.set_ylabel(self.labels['ratio'])
         if False:
             ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
         else:
@@ -1846,7 +1899,7 @@ class EpisodeStats():
                     ax.plot(x,ura_student,label='student')
                     ax.plot(x,ura_outsider,label='outsider')
                     ax.plot(x,ura_army,label='armeijassa')
-        ax.set_xlabel('Ikä [v]')
+        ax.set_xlabel(self.labels['age'])
         ax.set_ylabel(ylabel)
         if show_legend:
             if not reverse:
@@ -1901,8 +1954,8 @@ class EpisodeStats():
 #         ax.plot(x,100*self.empstate[:,14]/self.alive[:,0],label='armeijassa ja siviilipalveluksessa olevat')
 #         emp_statsratio=100*self.army_stats()
 #         ax.plot(x,emp_statsratio,label='havainto')
-#         ax.set_xlabel('Ikä [v]')
-#         ax.set_ylabel('Osuus tilassa [%]')
+#         ax.set_xlabel(self.labels['age'])
+#         ax.set_ylabel(self.labels['ratio'])
 #         ax.legend()
 #         plt.show()
 # 
@@ -1929,8 +1982,8 @@ class EpisodeStats():
 #         ax.plot(x,emp_statsratio,label='havainto, naiset')
 #         emp_statsratio=100*self.army_stats(g=2)
 #         ax.plot(x,emp_statsratio,label='havainto, miehet')
-#         ax.set_xlabel('Ikä [v]')
-#         ax.set_ylabel('Osuus tilassa [%]')
+#         ax.set_xlabel(self.labels['age'])
+#         ax.set_ylabel(self.labels['ratio'])
 #         ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
 #         plt.show()
 #         
@@ -2643,7 +2696,7 @@ class EpisodeStats():
             ls=None
         
         fig,ax=plt.subplots()
-        ax.set_xlabel('Ikä [v]')
+        ax.set_xlabel(self.labels['age'])
         ax.set_ylabel('Työllisyysaste [%]')
         ax.plot(x,100*tyolliset1,label=label1)
         ax.plot(x,100*tyolliset2,ls=ls,label=label2)
@@ -2654,7 +2707,7 @@ class EpisodeStats():
         plt.show()
 
         fig,ax=plt.subplots()
-        ax.set_xlabel('Ikä [v]')
+        ax.set_xlabel(self.labels['age'])
         ax.set_ylabel('Ero osuuksissa [%]')
         diff_emp=diff_emp*100
         ax.plot(x,100*(tyot_osuus1-tyot_osuus2),label='unemployment')
@@ -2667,7 +2720,7 @@ class EpisodeStats():
         plt.show()
 
         fig,ax=plt.subplots()
-        ax.set_xlabel('Ikä [v]')
+        ax.set_xlabel(self.labels['age'])
         ax.set_ylabel('Työttömyysaste [%]')
         diff_emp=diff_emp*100
         ax.plot(x,100*tyot_osuus1,label=label1)
@@ -2678,7 +2731,7 @@ class EpisodeStats():
         plt.show()
 
         fig,ax=plt.subplots()
-        ax.set_xlabel('Ikä [v]')
+        ax.set_xlabel(self.labels['age'])
         ax.set_ylabel('Kotihoidontuki [%]')
         #ax.plot(x,100*khh_osuus1,label=label1)
         #ax.plot(x,100*khh_osuus2,ls=ls,label=label2)
@@ -2689,7 +2742,7 @@ class EpisodeStats():
         plt.show()
 
         fig,ax=plt.subplots()
-        ax.set_xlabel('Ikä [v]')
+        ax.set_xlabel(self.labels['age'])
         ax.set_ylabel('Ero osuuksissa [%]')
         diff_emp=diff_emp*100
         ax.plot(x,100*ansiosid_osuus2,label='ansiosid. työttömyys, '+label2)
