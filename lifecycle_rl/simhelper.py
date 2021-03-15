@@ -28,6 +28,7 @@ class SimHelper():
 
         self.plot_tyossa(additional_income_tax,mean_tyossa,mean_htv,xlabel=xlabel,percent_scale=percent_scale,dire=dire)
         self.plot_tyoton(additional_income_tax,mean_tyotaste,xlabel=xlabel,percent_scale=percent_scale,dire=dire)
+        self.plot_osatyossa(additional_income_tax,mean_osatyoratio,xlabel=xlabel,percent_scale=percent_scale,dire=dire)
 
         if baseline is not None:
             baseline_tax,baseline_verot,baseline_rew,baseline_ps,baseline_htv,baseline_kiila,baseline_muut=self.load_data(baseline)
@@ -98,7 +99,7 @@ class SimHelper():
         ax.set_xlabel(xlabel)
         if dire is not None:
             plt.savefig(dire+fname+'_'+ylabel+'.eps', format='eps')
-            plt.savefig(dire+fname+'_'+ylabel+'.png', format='png')
+            #plt.savefig(dire+fname+'_'+ylabel+'.png', format='png')
             print('dire',dire)
             
         plt.show()
@@ -187,8 +188,7 @@ class SimHelper():
         ax.set_xlabel(xlabel)
         if dire is not None:
             plt.savefig(dire+'reward.eps', format='eps')
-            plt.savefig(dire+'reward.png', format='png')
-            print('dire',dire)
+            #plt.savefig(dire+'reward.png', format='png')
         plt.show()
 
         fig,ax=plt.subplots()
@@ -201,7 +201,7 @@ class SimHelper():
         ax.legend()
         if dire is not None:
             plt.savefig(dire+'palkkasumma.eps', format='eps')
-            plt.savefig(dire+'palkkasumma.png', format='png')
+            #plt.savefig(dire+'palkkasumma.png', format='png')
         plt.show()
 
         fig,ax=plt.subplots()
@@ -214,7 +214,7 @@ class SimHelper():
         ax.set_xlabel(xlabel)
         if dire is not None:
             plt.savefig(dire+'verot.eps', format='eps')
-            plt.savefig(dire+'verot.png', format='png')
+            #plt.savefig(dire+'verot.png', format='png')
         plt.show()
 
         fig,ax=plt.subplots()
@@ -227,7 +227,7 @@ class SimHelper():
         ax.set_xlabel(xlabel)
         if dire is not None:
             plt.savefig(dire+'htv.eps', format='eps')
-            plt.savefig(dire+'htv.png', format='png')
+            #plt.savefig(dire+'htv.png', format='png')
         plt.show()
 
         fig,ax=plt.subplots()
@@ -239,11 +239,31 @@ class SimHelper():
         ax.set_xlabel(xlabel)
         if dire is not None:
             plt.savefig(dire+'muut.eps', format='eps')
-            plt.savefig(dire+'muut.png', format='png')
+            #plt.savefig(dire+'muut.png', format='png')
 
         plt.title('Tarvittavat muut tulot')
         plt.show()
 
+    def plot_osatyossa(self,additional_tax,mean_tyossa,ref_mean_htv=None,ref_additional_tax=None,
+                    label1='Henkilöitä',xlabel='',dire=None,percent_scale=True):
+        if percent_scale:
+            scale=100
+        else:
+            scale=1
+
+        fig,ax=plt.subplots()
+        ax.plot(scale*additional_tax,mean_tyossa,label=label1)
+        if ref_additional_tax is not None:
+            ax.plot(scale*ref_additional_tax,ref_mean_htv,label=label2)
+        plt.title('Työnteko')
+        ax.legend()
+        ax.set_ylabel('Osatyönteko')
+        ax.set_xlabel(xlabel)
+        if dire is not None:
+            plt.savefig(dire+'osatyossa.eps', format='eps')
+            #plt.savefig(dire+'osatyossa.png', format='png')
+        plt.show()
+    
     def plot_tyossa(self,additional_tax,mean_tyossa,mean_htv,ref_mean_htv=None,ref_additional_tax=None,
                     label1='Henkilöitä',label2='Henkilötyövuotta',xlabel='',dire=None,percent_scale=True):
         if percent_scale:
@@ -262,7 +282,7 @@ class SimHelper():
         ax.set_xlabel(xlabel)
         if dire is not None:
             plt.savefig(dire+'tyossa.eps', format='eps')
-            plt.savefig(dire+'tyossa.png', format='png')
+            #plt.savefig(dire+'tyossa.png', format='png')
         plt.show()
     
 
