@@ -47,12 +47,13 @@ class Lifecycle():
                     ansiopvraha_kesto400=None,karenssi_kesto=None,
                     ansiopvraha_toe=None,perustulo=None,mortality=None,
                     randomness=None,include_putki=None,preferencenoise=None,
-                    callback_minsteps=None,pinkslip=True,plotdebug=False,
+                    callback_minsteps=None,pinkslip=True,plotdebug=None,
                     use_sigma_reduction=None,porrasta_putki=None,perustulomalli=None,
                     porrasta_1askel=None,porrasta_2askel=None,porrasta_3askel=None,
                     osittainen_perustulo=None,gamma=None,exploration=None,exploration_ratio=None,
                     irr_vain_tyoelake=None,additional_income_tax=None,additional_tyel_premium=None,
                     additional_kunnallisvero=None,additional_income_tax_high=None,
+                    extra_ppr=None,perustulo_korvaa_toimeentulotuen=None,
                     year=2018,version=3,scale_tyel_accrual=None,preferencenoise_level=None,
                     scale_additional_tyel_accrual=None,valtionverotaso=None,perustulo_asetettava=None,
                     porrasta_toe=None,include_halftoe=None,include_ove=None,min_retirementage=None,
@@ -64,7 +65,11 @@ class Lifecycle():
         self.inv_timestep=int(np.round(1/self.timestep)) # pitäisi olla kokonaisluku
         self.min_age = 18
         self.max_age = 70
-        self.min_retirementage=63.5
+        if minimal:
+            self.min_retirementage=63.5
+        else:
+            self.min_retirementage=63
+        
         self.max_retirementage=68
         self.n_pop = 1000
         self.callback_minsteps = 1_000
@@ -82,6 +87,8 @@ class Lifecycle():
         self.include_pinkslip=True
         self.mortality=False
         self.perustulo=False
+        self.perustulo_korvaa_toimeentulotuen=False
+        self.perustulomalli=None
         self.ansiopvraha_kesto300=None
         self.ansiopvraha_kesto400=None
         self.include_putki=None
@@ -107,9 +114,13 @@ class Lifecycle():
         self.porrasta_toe=None
         self.include_ove=False
         self.unemp_limit_reemp=False
+        self.extra_ppr=0
 
         if callback_minsteps is not None:
             self.callback_minsteps=callback_minsteps
+            
+        if extra_ppr is not None:
+            self.extra_ppr=extra_ppr
 
         if karenssi_kesto is not None:
             self.karenssi_kesto=karenssi_kesto
@@ -132,6 +143,8 @@ class Lifecycle():
         if perustulo_asetettava is not None:
             self.perustulo_asetettava=perustulo_asetettava
 
+        if perustulomalli is not None:
+            self.perustulomalli=perustulomalli
         if valtionverotaso is not None:
             self.valtionverotaso=valtionverotaso
 
@@ -190,7 +203,8 @@ class Lifecycle():
 
         if perustulo is not None:
             self.perustulo=perustulo
-            
+        if perustulo_korvaa_toimeentulotuen is not None:
+            self.perustulo_korvaa_toimeentulotuen=perustulo_korvaa_toimeentulotuen
         if preferencenoise is not None:
             self.include_preferencenoise=preferencenoise
             
@@ -237,9 +251,8 @@ class Lifecycle():
                 'plotdebug': self.plotdebug, 
                 'min_retirementage': self.min_retirementage, 'max_retirementage':self.max_retirementage,
                 'reset_exploration_go': self.exploration,'reset_exploration_ratio': self.exploration_ratio,
-                'irr_vain_tyoelake': self.irr_vain_tyoelake}
-            #self.n_employment = 3
-            #self.n_acts = 3
+                'irr_vain_tyoelake': self.irr_vain_tyoelake,'perustulomalli': perustulomalli,'perustulo': perustulo,
+                'osittainen_perustulo': self.osittainen_perustulo, 'perustulo_korvaa_toimeentulotuen': self.perustulo_korvaa_toimeentulotuen }
         else:
             #if EK:
             #    self.environment='unemploymentEK-v1'
@@ -259,7 +272,7 @@ class Lifecycle():
                 'include_putki': self.include_putki, 'use_sigma_reduction': self.use_sigma_reduction,
                 'plotdebug': self.plotdebug, 'include_preferencenoise': self.include_preferencenoise,
                 'preferencenoise_level': self.preferencenoise_level,
-                'perustulomalli': perustulomalli,'osittainen_perustulo':self.osittainen_perustulo,
+                'perustulomalli': self.perustulomalli, 'osittainen_perustulo':self.osittainen_perustulo,
                 'reset_exploration_go': self.exploration,'reset_exploration_ratio': self.exploration_ratio,
                 'irr_vain_tyoelake': self.irr_vain_tyoelake, 
                 'additional_income_tax': self.additional_income_tax,
@@ -268,17 +281,13 @@ class Lifecycle():
                 'additional_kunnallisvero': self.additional_kunnallisvero,
                 'scale_tyel_accrual': self.scale_tyel_accrual,
                 'scale_additional_tyel_accrual': self.scale_additional_tyel_accrual,
-                'perustulo': self.perustulo, 'valtionverotaso': self.valtionverotaso,
+                'valtionverotaso': self.valtionverotaso,
                 'perustulo_asetettava': self.perustulo_asetettava, 
                 'include_halftoe': self.include_halftoe,
                 'porrasta_toe': self.porrasta_toe,
                 'include_ove': self.include_ove,
-                'unemp_limit_reemp': self.unemp_limit_reemp}
-            #self.n_acts = 4
-            #if self.mortality:
-            #    self.n_employment = 16
-            #else:
-            #    self.n_employment = 15
+                'unemp_limit_reemp': self.unemp_limit_reemp,
+                'extra_ppr': self.extra_ppr}
                 
         # Create log dir & results dirs
         self.log_dir = "tmp/" # +str(env_id)
@@ -335,6 +344,15 @@ class Lifecycle():
                 policy_kwargs = dict(act_fun=tf.nn.leaky_relu, net_arch=arch) 
             else:
                 policy_kwargs = dict(act_fun=tf.nn.leaky_relu, net_arch=[256, 256, 16]) 
+            if predict:
+                n_cpu = 20
+            else:
+                n_cpu = 8 # 12 # 20
+        elif rlmodel=='small_leaky_acktr': # tf.nn.leakyrelu
+            if arch is not None:
+                policy_kwargs = dict(act_fun=tf.nn.leaky_relu, net_arch=arch) 
+            else:
+                policy_kwargs = dict(act_fun=tf.nn.leaky_relu, net_arch=[64, 64, 16]) 
             if predict:
                 n_cpu = 20
             else:
@@ -403,7 +421,7 @@ class Lifecycle():
                 else:
                     model = A2C.load(loadname, env=env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
                                      policy_kwargs=policy_kwargs,lr_schedule=learning_schedule,n_cpu_tf_sess=n_cpu_tf_sess)
-            elif rlmodel in set(['small_acktr','acktr','large_acktr','deep_acktr','leaky_acktr']):
+            elif rlmodel in set(['small_acktr','acktr','large_acktr','deep_acktr','leaky_acktr','small_leaky_acktr']):
                 from stable_baselines.common.policies import MlpPolicy 
                 if tensorboard:
                     model = ACKTR.load(loadname, env=env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
@@ -454,7 +472,7 @@ class Lifecycle():
                 from stable_baselines.common.policies import MlpPolicy 
                 model = A2C(MlpPolicy, env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time, 
                             tensorboard_log=self.tenb_dir, policy_kwargs=policy_kwargs,lr_schedule=learning_schedule)
-            elif rlmodel in set(['small_acktr','acktr','large_acktr','deep_acktr','leaky_acktr']):
+            elif rlmodel in set(['small_acktr','acktr','large_acktr','deep_acktr','leaky_acktr','small_leaky_acktr']):
                 from stable_baselines.common.policies import MlpPolicy 
                 if tensorboard:
                     model = ACKTR(MlpPolicy, env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
@@ -674,7 +692,7 @@ class Lifecycle():
 
         if self.rlmodel=='a2c':
             model = A2C.load(load, env=env, verbose=1,gamma=self.gamma, policy_kwargs=policy_kwargs,n_cpu_tf_sess=n_cpu_tf_sess)
-        elif self.rlmodel in set(['acktr','small_acktr','lnacktr','small_lnacktr','deep_acktr','leaky_acktr']):
+        elif self.rlmodel in set(['acktr','small_acktr','lnacktr','small_lnacktr','deep_acktr','leaky_acktr','small_leaky_acktr']):
             model = ACKTR.load(load, env=env, verbose=1,gamma=self.gamma, policy_kwargs=policy_kwargs,n_cpu_tf_sess=n_cpu_tf_sess)
         elif self.rlmodel=='trpo':
             model = TRPO.load(load, env=env, verbose=1,gamma=self.gamma, policy_kwargs=policy_kwargs,n_cpu_tf_sess=n_cpu_tf_sess)
@@ -697,10 +715,10 @@ class Lifecycle():
         pop_num=np.array([k for k in range(n_cpu)])
         tqdm_e = tqdm(range(int(self.n_pop)), desc='Population', leave=True, unit=" p")
 
+        print('predict')
         while n<self.n_pop:
             act, predstate = model.predict(states,deterministic=deterministic)
             newstate, rewards, dones, infos = env.step(act)
-
             #done=False
             for k in range(n_cpu):
                 if dones[k]:
@@ -726,11 +744,11 @@ class Lifecycle():
     def get_reward(self):
         return self.episodestats.get_reward()
    
-    def render(self,load=None,figname=None):
+    def render(self,load=None,figname=None,grayscale=False):
         if load is not None:
-            self.episodestats.render(load=load,figname=figname)
+            self.episodestats.render(load=load,figname=figname,grayscale=False)
         else:
-            self.episodestats.render(figname=figname)
+            self.episodestats.render(figname=figname,grayscale=False)
    
     def render_reward(self,load=None,figname=None):
         if load is not None:
@@ -739,14 +757,19 @@ class Lifecycle():
         else:
             return self.episodestats.comp_total_reward()
    
-    def render_laffer(self,load=None,figname=None):
+    def render_laffer(self,load=None,figname=None,include_retwork=True):
         if load is not None:
             self.episodestats.load_sim(load)
             
         rew=self.episodestats.comp_total_reward()
             
         q=self.episodestats.comp_budget()
-        q2=self.episodestats.comp_participants(scale=True)
+        if include_retwork:
+            tyotulosumma=q['tyotulosumma']
+        else:
+            tyotulosumma=q['tyotulosumma_eielakkeella']
+        
+        q2=self.episodestats.comp_participants(scale=True,include_retwork=include_retwork)
         kokotyossa,osatyossa=self.episodestats.comp_parttime_aggregate()
         htv=q2['htv']
         palkansaajia=q2['palkansaajia']
@@ -766,7 +789,7 @@ class Lifecycle():
         #
         #print(qq,qc)
             
-        return rew,q['tyotulosumma'],q['verot+maksut'],htv,muut_tulot,kiila,tyollaste,tyotaste,palkansaajia,osatyossa,kiila2
+        return rew,tyotulosumma,q['verot+maksut'],htv,muut_tulot,kiila,tyollaste,tyotaste,palkansaajia,osatyossa,kiila2
    
     def load_sim(self,load=None):
         self.episodestats.load_sim(load)
@@ -873,7 +896,7 @@ class Lifecycle():
                save='saved/perusmalli',debug=False,simut='simut',results='results/simut_res',
                stats='results/simut_stats',deterministic=True,train=True,predict=True,
                batch1=1,batch2=100,cont=False,start_from=None,callback_minsteps=None,
-               verbose=1,plotdebug=None,max_grad_norm=None,learning_rate=0.25,log_interval=10,
+               verbose=1,max_grad_norm=None,learning_rate=0.25,log_interval=10,
                learning_schedule='linear',vf=None,arch=None,gae_lambda=None,plot=None):
    
         '''
@@ -883,7 +906,7 @@ class Lifecycle():
         plot results if needed
         '''
         
-        if self.plotdebug or plotdebug:
+        if self.plotdebug:
             debug=True
    
         self.n_pop=pop
@@ -895,23 +918,23 @@ class Lifecycle():
             if cont:
                 self.run_protocol(rlmodel=rlmodel,steps1=steps1,steps2=steps2,verbose=verbose,
                                   debug=debug,save=save,batch1=batch1,batch2=batch2,
-                                  cont=cont,start_from=start_from,twostage=twostage,plotdebug=plotdebug,
+                                  cont=cont,start_from=start_from,twostage=twostage,
                                   max_grad_norm=max_grad_norm,learning_rate=learning_rate,log_interval=log_interval,
                                   learning_schedule=learning_schedule,vf=vf,arch=arch,gae_lambda=gae_lambda)
             else:
                 self.run_protocol(rlmodel=rlmodel,steps1=steps1,steps2=steps2,verbose=verbose,
                                  debug=debug,batch1=batch1,batch2=batch2,cont=cont,
-                                 save=save,twostage=twostage,plotdebug=plotdebug,
+                                 save=save,twostage=twostage,
                                  max_grad_norm=max_grad_norm,learning_rate=learning_rate,log_interval=log_interval,
                                  learning_schedule=learning_schedule,vf=vf,arch=arch,gae_lambda=gae_lambda)
         if predict:
             #print('predict...')
-            self.predict_protocol(pop=pop,rlmodel=rlmodel,load=save,plotdebug=plotdebug,
+            self.predict_protocol(pop=pop,rlmodel=rlmodel,load=save,
                           debug=debug,deterministic=deterministic,results=results,arch=arch)
           
     def run_protocol(self,steps1=2_000_000,steps2=1_000_000,rlmodel='acktr',
                debug=False,batch1=1,batch2=1000,cont=False,twostage=False,log_interval=10,
-               start_from=None,save='best3',verbose=1,plotdebug=None,max_grad_norm=None,
+               start_from=None,save='best3',verbose=1,max_grad_norm=None,
                learning_rate=0.25,learning_schedule='linear',vf=None,arch=None,gae_lambda=None):
         '''
         run_protocol
@@ -931,11 +954,11 @@ class Lifecycle():
             if cont:
                 self.train(steps=steps1,cont=cont,rlmodel=rlmodel,save=tmpname,batch=batch1,debug=debug,
                            start_from=start_from,use_callback=False,use_vecmonitor=False,
-                           log_interval=log_interval,verbose=1,plotdebug=plotdebug,vf=vf,arch=arch,gae_lambda=gae_lambda,
+                           log_interval=log_interval,verbose=1,vf=vf,arch=arch,gae_lambda=gae_lambda,
                            max_grad_norm=max_grad_norm,learning_rate=learning_rate,learning_schedule=learning_schedule)
             else:
                 self.train(steps=steps1,cont=False,rlmodel=rlmodel,save=tmpname,batch=batch1,debug=debug,vf=vf,arch=arch,
-                           use_callback=False,use_vecmonitor=False,log_interval=log_interval,verbose=1,plotdebug=plotdebug,gae_lambda=gae_lambda,
+                           use_callback=False,use_vecmonitor=False,log_interval=log_interval,verbose=1,gae_lambda=gae_lambda,
                            max_grad_norm=max_grad_norm,learning_rate=learning_rate,learning_schedule=learning_schedule)
 
         if twostage and steps2>0:
@@ -946,7 +969,7 @@ class Lifecycle():
                        max_grad_norm=max_grad_norm,learning_rate=learning_rate,learning_schedule=learning_schedule)
 
     def predict_protocol(self,pop=1_00,rlmodel='acktr',results='results/simut_res',arch=None,
-                         load='saved/malli',debug=False,deterministic=False,plotdebug=None):
+                         load='saved/malli',debug=False,deterministic=False):
         '''
         predict_protocol
 
@@ -1034,9 +1057,28 @@ class Lifecycle():
                         n_palkka=n_palkka,deltapalkka=deltapalkka,n_elake=n_elake,deltaelake=deltaelake,
                         hila_palkka0=hila_palkka0,hila_elake0=hila_elake0)
 
-    def plot_img(self,img,xlabel="Eläke",ylabel="Palkka",title="Employed"):
+    def get_rl_act(self,t,emp=0,time_in_state=0,rlmodel='acktr',load='perus',debug=True,deterministic=True):
+        model,env,n_cpu=self.setup_model(rlmodel=rlmodel,load=load,debug=debug)
+        return self.RL_pred_act(model,env,t,emp=emp,deterministic=deterministic,time_in_state=time_in_state)
+
+    def plot_img(self,img,xlabel="Eläke",ylabel="Palkka",title="Employed",
+                    vmin=None,vmax=None,figname=None):
         fig, ax = plt.subplots()
-        im = ax.imshow(img)
+        #im = ax.imshow(img,interpolation='none',aspect='equal',origin='lower',resample=False,alpha=0)
+        #img = ax.pcolor(img)
+        if vmin is not None:
+            heatmap = ax.pcolor(img,vmax=vmax,cmap='gray')
+        else:
+            heatmap = ax.pcolor(img) 
+        fig.colorbar(heatmap,ax=ax)        
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel(ylabel)
+        plt.title(title)
+        plt.show()
+
+    def plot_img_old(self,img,xlabel="Eläke",ylabel="Palkka",title="Employed"):
+        fig, ax = plt.subplots()
+        im = ax.imshow(img,origin='lower')
         heatmap = plt.pcolor(img) 
         plt.colorbar(heatmap)        
         ax.set_xlabel(xlabel)
@@ -1045,26 +1087,37 @@ class Lifecycle():
         plt.show()
         
     def plot_twoimg(self,img1,img2,xlabel="Pension",ylabel="Wage",title1="Employed",title2="Employed",
-                    vmin=None,vmax=None,figname=None):
+                    vmin=None,vmax=None,figname=None,show_results=True,alpha=None):
         fig, axs = plt.subplots(ncols=2)
+        if alpha is None:
+            alpha=1.0
         if vmin is not None:
-            im0 = axs[0].imshow(img1,vmin=vmin,vmax=vmax,cmap='gray')
+            im0 = axs[0].pcolor(img1,vmin=vmin,vmax=vmax,cmap='gray',alpha=alpha,linewidth=0,rasterized=True)
         else:
-            im0 = axs[0].imshow(img1)
+            im0 = axs[0].pcolor(img1,alpha=alpha,linewidth=0,rasterized=True)
+        #if vmin is not None:
+        #    im0 = axs[0].imshow(img1,vmin=vmin,vmax=vmax,cmap='gray')
+        #else:
+        #    im0 = axs[0].imshow(img1)
         #heatmap = plt.pcolor(img1) 
+        kwargs = {'format': '%.1f'}
         divider0 = make_axes_locatable(axs[0])
         cax0 = divider0.append_axes("right", size="20%", pad=0.05)
-        cbar0 = plt.colorbar(im0, cax=cax0)
+        cbar0 = plt.colorbar(im0, cax=cax0, **kwargs)
         axs[0].set_xlabel(xlabel)
         axs[0].set_ylabel(ylabel)
         axs[0].set_title(title1)
         if vmin is not None:
-            im1 = axs[1].imshow(img2,vmin=vmin,vmax=vmax,cmap='gray')
+            im1 = axs[1].pcolor(img2,vmin=vmin,vmax=vmax,cmap='gray',alpha=alpha,linewidth=0,rasterized=True)
         else:
-            im1 = axs[1].imshow(img2)
+            im1 = axs[1].pcolor(img2,alpha=alpha,linewidth=0,rasterized=True)
+        #if vmin is not None:
+        #    im1 = axs[1].imshow(img2,vmin=vmin,vmax=vmax,cmap='gray')
+        #else:
+        #    im1 = axs[1].imshow(img2)
         divider1 = make_axes_locatable(axs[1])
         cax1 = divider1.append_axes("right", size="20%", pad=0.05)
-        cbar1 = plt.colorbar(im1, cax=cax1)
+        cbar1 = plt.colorbar(im1, cax=cax1,  **kwargs)
         #heatmap = plt.pcolor(img2) 
         axs[1].set_xlabel(xlabel)
         axs[1].set_ylabel(ylabel)
@@ -1074,7 +1127,10 @@ class Lifecycle():
         if figname is not None:
             plt.savefig(figname+'.eps', format='eps')
 
-        plt.show()
+        if show_results:
+            plt.show()
+        else:
+            return fig,axs
         
     def filter_act(self,act,state):
         employment_status,pension,old_wage,age,time_in_state,next_wage=self.env.state_decode(state)
@@ -1084,15 +1140,28 @@ class Lifecycle():
         
         return act
 
+    def RL_pred_act(self,model,env,age,emp=0,elake=0,time_in_state=0,vanhapalkka=0,palkka=0,deterministic=True):
+        # dynaamisen ohjelmoinnin parametrejä
+    
+        if emp==2:
+            state=self.env.state_encode(emp,elake,0,age,time_in_state,0)
+        else:
+            state=self.env.state_encode(emp,elake,vanhapalkka,age,time_in_state,palkka)
+
+        act, predstate = model.predict(state,deterministic=deterministic)
+        act=self.filter_act(act,state)
+                 
+        return act
+
     def RL_simulate_V(self,model,env,age,emp=0,time_in_state=0,deterministic=True,
                         n_palkka=80,deltapalkka=1000,n_elake=40,deltaelake=1500,
                         hila_palkka0=0,hila_elake0=0):
         # dynaamisen ohjelmoinnin parametrejä
         def map_elake(v):
-            return hila_elake0+deltaelake*v # pitäisikö käyttää exp-hilaa?
+            return hila_elake0+deltaelake*v 
 
         def map_palkka(v):
-            return hila_palkka0+deltapalkka*v # pitäisikö käyttää exp-hilaa?
+            return hila_palkka0+deltapalkka*v 
     
         prev=0
         toe=0
@@ -1103,8 +1172,6 @@ class Lifecycle():
                 elake=map_elake(el)
                 if emp==2:
                     state=self.env.state_encode(emp,elake,0,age,time_in_state,0)
-                elif emp==1:
-                    state=self.env.state_encode(emp,elake,palkka,age,time_in_state,palkka)
                 else:
                     state=self.env.state_encode(emp,elake,palkka,age,time_in_state,palkka)
 
