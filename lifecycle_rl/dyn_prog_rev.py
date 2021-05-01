@@ -50,8 +50,8 @@ class DynProgLifecycleRev(Lifecycle):
         self.n_palkka_future = 21
         self.n_elake = 40
         self.n_tis = 5 # ei vaikutusta palkkaan
-        self.max_wage=100_000
-        self.max_pension=70_000
+        self.max_wage=85_000
+        self.max_pension=50_000
         self.perustulo=False
         self.perustulomalli=None
         
@@ -216,6 +216,17 @@ class DynProgLifecycleRev(Lifecycle):
         if emp==2:
             p2min,p2max,wp2=0,1,0
             pmin,pmax,wp=0,1,0
+        
+            V1=(1-we)*(self.Hila[t,pmin,emin,emp,tismax,p2min])+we*(self.Hila[t,pmin,emax,emp,tismax,p2min])
+        else:    
+            V1=(1-wp2)*((1-wp)*( (1-we)*(self.Hila[t,pmin,emin,emp,tismax,p2min])\
+                                +we*(self.Hila[t,pmin,emax,emp,tismax,p2min]))+\
+                        wp*(     (1-we)*(self.Hila[t,pmax,emin,emp,tismax,p2min])\
+                                +we*(self.Hila[t,pmax,emax,emp,tismax,p2min])))+\
+               wp2*(     (1-wp)*((1-we)*(self.Hila[t,pmin,emin,emp,tismax,p2max])\
+                                +we*(self.Hila[t,pmin,emax,emp,tismax,p2max]))+\
+                        wp*(     (1-we)*(self.Hila[t,pmax,emin,emp,tismax,p2max])\
+                                +we*(self.Hila[t,pmax,emax,emp,tismax,p2max])))                         
 
         if show:      
             print(f'getV({emp},{elake},{old_wage},{wage}): p2min {p2min} p2max {p2max} wp2 {wp2})')
@@ -228,15 +239,6 @@ class DynProgLifecycleRev(Lifecycle):
         #    print('emp {} elake {} old_wage {} wage {} tis {}: wp {}'.format(emp,elake,old_wage,wage,time_in_state,wp))
         #if we<0 or we>1:
         #    print('emp {} elake {} old_wage {} wage {} tis {}: wp {}'.format(emp,elake,old_wage,wage,time_in_state,we))
-        
-        V1=(1-wp2)*((1-wp)*( (1-we)*(self.Hila[t,pmin,emin,emp,tismax,p2min])\
-                            +we*(self.Hila[t,pmin,emax,emp,tismax,p2min]))+\
-                    wp*(     (1-we)*(self.Hila[t,pmax,emin,emp,tismax,p2min])\
-                            +we*(self.Hila[t,pmax,emax,emp,tismax,p2min])))+\
-           wp2*(     (1-wp)*((1-we)*(self.Hila[t,pmin,emin,emp,tismax,p2max])\
-                            +we*(self.Hila[t,pmin,emax,emp,tismax,p2max]))+\
-                    wp*(     (1-we)*(self.Hila[t,pmax,emin,emp,tismax,p2max])\
-                            +we*(self.Hila[t,pmax,emax,emp,tismax,p2max])))                         
 
         V=max(0,V1)
 
@@ -583,9 +585,10 @@ class DynProgLifecycleRev(Lifecycle):
         else:
             return np.random.randint(3)
 
-    def test_salaries_v3(self,age=25,n=100,wage=20000,state=1,tis=0):
+    def test_salaries_v3(self,age=25,n=100,wage=20000,state=1,tis=0,n_future=21):
         w=np.zeros(n)
 
+        self.n_palkka_future=n_future
         elake=10000
         s0=self.env.state_encode(state,elake,wage,age-1,tis,wage)
         act=0
@@ -725,6 +728,23 @@ class DynProgLifecycleRev(Lifecycle):
                 rewards.append(reward)
             
         return rewards,sps
+        
+    def check_V(self):
+        # check final age
+        t=self.map_grid_age(70)
+        diff=np.zeros((self.n_employment,self.n_elake,3))
+        for emp in range(self.n_employment):
+            for el in range(self.n_elake):
+                for a in range(3):
+                    diff[emp,el,a]=np.max(self.actReward[t,:,el,emp,:,:,a]-self.actHila[t,:,el,emp,:,:,a])
+                
+        print('max diff',np.max(diff))
+        print('min diff',np.min(diff),' argmin',np.argmin(diff))
+        
+        return diff
+                
+        #for p in range(self.n_palkka): 
+        #    for p_old in range(self.n_palkka): 
 
     def backtrack(self,age,debug=False):
         '''
@@ -787,6 +807,23 @@ class DynProgLifecycleRev(Lifecycle):
             
                 pn_weight[p,self.n_palkka_future-1,0]=1.0-weight_old_s0
                 pn_weight[p,self.n_palkka_future-1,[1,3]]=1.0-weight_old_s1
+            elif False:
+                palkka_next_mid0_v=self.map_palkka_future_v2(palkka,ika2,state=0,midpoint=True)
+                palkka_next_mid1_v=self.map_palkka_future_v2(palkka,ika2,state=1,midpoint=True)
+                wagetable_future[p,:,0]=self.map_palkka_future_v2(palkka,ika2,state=0,midpoint=False)
+                wagetable_future[p,:,[1,3]]=self.map_palkka_future_v2(palkka,ika2,state=1,midpoint=False)
+                for pnext in range(self.n_palkka_future-1): 
+                    palkka_next_mid0=palkka_next_mid0_v[pnext] #self.map_palkka_future(palkka,pnext,med0,midpoint=True)
+                    weight_new_s0=self.env.wage_process_cumulative(palkka_next_mid0,palkka,ika2,state=0) # tila ei saa vaikuttaa tässä kuin palkka_next_mid0:n kautta
+                    pn_weight[p,pnext,0]=weight_new_s0-weight_old_s0
+                    weight_old_s0=weight_new_s0
+                    palkka_next_mid1=palkka_next_mid1_v[pnext] #self.map_palkka_future(palkka,pnext,med0,midpoint=True)
+                    weight_new_s1=self.env.wage_process_cumulative(palkka_next_mid1,palkka,ika2,state=1) # tila ei saa vaikuttaa tässä kuin palkka_next_mid1:n kautta
+                    pn_weight[p,pnext,[1,3]]=weight_new_s1-weight_old_s1
+                    weight_old_s1=weight_new_s1
+            
+                pn_weight[p,self.n_palkka_future-1,0]=1.0-weight_old_s0
+                pn_weight[p,self.n_palkka_future-1,[1,3]]=1.0-weight_old_s1            
             else: # vanha tapa
                 for pnext in range(self.n_palkka_future-1): 
                     palkka_next_mid0=self.map_palkka_future(palkka,pnext,med0,midpoint=True)
@@ -827,9 +864,9 @@ class DynProgLifecycleRev(Lifecycle):
                         rts,Sps=self.get_rewards_continuous((emp,elake,0,age,time_in_state,0),ret_set)
                         
                         for ind,a in enumerate(ret_set):
-                            emp2,elake2,_,_,_,_=self.env.state_decode(Sps[ind])
+                            emp2,elake2,_,ika2,_,_=self.env.state_decode(Sps[ind])
                             #gw=self.get_V(t+1,emp=emp2,elake=elake2,old_wage=0,wage=0,time_in_state=0)
-                            self.actHila[t,:,el,emp,:,:,:]=rts[ind]+self.gamma*self.get_V(emp=emp2,elake=elake2,old_wage=0,wage=0,time_in_state=0,age=age+1)
+                            self.actHila[t,:,el,emp,:,:,a]=rts[ind]+self.gamma*self.get_V(emp=emp2,elake=elake2,old_wage=0,wage=0,time_in_state=0,age=ika2)
                             self.actReward[t,:,el,emp,:,:,a]=rts[ind]
                             #print('getV(emp{} e{} p{}): {}'.format(emp2,elake2,palkka,gw))
                             #print(f'rts[{ind}] {rts[ind]}')
@@ -848,8 +885,11 @@ class DynProgLifecycleRev(Lifecycle):
                 
                             for ind,a in enumerate(act_set):
                                 emp2,elake2,_,ika2,tis2,_=self.env.state_decode(Sps[ind])
+                                # TARKASTA!! emp vai emp2??
                                 gw=self.get_V_vector(emp=emp2,elake=elake2,old_wage=palkka,time_in_state=tis2,age=ika2,wages=wagetable_future[p,:,emp2])
+                                #gw=self.get_V_vector(emp=emp2,elake=elake2,old_wage=palkka,time_in_state=tis2,age=ika2,wages=wagetable_future[p,:,emp])
                                 w=pn_weight[p,:,emp2]
+                                #w=pn_weight[p,:,emp]
                                 q=rts[ind]+self.gamma*np.sum(gw*w)
                                 
                                 #if tulosta:
@@ -898,6 +938,7 @@ class DynProgLifecycleRev(Lifecycle):
                     
                                 for ind,a in enumerate(act_set):
                                     emp2,elake2,_,ika2,tis2,_=self.env.state_decode(Sps[ind])
+                                    # TARKASTA!
                                     gw=self.get_V_vector(emp=emp2,elake=elake2,old_wage=palkka,time_in_state=tis2,age=ika2,wages=wagetable_future[p,:,emp2])
                                     w=pn_weight[p,:,emp2]
                                     q=rts[ind]+self.gamma*np.sum(gw*w) 
@@ -985,6 +1026,8 @@ class DynProgLifecycleRev(Lifecycle):
         coef=1-np.var(rewards-rewards_pred)/np.var(rewards)
         print('Explained variance ',coef)
         print('Pred variance {} variance {} diff variance {}'.format(np.var(rewards_pred),np.var(rewards),np.var(rewards-rewards_pred)))
+        absmax=np.abs(rewards-rewards_pred)
+        print('Max diff in r {} in {}'.format(np.max(absmax),np.argmax(absmax)))
         
         #for n in range(pop):
         #    coef=(1-np.var(rewards[n,:-2]-rewards_pred[n,:-2]))/np.var(rewards[n,:-2])

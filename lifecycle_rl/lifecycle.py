@@ -4,6 +4,8 @@
 
     implements the lifecycle model that predicts how people will act in the presence of
     social security
+    
+    recent
 
 '''
 
@@ -63,8 +65,12 @@ class Lifecycle():
         '''
         self.timestep=timestep # 0.25 = 3kk askel
         self.inv_timestep=int(np.round(1/self.timestep)) # pitäisi olla kokonaisluku
-        self.min_age = 18
-        self.max_age = 70
+        if True:
+            self.min_age = 18
+            self.max_age = 70
+        else:
+            self.min_age = 30
+            self.max_age = 70
         if minimal:
             self.min_retirementage=63.5
         else:
@@ -303,7 +309,7 @@ class Lifecycle():
 
         self.episodestats=SimStats(self.timestep,self.n_time,self.n_employment,self.n_pop,
                                    self.env,self.minimal,self.min_age,self.max_age,self.min_retirementage,
-                                   version=self.version,params=self.gym_kwargs,year=self.year)
+                                   version=self.version,params=self.gym_kwargs,year=self.year,gamma=self.gamma)
 
     def explain(self):
         '''

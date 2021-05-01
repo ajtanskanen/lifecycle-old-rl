@@ -199,7 +199,7 @@ class SimStats(EpisodeStats):
     def plot_simstats(self,filename,grayscale=False,figname=None):
         agg_htv,agg_tyoll,agg_rew,emp_tyolliset,emp_tyolliset_osuus,\
             emp_tyottomat,emp_tyottomat_osuus,emp_htv,emps,best_rew,\
-            best_emp,emps,agg_neticome,agg_equivalent_netincome=self.load_simstats(filename)
+            best_emp,emps,agg_netincome,agg_equivalent_netincome=self.load_simstats(filename)
 
         if self.version>0:
             print('lisäpäivillä on {:.0f} henkilöä'.format(self.count_putki_dist(emps)))
@@ -217,10 +217,10 @@ class SimStats(EpisodeStats):
         diff_htv=agg_htv-mean_htv
         diff_tyoll=agg_tyoll-median_tyoll
         mean_rew=np.mean(agg_rew)
-        mean_netincome=np.mean(agg_neticome)
+        mean_netincome=np.mean(agg_netincome)
         mean_equi_netincome=np.mean(agg_equivalent_netincome)
 
-        print('Mean reward {mean_rew}')
+        print(f'Mean reward {mean_rew}')
         print(f'Mean net income {mean_netincome} mean equivalent net income {mean_equi_netincome}')
         fig,ax=plt.subplots()
         ax.set_xlabel('Rewards')
@@ -289,7 +289,7 @@ class SimStats(EpisodeStats):
         #ax.plot(x,100*(m_emp+s_emp),label='ka+std')
         #ax.plot(x,100*(m_emp-s_emp),label='ka-std')
         ax.plot(x,100*m_best,label='paras')
-        emp_statsratio=100*self.emp_stats()
+        emp_statsratio=100*self.empstats.emp_stats()
         ax.plot(x,emp_statsratio,label='havainto')
         ax.legend()
         plt.show()
@@ -330,7 +330,7 @@ class SimStats(EpisodeStats):
     def get_simstats(self,filename1,plot=False,use_mean=False):
         agg_htv,agg_tyoll,agg_rew,emp_tyolliset,emp_tyolliset_osuus,\
             emp_tyottomat,emp_tyottomat_osuus,emp_htv,emps,best_rew,\
-            best_emp,emps,agg_neticome,agg_equivalent_netincome=self.load_simstats(filename1)
+            best_emp,emps,agg_netincome,agg_equivalent_netincome=self.load_simstats(filename1)
 
         mean_htv=np.mean(agg_htv)
         median_htv=np.median(agg_htv)
@@ -478,7 +478,7 @@ class SimStats(EpisodeStats):
         #ax.legend()
         plt.show()
 
-        demog2=self.get_demog()
+        demog2=self.empstats.get_demog()
         fig,ax=plt.subplots()
         ax.set_xlabel('Ikä [v]')
         ax.set_ylabel('cumsum työllisyys [lkm]')
@@ -585,7 +585,7 @@ class SimStats(EpisodeStats):
                         unemp_distrib,emp_distrib,unemp_distrib_bu,\
                         tyoll_distrib,tyoll_distrib_bu,\
                         tyoll_virta,tyot_virta,tyot_virta_ansiosid,tyot_virta_tm,\
-                        unemp_dur,unemp_lastdur,agg_neticome,agg_equivalent_netincome):
+                        unemp_dur,unemp_lastdur,agg_netincome,agg_equivalent_netincome):
         f = h5py.File(filename, 'w')
         dset = f.create_dataset('agg_htv', data=agg_htv, dtype='float64')
         dset = f.create_dataset('agg_tyoll', data=agg_tyoll, dtype='float64')
@@ -609,7 +609,7 @@ class SimStats(EpisodeStats):
         dset = f.create_dataset('tyot_virta_tm', data=tyot_virta_tm, dtype='float64')
         dset = f.create_dataset('unemp_dur', data=unemp_dur, dtype='float64')
         dset = f.create_dataset('unemp_lastdur', data=unemp_lastdur, dtype='float64')
-        dset = f.create_dataset('agg_neticome', data=agg_neticome, dtype='float64')
+        dset = f.create_dataset('agg_netincome', data=agg_netincome, dtype='float64')
         dset = f.create_dataset('agg_equivalent_netincome', data=agg_equivalent_netincome, dtype='float64')
 
     def load_simstats(self,filename):
@@ -626,14 +626,14 @@ class SimStats(EpisodeStats):
         emp_tyottomat = f.get('emp_tyottomat').value
         emp_tyottomat_osuus = f.get('emp_tyottomat_osuus').value
         emp_htv = f.get('emp_htv').value
-        agg_neticome = f.get('agg_neticome').value
+        agg_netincome = f.get('agg_netincome').value
         agg_equivalent_netincome = f.get('agg_equivalent_netincome').value
         
         f.close()
 
         return agg_htv,agg_tyoll,agg_rew,emp_tyolliset,emp_tyolliset_osuus,\
                emp_tyottomat,emp_tyottomat_osuus,emp_htv,emps,best_rew,best_emp,emps,\
-               agg_neticome,agg_equivalent_netincome
+               agg_netincome,agg_equivalent_netincome
 
     def load_simdistribs(self,filename):
         f = h5py.File(filename, 'r')

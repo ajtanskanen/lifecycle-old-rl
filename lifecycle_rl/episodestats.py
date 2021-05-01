@@ -23,8 +23,9 @@ from . empstats import Empstats
 #locale.setlocale(locale.LC_ALL, 'fi_FI')
 
 class EpisodeStats():
-    def __init__(self,timestep,n_time,n_emps,n_pop,env,minimal,min_age,max_age,min_retirementage,year=2018,version=3,params=None):
+    def __init__(self,timestep,n_time,n_emps,n_pop,env,minimal,min_age,max_age,min_retirementage,year=2018,version=3,params=None,gamma=0.92):
         self.version=version
+        self.gamma=gamma
         self.reset(timestep,n_time,n_emps,n_pop,env,minimal,min_age,max_age,min_retirementage,year,params=params)
         print('version',version)
 
@@ -281,6 +282,14 @@ class EpisodeStats():
                 self.pysyneet[t,emp]+=1
         elif newemp<0:
             self.deceiced[t]+=1
+    
+    def min_max(self):
+        min_wage=np.min(self.infostats_pop_wage)
+        max_wage=np.max(self.infostats_pop_wage)
+        max_pension=np.max(self.infostats_pop_pension)
+        min_pension=np.min(self.infostats_pop_pension)
+        print(f'min wage {min_wage} max wage {max_wage}')
+        print(f'min pension {min_pension} max pension {max_pension}')
             
     def setup_labels(self):
         self.labels={}
@@ -348,6 +357,24 @@ class EpisodeStats():
     
     def episodestats_exit(self):
         plt.close(self.episode_fig)
+        
+    def comp_realoptimrew(self):
+        '''
+        Computes discounted actual reward at each time point
+        '''
+        realrew=np.zeros(self.n_time)
+        for k in range(self.n_pop):
+            prew=np.zeros(self.n_time)
+            prew[-1]=self.poprewstate[-1,k]
+            for t in range(self.n_time-2,0,-1):
+                prew[t]=self.gamma*prew[t+1]+self.poprewstate[t,k]
+            
+            realrew+=prew
+        
+        realrew/=self.n_pop
+        realrew=np.mean(realrew[1:])
+                
+        return realrew
         
     def comp_gini(self):
         '''
@@ -2235,6 +2262,8 @@ class EpisodeStats():
         
         print('Gini coefficient is {}'.format(G))
         
+        print('Real discounted reward {}'.format(self.comp_realoptimrew()))
+        
         self.plot_emp(figname=figname)
         if self.version>0:
             self.plot_outsider()
@@ -3129,7 +3158,7 @@ class EpisodeStats():
             
         return ansiosid_osuus,tm_osuus
     
-    def comp_tyollisyys_stats(self,emp,scale_time=True,start=20,end=63.5,full=False,tyot_stats=False,agg=False,shapes=False):
+    def comp_tyollisyys_stats(self,emp,scale_time=True,start=19,end=68,full=False,tyot_stats=False,agg=False,shapes=False):
         demog2=self.empstats.get_demog()
               
         if scale_time:
