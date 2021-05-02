@@ -2405,11 +2405,11 @@ class EpisodeStats():
         _ = f.create_dataset('stat_pension', data=self.stat_pension, dtype=ftype)
         _ = f.create_dataset('stat_paidpension', data=self.stat_paidpension, dtype=ftype)
         _ = f.create_dataset('stat_unemp_len', data=self.stat_unemp_len, dtype=ftype)
-        _ = f.create_dataset('popempstate', data=self.popempstate, dtype=int)
+        _ = f.create_dataset('popempstate', data=self.popempstate, dtype=int,compression="gzip", compression_opts=9)
         _ = f.create_dataset('stat_wage_reduction', data=self.stat_wage_reduction, dtype=ftype)
         _ = f.create_dataset('stat_wage_reduction_g', data=self.stat_wage_reduction_g, dtype=ftype)
-        _ = f.create_dataset('popunemprightleft', data=self.popunemprightleft, dtype=ftype)
-        _ = f.create_dataset('popunemprightused', data=self.popunemprightused, dtype=ftype)
+        _ = f.create_dataset('popunemprightleft', data=self.popunemprightleft, dtype=ftype,compression="gzip", compression_opts=9)
+        _ = f.create_dataset('popunemprightused', data=self.popunemprightused, dtype=ftype,compression="gzip", compression_opts=9)
         _ = f.create_dataset('infostats_taxes', data=self.infostats_taxes, dtype=ftype)
         _ = f.create_dataset('infostats_taxes_distrib', data=self.infostats_taxes_distrib, dtype=ftype)
         _ = f.create_dataset('infostats_etuustulo', data=self.infostats_etuustulo, dtype=ftype)
@@ -2433,7 +2433,7 @@ class EpisodeStats():
         _ = f.create_dataset('infostats_sairauspaivaraha', data=self.infostats_sairauspaivaraha, dtype=ftype)
         _ = f.create_dataset('infostats_toimeentulotuki', data=self.infostats_toimeentulotuki, dtype=ftype)
         _ = f.create_dataset('infostats_tulot_netto', data=self.infostats_tulot_netto, dtype=ftype)
-        _ = f.create_dataset('poprewstate', data=self.poprewstate, dtype=ftype)
+        _ = f.create_dataset('poprewstate', data=self.poprewstate, dtype=ftype,compression="gzip", compression_opts=9)
         _ = f.create_dataset('infostats_pinkslip', data=self.infostats_pinkslip, dtype=int)
         _ = f.create_dataset('infostats_paid_tyel_pension', data=self.infostats_paid_tyel_pension, dtype=ftype)
         _ = f.create_dataset('infostats_tyelpremium', data=self.infostats_tyelpremium, dtype=ftype)
@@ -2452,10 +2452,10 @@ class EpisodeStats():
         _ = f.create_dataset('infostats_toe', data=self.infostats_toe, dtype=ftype)
         _ = f.create_dataset('infostats_ove', data=self.infostats_ove, dtype=int)
         _ = f.create_dataset('infostats_kassanjasen', data=self.infostats_kassanjasen, dtype=int)
-        _ = f.create_dataset('infostats_poptulot_netto', data=self.infostats_poptulot_netto, dtype=ftype)
+        _ = f.create_dataset('infostats_poptulot_netto', data=self.infostats_poptulot_netto, dtype=ftype,compression="gzip", compression_opts=9)
         _ = f.create_dataset('infostats_equivalent_income', data=self.infostats_equivalent_income, dtype=ftype)
-        _ = f.create_dataset('infostats_pop_wage', data=self.infostats_pop_wage, dtype=ftype)
-        _ = f.create_dataset('infostats_pop_pension', data=self.infostats_pop_pension, dtype=ftype)
+        _ = f.create_dataset('infostats_pop_wage', data=self.infostats_pop_wage, dtype=ftype,compression="gzip", compression_opts=9)
+        _ = f.create_dataset('infostats_pop_pension', data=self.infostats_pop_pension, dtype=ftype,compression="gzip", compression_opts=9)
         _ = f.create_dataset('params', data=self.params, dtype=ftype)
         
         f.close()
@@ -2474,138 +2474,140 @@ class EpisodeStats():
     def load_sim(self,filename,n_pop=None):
         f = h5py.File(filename, 'r')
         
-        if 'version' in f.keys():
-            self.version=f.get('version').value
-        else:
-            self.version=1
-
-        self.empstate=f.get('empstate').value
-        self.gempstate=f.get('gempstate').value
-        self.deceiced=f.get('deceiced').value
-        self.rewstate=f.get('rewstate').value
-        if 'poprewstate' in f.keys():
-            self.poprewstate=f.get('poprewstate').value
+        print(f.keys())
         
-        self.salaries_emp=f.get('salaries_emp').value
-        self.actions=f.get('actions').value
-        self.alive=f.get('alive').value
-        self.galive=f.get('galive').value
-        self.siirtyneet=f.get('siirtyneet').value
-        self.pysyneet=f.get('pysyneet').value
-        self.salaries=f.get('salaries').value
-        self.aveV=f.get('aveV').value
-        self.time_in_state=f.get('time_in_state').value
-        self.stat_tyoura=f.get('stat_tyoura').value
-        self.stat_toe=f.get('stat_toe').value
-        self.stat_pension=f.get('stat_pension').value
-        self.stat_paidpension=f.get('stat_paidpension').value
-        self.stat_unemp_len=f.get('stat_unemp_len').value
-        self.popempstate=f.get('popempstate').value
-        self.stat_wage_reduction=f.get('stat_wage_reduction').value
-        self.popunemprightleft=f.get('popunemprightleft').value
-        self.popunemprightused=f.get('popunemprightused').value
+	    if 'version' in f.keys():
+    	    version=int(f['version'][()])
+	    else:
+    	    version=1
+        
+        self.empstate=f['empstate'][()]
+        self.gempstate=f['gempstate'][()]
+        self.deceiced=f['deceiced'][()]
+        self.rewstate=f['rewstate'][()]
+        if 'poprewstate' in f.keys():
+            self.poprewstate=f['poprewstate'][()]
+        
+        self.salaries_emp=f['salaries_emp'][()]
+        self.actions=f['actions'][()]
+        self.alive=f['alive'][()]
+        self.galive=f['galive'][()]
+        self.siirtyneet=f['siirtyneet'][()]
+        self.pysyneet=f['pysyneet'][()]
+        self.salaries=f['salaries'][()]
+        self.aveV=f['aveV'][()]
+        self.time_in_state=f['time_in_state'][()]
+        self.stat_tyoura=f['stat_tyoura'][()]
+        self.stat_toe=f['stat_toe'][()]
+        self.stat_pension=f['stat_pension'][()]
+        self.stat_paidpension=f['stat_paidpension'][()]
+        self.stat_unemp_len=f['stat_unemp_len'][()]
+        self.popempstate=f['popempstate'][()]
+        self.stat_wage_reduction=f['stat_wage_reduction'][()]
+        self.popunemprightleft=f['popunemprightleft'][()]
+        self.popunemprightused=f['popunemprightused'][()]
         
         if 'infostats_taxes' in f.keys(): # older runs do not have these
-            self.infostats_taxes=f.get('infostats_taxes').value
-            self.infostats_etuustulo=f.get('infostats_etuustulo').value
-            self.infostats_perustulo=f.get('infostats_perustulo').value
-            self.infostats_palkkatulo=f.get('infostats_palkkatulo').value
-            self.infostats_ansiopvraha=f.get('infostats_ansiopvraha').value
-            self.infostats_asumistuki=f.get('infostats_asumistuki').value
-            self.infostats_valtionvero=f.get('infostats_valtionvero').value
-            self.infostats_kunnallisvero=f.get('infostats_kunnallisvero').value
-            self.infostats_ptel=f.get('infostats_ptel').value
-            self.infostats_tyotvakmaksu=f.get('infostats_tyotvakmaksu').value
-            self.infostats_tyoelake=f.get('infostats_tyoelake').value
-            self.infostats_kokoelake=f.get('infostats_kokoelake').value
-            self.infostats_opintotuki=f.get('infostats_opintotuki').value
-            self.infostats_isyyspaivaraha=f.get('infostats_isyyspaivaraha').value
-            self.infostats_aitiyspaivaraha=f.get('infostats_aitiyspaivaraha').value
-            self.infostats_kotihoidontuki=f.get('infostats_kotihoidontuki').value
-            self.infostats_sairauspaivaraha=f.get('infostats_sairauspaivaraha').value
-            self.infostats_toimeentulotuki=f.get('infostats_toimeentulotuki').value
-            self.infostats_tulot_netto=f.get('infostats_tulot_netto').value
+            self.infostats_taxes=f['infostats_taxes'][()]
+            self.infostats_etuustulo=f['infostats_etuustulo'][()]
+            self.infostats_perustulo=f['infostats_perustulo'][()]
+            self.infostats_palkkatulo=f['infostats_palkkatulo'][()]
+            self.infostats_ansiopvraha=f['infostats_ansiopvraha'][()]
+            self.infostats_asumistuki=f['infostats_asumistuki'][()]
+            self.infostats_valtionvero=f['infostats_valtionvero'][()]
+            self.infostats_kunnallisvero=f['infostats_kunnallisvero'][()]
+            self.infostats_ptel=f['infostats_ptel'][()]
+            self.infostats_tyotvakmaksu=f['infostats_tyotvakmaksu'][()]
+            self.infostats_tyoelake=f['infostats_tyoelake'][()]
+            self.infostats_kokoelake=f['infostats_kokoelake'][()]
+            self.infostats_opintotuki=f['infostats_opintotuki'][()]
+            self.infostats_isyyspaivaraha=f['infostats_isyyspaivaraha'][()]
+            self.infostats_aitiyspaivaraha=f['infostats_aitiyspaivaraha'][()]
+            self.infostats_kotihoidontuki=f['infostats_kotihoidontuki'][()]
+            self.infostats_sairauspaivaraha=f['infostats_sairauspaivaraha'][()]
+            self.infostats_toimeentulotuki=f['infostats_toimeentulotuki'][()]
+            self.infostats_tulot_netto=f['infostats_tulot_netto'][()]
 
         if 'infostats_valtionvero_distrib' in f.keys(): # older runs do not have these
-            self.infostats_valtionvero_distrib=f.get('infostats_valtionvero_distrib').value
-            self.infostats_kunnallisvero_distrib=f.get('infostats_kunnallisvero_distrib').value
+            self.infostats_valtionvero_distrib=f['infostats_valtionvero_distrib'][()]
+            self.infostats_kunnallisvero_distrib=f['infostats_kunnallisvero_distrib'][()]
             
         if 'infostats_taxes_distrib' in f.keys(): # older runs do not have these
-            self.infostats_taxes_distrib=f.get('infostats_taxes_distrib').value
-            self.infostats_ylevero_distrib=f.get('infostats_ylevero_distrib').value     
+            self.infostats_taxes_distrib=f['infostats_taxes_distrib'][()]
+            self.infostats_ylevero_distrib=f['infostats_ylevero_distrib'][()]     
 
         if 'infostats_pinkslip' in f.keys(): # older runs do not have these
-            self.infostats_pinkslip=f.get('infostats_pinkslip').value      
+            self.infostats_pinkslip=f['infostats_pinkslip'][()]      
             
         if 'infostats_paid_tyel_pension' in f.keys(): # older runs do not have these
-            self.infostats_paid_tyel_pension=f.get('infostats_paid_tyel_pension').value      
-            self.infostats_tyelpremium=f.get('infostats_tyelpremium').value                  
+            self.infostats_paid_tyel_pension=f['infostats_paid_tyel_pension'][()]      
+            self.infostats_tyelpremium=f['infostats_tyelpremium'][()]                  
 
         if 'infostats_npv0' in f.keys(): # older runs do not have these
-            self.infostats_npv0=f.get('infostats_npv0').value      
-            self.infostats_irr=f.get('infostats_irr').value                  
+            self.infostats_npv0=f['infostats_npv0'][()]      
+            self.infostats_irr=f['infostats_irr'][()]                  
             
         if 'infostats_chilren7' in f.keys(): # older runs do not have these
-            self.infostats_chilren7=f.get('infostats_chilren7').value      
+            self.infostats_chilren7=f['infostats_chilren7'][()]      
         if 'infostats_chilren18' in f.keys(): # older runs do not have these
-            self.infostats_chilren18=f.get('infostats_chilren18').value      
+            self.infostats_chilren18=f['infostats_chilren18'][()]      
         
         if 'infostats_group' in f.keys(): # older runs do not have these
-            self.infostats_group=f.get('infostats_group').value      
+            self.infostats_group=f['infostats_group'][()]      
             
         if 'infostats_sairausvakuutus' in f.keys():
-            self.infostats_sairausvakuutus=f.get('infostats_sairausvakuutus').value      
-            self.infostats_pvhoitomaksu=f.get('infostats_pvhoitomaksu').value     
-            self.infostats_ylevero=f.get('infostats_ylevero').value     
+            self.infostats_sairausvakuutus=f['infostats_sairausvakuutus'][()]      
+            self.infostats_pvhoitomaksu=f['infostats_pvhoitomaksu'][()]     
+            self.infostats_ylevero=f['infostats_ylevero'][()]     
         
         if 'infostats_mother_in_workforce' in f.keys():
-            self.infostats_mother_in_workforce=f.get('infostats_mother_in_workforce').value
+            self.infostats_mother_in_workforce=f['infostats_mother_in_workforce'][()]
         
         if 'stat_wage_reduction_g' in f.keys():
-            self.stat_wage_reduction_g=f.get('stat_wage_reduction_g').value    
+            self.stat_wage_reduction_g=f['stat_wage_reduction_g'][()]    
             
         if 'siirtyneet_det' in f.keys():
-            self.siirtyneet_det=f.get('siirtyneet_det').value
+            self.siirtyneet_det=f['siirtyneet_det'][()]
             
         if 'infostats_kassanjasen' in f.keys():
-            self.infostats_kassanjasen=f.get('infostats_kassanjasen').value
+            self.infostats_kassanjasen=f['infostats_kassanjasen'][()]
         
         if 'n_pop' in f.keys():
-            self.n_pop=int(f.get('n_pop').value)
+            self.n_pop=int(f['n_pop'][()])
         else:
             self.n_pop=np.sum(self.empstate[0,:])
             
         if 'infostats_ove' in f.keys():
-            self.infostats_ove=f.get('infostats_ove').value
+            self.infostats_ove=f['infostats_ove'][()]
 
         if 'infostats_children_under3' in f.keys():
-            self.infostats_children_under3=f.get('infostats_children_under3').value
-            self.infostats_children_under7=f.get('infostats_children_under7').value
-            self.infostats_unempwagebasis=f.get('infostats_unempwagebasis').value
-            self.infostats_unempwagebasis_acc=f.get('infostats_unempwagebasis_acc').value
-            self.infostats_toe=f.get('infostats_toe').value
+            self.infostats_children_under3=f['infostats_children_under3'][()]
+            self.infostats_children_under7=f['infostats_children_under7'][()]
+            self.infostats_unempwagebasis=f['infostats_unempwagebasis'][()]
+            self.infostats_unempwagebasis_acc=f['infostats_unempwagebasis_acc'][()]
+            self.infostats_toe=f['infostats_toe'][()]
             
         if 'infostats_palkkatulo_eielakkeella' in f.keys():
-            self.infostats_palkkatulo_eielakkeella=f.get('infostats_palkkatulo_eielakkeella').value
+            self.infostats_palkkatulo_eielakkeella=f['infostats_palkkatulo_eielakkeella'][()]
             
         if 'infostats_tulot_netto' in f.keys():
-            self.infostats_tulot_netto=f.get('infostats_tulot_netto').value
+            self.infostats_tulot_netto=f['infostats_tulot_netto'][()]
             
         if 'infostats_poptulot_netto' in f.keys():
-            self.infostats_poptulot_netto=f.get('infostats_poptulot_netto').value
+            self.infostats_poptulot_netto=f['infostats_poptulot_netto'][()]
             
         if 'infostats_equivalent_income' in f.keys():
-            self.infostats_equivalent_income=f.get('infostats_equivalent_income').value
+            self.infostats_equivalent_income=f['infostats_equivalent_income'][()]
             
         if 'infostats_pop_wage' in f.keys():
-            self.infostats_pop_wage=f.get('infostats_pop_wage').value
-            self.infostats_pop_pension=f.get('infostats_pop_pension').value
+            self.infostats_pop_wage=f['infostats_pop_wage'][()]
+            self.infostats_pop_pension=f['infostats_pop_pension'][()]
             
         if n_pop is not None:
             self.n_pop=n_pop
 
         if 'params' in f.keys():
-            self.params=f.get('params').value
+            self.params=f['params'][()]
         else:
             self.params=None
 
