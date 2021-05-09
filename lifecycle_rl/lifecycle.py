@@ -36,12 +36,23 @@ warnings.simplefilter(action='ignore', category=Warning)
 
 # use stable baselines
 from stable_baselines.common.vec_env import SubprocVecEnv,DummyVecEnv
-from stable_baselines import A2C, ACER, DQN, ACKTR#, TRPO
+from stable_baselines import A2C, ACER, DQN, ACKTR, PPO2 #, TRPO
 from stable_baselines.common import set_global_seeds
 from stable_baselines.bench import Monitor
 from stable_baselines.results_plotter import load_results, ts2xy
 from stable_baselines import results_plotter
 from .vec_monitor import VecMonitor
+from stable_baselines.common.policies import FeedForwardPolicy, register_policy
+
+            
+# Custom MLP policy of three layers of size 128 each
+class CustomPolicy(FeedForwardPolicy):
+    def __init__(self, *args, **kwargs):
+        super(CustomPolicy, self).__init__(*args, **kwargs,
+                                           net_arch=[dict(pi=[128, 128, 16],
+                                                          vf=[512, 256, 128])],
+                                           feature_extraction="mlp")
+                                           #act_fun=tf.nn.relu)
 
 class Lifecycle():
 
@@ -325,7 +336,7 @@ class Lifecycle():
         if start_zero:
             return int((age)*self.inv_timestep)
         else:
-            return int((age-self.min_age)*self.inv_timestep)
+            return int((age-self.min_age)*self.inv_timestep)            
 
     def get_multiprocess_env(self,rlmodel,debug=False,arch=None,predict=False):
 
@@ -345,7 +356,25 @@ class Lifecycle():
         elif rlmodel=='acktr':
             policy_kwargs = dict(act_fun=tf.nn.relu, net_arch=[512, 512, 256]) 
             n_cpu = 8 # 12 # 20
+        elif  rlmodel=='custom_acktr': # tf.nn.leakyrelu
+            if arch is not None:
+                policy_kwargs = dict(act_fun=tf.nn.leaky_relu, net_arch=arch) 
+            else:
+                policy_kwargs = dict(act_fun=tf.nn.leaky_relu,net_arch=[dict(pi=[128, 128, 16],vf=[512, 256, 128])]) 
+            if predict:
+                n_cpu = 20
+            else:
+                n_cpu = 8 # 12 # 20
         elif rlmodel=='leaky_acktr': # tf.nn.leakyrelu
+            if arch is not None:
+                policy_kwargs = dict(act_fun=tf.nn.leaky_relu, net_arch=arch) 
+            else:
+                policy_kwargs = dict(act_fun=tf.nn.leaky_relu, net_arch=[256, 256, 16]) 
+            if predict:
+                n_cpu = 20
+            else:
+                n_cpu = 8 # 12 # 20
+        elif rlmodel=='ppo': # tf.nn.leakyrelu
             if arch is not None:
                 policy_kwargs = dict(act_fun=tf.nn.leaky_relu, net_arch=arch) 
             else:
@@ -389,9 +418,11 @@ class Lifecycle():
 
     def setup_rlmodel(self,rlmodel,loadname,env,batch,policy_kwargs,learning_rate,
                       cont,max_grad_norm=None,tensorboard=False,verbose=1,n_cpu=1,learning_schedule='linear',
-                      vf=None,gae_lambda=None):
+                      vf=None,gae_lambda=0.9):
         '''
         Alustaa RL-mallin ajoa varten
+        
+        gae_lambda=0.9
         '''
         n_cpu_tf_sess=16 #n_cpu #4 vai n_cpu??
         #batch=max(1,int(np.ceil(batch/n_cpu)))
@@ -406,7 +437,7 @@ class Lifecycle():
         if max_grad_norm is None:
             max_grad_norm=0.05
             
-        max_grad_norm=0.001
+        max_grad_norm=0.001 # ok?
         kfac_clip=0.001
         
         if cont:
@@ -427,6 +458,19 @@ class Lifecycle():
                 else:
                     model = A2C.load(loadname, env=env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
                                      policy_kwargs=policy_kwargs,lr_schedule=learning_schedule,n_cpu_tf_sess=n_cpu_tf_sess)
+            elif rlmodel in set(['custom_acktr']):
+                from stable_baselines.common.policies import MlpPolicy 
+                if tensorboard:
+                    model = ACKTR.load(loadname, env=env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
+                                       tensorboard_log=self.tenb_dir, learning_rate=scaled_learning_rate,kfac_clip=kfac_clip,
+                                       max_grad_norm=max_grad_norm,gae_lambda=gae_lambda,vf_coef=vf_coef,
+                                       full_tensorboard_log=full_tensorboard_log,lr_schedule=learning_schedule,n_cpu_tf_sess=n_cpu_tf_sess,
+                                       policy_kwargs=policy_kwargs) # 
+                else:
+                    model = ACKTR.load(loadname, env=env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,kfac_clip=kfac_clip,
+                                       learning_rate=np.sqrt(batch)*learning_rate,vf_coef=vf_coef,gae_lambda=gae_lambda,
+                                       max_grad_norm=max_grad_norm,lr_schedule=learning_schedule,n_cpu_tf_sess=n_cpu_tf_sess,
+                                       policy_kwargs=policy_kwargs)
             elif rlmodel in set(['small_acktr','acktr','large_acktr','deep_acktr','leaky_acktr','small_leaky_acktr']):
                 from stable_baselines.common.policies import MlpPolicy 
                 if tensorboard:
@@ -436,6 +480,17 @@ class Lifecycle():
                                        full_tensorboard_log=full_tensorboard_log,lr_schedule=learning_schedule,n_cpu_tf_sess=n_cpu_tf_sess)
                 else:
                     model = ACKTR.load(loadname, env=env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,kfac_clip=kfac_clip,
+                                       learning_rate=np.sqrt(batch)*learning_rate,vf_coef=vf_coef,gae_lambda=gae_lambda,
+                                       policy_kwargs=policy_kwargs,max_grad_norm=max_grad_norm,lr_schedule=learning_schedule,n_cpu_tf_sess=n_cpu_tf_sess)
+            elif rlmodel in set(['ppo','PPO']):
+                from stable_baselines.common.policies import MlpPolicy 
+                if tensorboard:
+                    model = PPO2.load(loadname, env=env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
+                                       tensorboard_log=self.tenb_dir, learning_rate=scaled_learning_rate,kfac_clip=kfac_clip,
+                                       policy_kwargs=policy_kwargs,max_grad_norm=max_grad_norm,gae_lambda=gae_lambda,vf_coef=vf_coef,
+                                       full_tensorboard_log=full_tensorboard_log,lr_schedule=learning_schedule,n_cpu_tf_sess=n_cpu_tf_sess)
+                else:
+                    model = PPO2.load(loadname, env=env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,kfac_clip=kfac_clip,
                                        learning_rate=np.sqrt(batch)*learning_rate,vf_coef=vf_coef,gae_lambda=gae_lambda,
                                        policy_kwargs=policy_kwargs,max_grad_norm=max_grad_norm,lr_schedule=learning_schedule,n_cpu_tf_sess=n_cpu_tf_sess)
             elif rlmodel=='small_lnacktr' or rlmodel=='lnacktr':
@@ -487,6 +542,28 @@ class Lifecycle():
                                 full_tensorboard_log=full_tensorboard_log,lr_schedule=learning_schedule,n_cpu_tf_sess=n_cpu_tf_sess)
                 else:
                     model = ACKTR(MlpPolicy, env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,kfac_clip=kfac_clip,
+                                learning_rate=scaled_learning_rate, max_grad_norm=max_grad_norm,gae_lambda=gae_lambda,vf_coef=vf_coef,
+                                policy_kwargs=policy_kwargs,lr_schedule=learning_schedule,n_cpu_tf_sess=n_cpu_tf_sess)
+            elif rlmodel in set(['custom_acktr']):
+                from stable_baselines.common.policies import MlpPolicy 
+                if tensorboard:
+                    model = ACKTR(MlpPolicy, env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
+                                tensorboard_log=self.tenb_dir, learning_rate=scaled_learning_rate,kfac_clip=kfac_clip,
+                                max_grad_norm=max_grad_norm,gae_lambda=gae_lambda,vf_coef=vf_coef,policy_kwargs=policy_kwargs,
+                                full_tensorboard_log=full_tensorboard_log,lr_schedule=learning_schedule,n_cpu_tf_sess=n_cpu_tf_sess)
+                else:
+                    model = ACKTR(MlpPolicy, env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,kfac_clip=kfac_clip,
+                                learning_rate=scaled_learning_rate, max_grad_norm=max_grad_norm,gae_lambda=gae_lambda,vf_coef=vf_coef,
+                                lr_schedule=learning_schedule,n_cpu_tf_sess=n_cpu_tf_sess,policy_kwargs=policy_kwargs)
+            elif rlmodel in set(['ppo','PPO']):
+                from stable_baselines.common.policies import MlpPolicy 
+                if tensorboard:
+                    model = PPO2(MlpPolicy, env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,
+                                tensorboard_log=self.tenb_dir, learning_rate=scaled_learning_rate,kfac_clip=kfac_clip,
+                                policy_kwargs=policy_kwargs,max_grad_norm=max_grad_norm,gae_lambda=gae_lambda,vf_coef=vf_coef,
+                                full_tensorboard_log=full_tensorboard_log,lr_schedule=learning_schedule,n_cpu_tf_sess=n_cpu_tf_sess)
+                else:
+                    model = PPO2(MlpPolicy, env, verbose=verbose,gamma=self.gamma,n_steps=batch*self.n_time,kfac_clip=kfac_clip,
                                 learning_rate=scaled_learning_rate, max_grad_norm=max_grad_norm,gae_lambda=gae_lambda,vf_coef=vf_coef,
                                 policy_kwargs=policy_kwargs,lr_schedule=learning_schedule,n_cpu_tf_sess=n_cpu_tf_sess)
             elif rlmodel=='small_lnacktr' or rlmodel=='lnacktr':
@@ -702,6 +779,10 @@ class Lifecycle():
             model = ACKTR.load(load, env=env, verbose=1,gamma=self.gamma, policy_kwargs=policy_kwargs,n_cpu_tf_sess=n_cpu_tf_sess)
         elif self.rlmodel=='trpo':
             model = TRPO.load(load, env=env, verbose=1,gamma=self.gamma, policy_kwargs=policy_kwargs,n_cpu_tf_sess=n_cpu_tf_sess)
+        elif self.rlmodel=='custom_acktr':
+            model = ACKTR.load(load, env=env, verbose=1,gamma=self.gamma, n_cpu_tf_sess=n_cpu_tf_sess,policy=CustomPolicy)
+        elif self.rlmodel=='ppo':
+            model = PPO2.load(load, env=env, verbose=1,gamma=self.gamma, policy_kwargs=policy_kwargs,n_cpu_tf_sess=n_cpu_tf_sess)
         elif self.rlmodel=='dqn':
             model = DQN.load(load, env=env, verbose=1,gamma=self.gamma,prioritized_replay=True,policy_kwargs=policy_kwargs,n_cpu_tf_sess=n_cpu_tf_sess)
         else:
@@ -1101,6 +1182,7 @@ class Lifecycle():
             im0 = axs[0].pcolor(img1,vmin=vmin,vmax=vmax,cmap='gray',alpha=alpha,linewidth=0,rasterized=True)
         else:
             im0 = axs[0].pcolor(img1,alpha=alpha,linewidth=0,rasterized=True)
+        #im0.set_edgecolor('face')
         #if vmin is not None:
         #    im0 = axs[0].imshow(img1,vmin=vmin,vmax=vmax,cmap='gray')
         #else:
@@ -1117,6 +1199,7 @@ class Lifecycle():
             im1 = axs[1].pcolor(img2,vmin=vmin,vmax=vmax,cmap='gray',alpha=alpha,linewidth=0,rasterized=True)
         else:
             im1 = axs[1].pcolor(img2,alpha=alpha,linewidth=0,rasterized=True)
+        #im1.set_edgecolor('face')
         #if vmin is not None:
         #    im1 = axs[1].imshow(img2,vmin=vmin,vmax=vmax,cmap='gray')
         #else:

@@ -424,7 +424,7 @@ class SimStats(EpisodeStats):
         #ax.plot(x,emp_statsratio,label='havainto')
         ax.legend()
         if figname is not None:
-            plt.savefig(figname+'tyollisyys.eps')        
+            plt.savefig(figname+'emp.eps')        
         plt.show()
 
         fig,ax=plt.subplots()
@@ -450,7 +450,7 @@ class SimStats(EpisodeStats):
         ax.plot(x[1:],100*u_ansiosid1[1:],ls='--',label=label1)
         ax.legend()
         if figname is not None:
-            plt.savefig(figname+'tyottomyydet.eps')        
+            plt.savefig(figname+'unemp.eps')        
         plt.show()
 
         fig,ax=plt.subplots()

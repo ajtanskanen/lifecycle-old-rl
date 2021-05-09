@@ -42,6 +42,8 @@ class DynProgLifecycleRev(Lifecycle):
         self.hila_palkka0 = self.min_salary # 0
         self.hila_elake0 = 0
         self.spline=True
+        #self.spline_approx='cubic'
+        self.spline_approx='linear'
         
         # dynaamisen ohjelmoinnin parametrejä
         self.n_palkka = 20
@@ -232,7 +234,7 @@ class DynProgLifecycleRev(Lifecycle):
             #V1=(1-we)*(self.Hila[t,pmin,emin,emp,tismax,p2min])+we*(self.Hila[t,pmin,emax,emp,tismax,p2min])
             x = np.linspace(0, self.max_pension, self.n_elake)
             y = self.Hila[t,0,:,emp,tismax,0]
-            f = interp1d(x, y,fill_value="extrapolate",kind='cubic')
+            f = interp1d(x, y,fill_value="extrapolate",kind=self.spline_approx)
             V1=f(elake)
         else:    
             p = np.linspace(0, self.max_pension, self.n_elake)
@@ -374,7 +376,7 @@ class DynProgLifecycleRev(Lifecycle):
             emp=int(emp)
             x = np.linspace(0, self.max_pension, self.n_elake)
             y = self.Hila[t,0,:,emp,tismax,0]
-            f = interp1d(x, y,fill_value="extrapolate",kind='cubic')
+            f = interp1d(x, y,fill_value="extrapolate",kind=self.spline_approx)
             Vs[:]=f(elake)
         else:
             emin,emax,we=self.inv_elake(elake)
@@ -489,7 +491,7 @@ class DynProgLifecycleRev(Lifecycle):
             emp=int(emp)
             x = np.linspace(0, self.max_pension, self.n_elake)
             y=self.actHila[t,0,:,emp,tismax,0,act]
-            f = interp1d(x, y,fill_value="extrapolate",kind='cubic')
+            f = interp1d(x, y,fill_value="extrapolate",kind=self.spline_approx)
             apx1=f(elake)
         else:
             emin,emax,we=self.inv_elake(elake)
@@ -550,7 +552,7 @@ class DynProgLifecycleRev(Lifecycle):
 
             x = np.linspace(0, self.max_pension, self.n_elake)
             y = self.actReward[t,0,:,emp,tismax,0,act]
-            f = interp1d(x, y,fill_value="extrapolate",kind='cubic')
+            f = interp1d(x, y,fill_value="extrapolate",kind=self.spline_approx)
             R = np.squeeze(f(elake))
         else:
             #emin,emax,we=self.inv_elake(elake)
@@ -587,7 +589,7 @@ class DynProgLifecycleRev(Lifecycle):
             emp=int(emp)
             x = np.linspace(0, self.max_pension, self.n_elake)
             y = self.actReward[t,0,:,emp,tismax,0,act]
-            f = interp1d(x, y,fill_value="extrapolate",kind='cubic')
+            f = interp1d(x, y,fill_value="extrapolate",kind=self.spline_approx)
             R = f(elake)
         else:
             emin,emax,we=self.inv_elake(elake)
@@ -652,7 +654,7 @@ class DynProgLifecycleRev(Lifecycle):
         if emp == 2:
             x = np.linspace(0, self.max_pension, self.n_elake)
             y = self.actHila[t,0,:,emp,tismax,0,0]
-            f = interp1d(x, y,fill_value="extrapolate",kind='cubic')
+            f = interp1d(x, y,fill_value="extrapolate",kind=self.spline_approx)
             V[0] = f(elake)
         else:
             p = np.linspace(0, self.max_pension, self.n_elake)
@@ -1507,7 +1509,7 @@ class DynProgLifecycleRev(Lifecycle):
             self.compare_act(age,cc,rlmodel=rlmodel,load=load,deterministic=deterministic,time_in_state=time_in_state)
             
     def compare_age_and_real(self,cc,rlmodel='small_acktr',load='saved/malli_perusmini99_nondet',
-                     deterministic=True,time_in_state=0,results=None,age=50,dire='kuvat',figname=None,emp1=0,emp2=1):
+                     deterministic=True,time_in_state=0,age=50,dire='kuvat',results=None,figname=None,emp1=0,emp2=1):
         self.load_sim(results)
         q1=cc.get_RL_act(age,emp=emp1,time_in_state=time_in_state,rlmodel=rlmodel,
            load=load,deterministic=deterministic,n_palkka=self.n_palkka,deltapalkka=self.deltapalkka,n_elake=self.n_elake,deltaelake=self.deltaelake,
@@ -1517,6 +1519,7 @@ class DynProgLifecycleRev(Lifecycle):
            hila_palkka0=self.hila_palkka0,hila_elake0=self.hila_elake0)
         fig,axs=self.plot_twoimg(q1,q2,title1='Unemployed RL {}'.format(age),title2='Employed RL {}'.format(age),vmin=0,vmax=2,
            show_results=False,alpha=0.5)
+        print('scatter...')
            
         if emp1 != 2:
             c1='w'
@@ -1528,13 +1531,27 @@ class DynProgLifecycleRev(Lifecycle):
             c2='k'
         
         t=self.map_age(age)
+        xa=[]
+        ya=[]
+        xb=[]
+        yb=[]
         for k in range(self.episodestats.n_pop):
             x0,x1,dx=self.inv_elake(self.episodestats.infostats_pop_pension[t,k])
             y0,y1,dy=self.inv_palkka(self.episodestats.infostats_pop_wage[t,k])
+
             if self.episodestats.popempstate[t,k]==0:
+                xa.append(x0+dx)
+                ya.append(y0+dy)
                 axs[0].scatter(x0+dx,y0+dy,marker='.',s=2,c=c1)
             elif self.episodestats.popempstate[t,k]==1:
+                xb.append(x0+dx)
+                yb.append(y0+dy)
                 axs[1].scatter(x0+dx,y0+dy,marker='.',s=2,c=c2)
+
+        if self.episodestats.popempstate[t,k]==0:
+            axs[0].scatter(xa,ya,marker='.',s=2,c=c1)
+        elif self.episodestats.popempstate[t,k]==1:
+            axs[1].scatter(xb,yb,marker='.',s=2,c=c2)
         if figname is not None:
             plt.savefig(figname+'.eps', format='eps')
 
