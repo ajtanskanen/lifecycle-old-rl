@@ -360,7 +360,7 @@ class Lifecycle():
             if arch is not None:
                 policy_kwargs = dict(act_fun=tf.nn.leaky_relu, net_arch=arch) 
             else:
-                policy_kwargs = dict(act_fun=tf.nn.leaky_relu,net_arch=[dict(pi=[128, 128, 16],vf=[512, 256, 128])]) 
+                policy_kwargs = dict(act_fun=tf.nn.leaky_relu,net_arch=[dict(pi=[32, 32, 32],vf=[128, 128, 128])]) 
             if predict:
                 n_cpu = 20
             else:
@@ -780,7 +780,7 @@ class Lifecycle():
         elif self.rlmodel=='trpo':
             model = TRPO.load(load, env=env, verbose=1,gamma=self.gamma, policy_kwargs=policy_kwargs,n_cpu_tf_sess=n_cpu_tf_sess)
         elif self.rlmodel=='custom_acktr':
-            model = ACKTR.load(load, env=env, verbose=1,gamma=self.gamma, n_cpu_tf_sess=n_cpu_tf_sess,policy=CustomPolicy)
+            model = ACKTR.load(load, env=env, verbose=1,gamma=self.gamma, policy_kwargs=policy_kwargs, n_cpu_tf_sess=n_cpu_tf_sess)
         elif self.rlmodel=='ppo':
             model = PPO2.load(load, env=env, verbose=1,gamma=self.gamma, policy_kwargs=policy_kwargs,n_cpu_tf_sess=n_cpu_tf_sess)
         elif self.rlmodel=='dqn':
