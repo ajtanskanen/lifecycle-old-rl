@@ -211,11 +211,11 @@ class Empstats():
                         
         demo_min_age=18
         demo_max_age=79
-                        
+                 
         demog2=np.zeros((self.n_time,1))
         k2=0
         for k in np.arange(self.min_age,self.max_age,self.timestep):
-            ind=int(np.floor(k))-demo_min_age
+            ind=min(demo_max_age,int(np.floor(k)))-demo_min_age
             demog2[k2]=demog[ind]
             k2+=1
             

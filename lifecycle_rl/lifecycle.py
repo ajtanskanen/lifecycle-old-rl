@@ -57,7 +57,7 @@ class CustomPolicy(FeedForwardPolicy):
 class Lifecycle():
 
     def __init__(self,env=None,minimal=False,timestep=0.25,ansiopvraha_kesto300=None,
-                    ansiopvraha_kesto400=None,karenssi_kesto=None,
+                    ansiopvraha_kesto400=None,karenssi_kesto=None,max_age=None,min_age=None,
                     ansiopvraha_toe=None,perustulo=None,mortality=None,
                     randomness=None,include_putki=None,preferencenoise=None,
                     callback_minsteps=None,pinkslip=True,plotdebug=None,
@@ -76,16 +76,17 @@ class Lifecycle():
         '''
         self.timestep=timestep # 0.25 = 3kk askel
         self.inv_timestep=int(np.round(1/self.timestep)) # pitäisi olla kokonaisluku
-        if True:
-            self.min_age = 18
-            self.max_age = 70
-        else:
-            self.min_age = 30
-            self.max_age = 70
+        self.min_age = 18
+        self.max_age = 70
         if minimal:
             self.min_retirementage=63.5
         else:
             self.min_retirementage=63
+        
+        if min_age is not None:
+            self.min_age=min_age
+        if max_age is not None:
+            self.max_age=max_age
         
         self.max_retirementage=68
         self.n_pop = 1000
