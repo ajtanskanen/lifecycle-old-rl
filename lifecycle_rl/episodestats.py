@@ -1629,7 +1629,6 @@ class EpisodeStats():
         act_savings_1=np.zeros(self.n_time)
         act_savings_2=np.zeros(self.n_time)
         
-        state_0=np.argwhere(self.popempstate[0,:]==0)
         for t in range(self.n_time):
             state_0=np.argwhere(self.popempstate[t,:]==0)
             savings_0[t]=np.mean(self.infostats_savings[t,state_0[:]])
