@@ -67,7 +67,7 @@ class Lifecycle():
                     irr_vain_tyoelake=None,additional_income_tax=None,additional_tyel_premium=None,
                     additional_kunnallisvero=None,additional_income_tax_high=None,
                     extra_ppr=None,perustulo_korvaa_toimeentulotuen=None,
-                    year=2018,scale_tyel_accrual=None,preferencenoise_level=None,
+                    year=2018,version=3,scale_tyel_accrual=None,preferencenoise_level=None,
                     scale_additional_tyel_accrual=None,valtionverotaso=None,perustulo_asetettava=None,
                     porrasta_toe=None,include_halftoe=None,include_ove=None,min_retirementage=None,
                     max_retirementage=None,unemp_limit_reemp=None):
@@ -92,7 +92,7 @@ class Lifecycle():
         self.n_pop = 1000
         self.callback_minsteps = 1_000
         self.year=year
-        #self.version=version
+        self.version=version
 
         # apumuuttujia
         self.n_age = self.max_age-self.min_age+1
@@ -263,7 +263,7 @@ class Lifecycle():
             #    self.environment='unemployment-v0'
 
             self.minimal=True
-            #self.version=0
+            self.version=0
             self.gym_kwargs={'step': self.timestep,'gamma':self.gamma,
                 'min_age': self.min_age, 'max_age': self.max_age,
                 'plotdebug': self.plotdebug, 
@@ -318,7 +318,6 @@ class Lifecycle():
         
         self.env = gym.make(self.environment,kwargs=self.gym_kwargs)
         self.n_employment,self.n_acts=self.env.get_n_states()
-        self.version = self.env.get_lc_version()
 
         self.episodestats=SimStats(self.timestep,self.n_time,self.n_employment,self.n_pop,
                                    self.env,self.minimal,self.min_age,self.max_age,self.min_retirementage,
