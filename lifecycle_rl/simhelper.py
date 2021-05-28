@@ -278,10 +278,10 @@ class SimHelper():
             scale=1
 
         fig,ax=plt.subplots()
-        ax.plot(scale*additional_tax,mean_htv,label=label2)
-        ax.plot(scale*additional_tax,mean_tyossa,label=label1)
-        ax.plot(scale*additional_tax,mean_htv_norw,'--',label=label2+' ei ve+työ')
-        ax.plot(scale*additional_tax,mean_tyossa_norw,'--',label=label1+' ei ve+työ')
+        ax.plot(scale*additional_tax,mean_htv,label=label2,color='lightgray')
+        ax.plot(scale*additional_tax,mean_tyossa,label=label1,color='black')
+        ax.plot(scale*additional_tax,mean_htv_norw,'--',label=label2+' ei ve+työ',color='lightgray')
+        ax.plot(scale*additional_tax,mean_tyossa_norw,'--',label=label1+' ei ve+työ',color='black')
         if ref_additional_tax is not None:
             ax.plot(scale*ref_additional_tax,ref_mean_htv,label=label2)
         plt.title('Työnteko')
@@ -388,39 +388,38 @@ class SimHelper():
 
     def load_data(self,filename):
         f = h5py.File(filename, 'r')
-
-        additional_income_tax=f.get('additional_income_tax').value
-        total_verot=f.get('total_verot').value
-        total_rew=f.get('total_rew').value
-        total_ps=f.get('total_ps').value
-        total_htv=f.get('total_htv').value
-        total_kiila=f.get('total_kiila').value
-        total_muut=f.get('total_muut').value
+        additional_income_tax=f.get('additional_income_tax')[:]
+        total_verot=f.get('total_verot')[:]
+        total_rew=f.get('total_rew')[:]
+        total_ps=f.get('total_ps')[:]
+        total_htv=f.get('total_htv')[:]
+        total_kiila=f.get('total_kiila')[:]
+        total_muut=f.get('total_muut')[:]
         if 'total_tyollaste' in f:
-            total_tyollaste=f.get('total_tyollaste').value
-            total_tyotaste=f.get('total_tyotaste').value
-            total_tyossa=f.get('total_tyossa').value
+            total_tyollaste=f.get('total_tyollaste')[:]
+            total_tyotaste=f.get('total_tyotaste')[:]
+            total_tyossa=f.get('total_tyossa')[:]
         else:
             total_tyollaste=additional_income_tax*0
             total_tyotaste=additional_income_tax*0
             total_tyossa=additional_income_tax*0
         if 'ratio_osatyo' in f:
-            ratio_osatyo=f.get('ratio_osatyo').value
+            ratio_osatyo=f.get('ratio_osatyo')[:]
         else:
             ratio_osatyo=additional_income_tax*0
         if 'total_ps_norw' in f:
-            total_ps_norw=f.get('total_ps_norw').value
-            total_tyossa_norw=f.get('total_tyossa_norw').value
-            total_htv_norw=f.get('total_htv_norw').value
+            total_ps_norw=f.get('total_ps_norw')[:]
+            total_tyossa_norw=f.get('total_tyossa_norw')[:]
+            total_htv_norw=f.get('total_htv_norw')[:]
         else:
             total_ps_norw=total_ps*0
             total_tyossa_norw=total_tyossa*0
             total_htv_norw=total_htv*0
     
-        osuus_vero=f.get('osuus_vero').value
-        osuus_kunnallisvero=f.get('osuus_kunnallisvero').value
-        osuus_valtionvero=f.get('osuus_valtionvero').value
-        total_kiila_kaikki_ansiot=f.get('total_kiila_kaikki_ansiot').value
+        osuus_vero=f.get('osuus_vero')[:]
+        osuus_kunnallisvero=f.get('osuus_kunnallisvero')[:]
+        osuus_valtionvero=f.get('osuus_valtionvero')[:]
+        total_kiila_kaikki_ansiot=f.get('total_kiila_kaikki_ansiot')[:]
 
         f.close()
 
