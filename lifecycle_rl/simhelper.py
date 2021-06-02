@@ -228,7 +228,7 @@ class SimHelper():
             ax.plot(scale*additional_tax,100*mean_tyossa)
         
         #plt.title('Työnteko')
-        ax.legend()
+        #ax.legend()
         ax.set_ylabel('Osatyönteko [%-yks]')
         ax.set_xlabel(xlabel)
         if dire is not None:
