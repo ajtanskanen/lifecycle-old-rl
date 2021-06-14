@@ -2532,7 +2532,7 @@ class EpisodeStats():
         _ = f.create_dataset('infostats_equivalent_income', data=self.infostats_equivalent_income, dtype=ftype)
         _ = f.create_dataset('infostats_pop_wage', data=self.infostats_pop_wage, dtype=ftype,compression="gzip", compression_opts=9)
         _ = f.create_dataset('infostats_pop_pension', data=self.infostats_pop_pension, dtype=ftype,compression="gzip", compression_opts=9)
-        _ = f.create_dataset('params', data=self.params, dtype=ftype)
+        _ = f.create_dataset('params', data=str(self.params))
         if self.version==101:
             _ = f.create_dataset('infostats_savings', data=self.infostats_savings, dtype=ftype)
             _ = f.create_dataset('sav_actions', data=self.sav_actions, dtype=ftype)

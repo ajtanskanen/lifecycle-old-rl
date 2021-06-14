@@ -123,7 +123,7 @@ class SimHelper():
         #plt.title(fname)
         #if ref_additional_tax is not None:
         #    ax.plot(scale*ref_additional_tax,ref_mean_rew,label=label2)
-        ax.legend()
+        #ax.legend()
         ax.set_ylabel(ylabel)
         ax.set_xlabel(xlabel)
         if dire is not None:
@@ -176,8 +176,8 @@ class SimHelper():
             ax.plot(scale*ref_additional_tax,ref_mean_verot,label=label2)
         else:
             ax.plot(scale*additional_tax,mean_verot,label=label1)
-        plt.title('Verot ja veronluonteiset maksut')
-        ax.legend()
+        #plt.title('Verot ja veronluonteiset maksut')
+        #ax.legend()
         ax.set_ylabel('Verot [euroa]')
         ax.set_xlabel(xlabel)
         if dire is not None:
@@ -190,7 +190,7 @@ class SimHelper():
             ax.plot(scale*ref_additional_tax,ref_mean_htv,label=label2)
         else:
             ax.plot(scale*additional_tax,mean_htv,label=label1)
-        plt.title('Työnteko')
+        #plt.title('Työnteko')
         ax.legend()
         ax.set_ylabel('Henkilöitä')
         ax.set_xlabel(xlabel)
