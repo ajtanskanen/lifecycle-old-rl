@@ -364,7 +364,7 @@ class Lifecycle():
             else:
                 policy_kwargs = dict(act_fun=tf.nn.leaky_relu,net_arch=[dict(pi=[32, 32, 32],vf=[128, 128, 128])]) 
             if predict:
-                n_cpu = 24
+                n_cpu = 16
             else:
                 n_cpu = 8 # 12 # 20
         elif rlmodel=='leaky_acktr': # tf.nn.leakyrelu
@@ -373,7 +373,7 @@ class Lifecycle():
             else:
                 policy_kwargs = dict(act_fun=tf.nn.leaky_relu, net_arch=[256, 256, 16]) 
             if predict:
-                n_cpu = 20
+                n_cpu = 16
             else:
                 n_cpu = 8 # 12 # 20
         elif rlmodel=='ppo': # tf.nn.leakyrelu
@@ -391,7 +391,7 @@ class Lifecycle():
             else:
                 policy_kwargs = dict(act_fun=tf.nn.leaky_relu, net_arch=[64, 64, 16]) 
             if predict:
-                n_cpu = 20
+                n_cpu = 16
             else:
                 n_cpu = 8 # 12 # 20
         elif rlmodel=='small_acktr' or rlmodel=='small_lnacktr':

@@ -26,6 +26,7 @@ class EpisodeStats():
     def __init__(self,timestep,n_time,n_emps,n_pop,env,minimal,min_age,max_age,min_retirementage,year=2018,version=3,params=None,gamma=0.92):
         self.version=version
         self.gamma=gamma
+        self.params=params
         self.reset(timestep,n_time,n_emps,n_pop,env,minimal,min_age,max_age,min_retirementage,year,params=params)
         print('version',version)
 
@@ -34,7 +35,9 @@ class EpisodeStats():
         self.max_age=max_age
         self.min_retirementage=min_retirementage
         self.minimal=minimal
-        self.params=params
+        
+        if params is not None:
+            self.params=params
         
         self.language='English'
         
