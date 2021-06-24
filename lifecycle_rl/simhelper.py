@@ -114,7 +114,7 @@ class SimHelper():
         self.plot_osuus(additional_income_tax,valtio,label1=label1,xlabel=xlabel,ylabel='Etuudensaajien osuus ansiotuloverosta',dire=dire,percent_scale=percent_scale)
     
     def plot_osuus(self,x,y1,y2=None,dire=None,label1=None,label2=None,xlabel='Muutos [%-yks]',
-                   percent_scale=False,ylabel='Elasticity',fname='elas'):
+                   percent_scale=False,ylabel='Elasticity',fname='elas',legend=False):
         if percent_scale:
             scale=100
         else:
@@ -127,7 +127,8 @@ class SimHelper():
         #plt.title(fname)
         #if ref_additional_tax is not None:
         #    ax.plot(scale*ref_additional_tax,ref_mean_rew,label=label2)
-        #ax.legend()
+        if legend:
+            ax.legend()
         ax.set_ylabel(ylabel)
         ax.set_xlabel(xlabel)
         if dire is not None:
@@ -330,15 +331,18 @@ class SimHelper():
     def plot_total(self,additional_tax,total_rew,total_verot,total_htv,dire=None,xlabel=None,percent_scale=False):
         plt.plot(100*additional_tax,total_rew)
         plt.title('reward')
+        plt.legend()
         plt.show()
 
         plt.plot(100*additional_tax,total_verot)
         plt.title('verot')
+        plt.legend()
         if dire is not None:
             plt.savefig(dire+'verot_kaikki.png', format='png')
         plt.show()
 
         plt.plot(100*additional_tax,total_htv)
+        plt.legend()
         plt.title('htv')
         plt.show()
 
