@@ -1524,11 +1524,11 @@ class DynProgLifecycleRev(Lifecycle):
         if emp1 != 2:
             c1='w'
         else:
-            c1='k'
+            c1='w'
         if emp2 != 2:
             c2='w'
         else:
-            c2='k'
+            c2='w'
         
         t=self.map_age(age)
         xa=[]
@@ -1539,19 +1539,20 @@ class DynProgLifecycleRev(Lifecycle):
             x0,x1,dx=self.inv_elake(self.episodestats.infostats_pop_pension[t,k])
             y0,y1,dy=self.inv_palkka(self.episodestats.infostats_pop_wage[t,k])
 
+            y2=min(self.n_palkka,y0+dy)
+
             if self.episodestats.popempstate[t,k]==0:
                 xa.append(x0+dx)
-                ya.append(y0+dy)
-                axs[0].scatter(x0+dx,y0+dy,marker='.',s=2,c=c1)
+                ya.append(y2)
+                #axs[0].scatter(x0+dx,y0+dy,marker='.',s=2,c=c1)
             elif self.episodestats.popempstate[t,k]==1:
                 xb.append(x0+dx)
-                yb.append(y0+dy)
-                axs[1].scatter(x0+dx,y0+dy,marker='.',s=2,c=c2)
+                yb.append(y2)
+                #axs[1].scatter(x0+dx,y0+dy,marker='.',s=2,c=c2)
 
-        if self.episodestats.popempstate[t,k]==0:
-            axs[0].scatter(xa,ya,marker='.',s=2,c=c1)
-        elif self.episodestats.popempstate[t,k]==1:
-            axs[1].scatter(xb,yb,marker='.',s=2,c=c2)
+        axs[0].scatter(xa,ya,marker='.',s=2,c=c1)
+        axs[1].scatter(xb,yb,marker='.',s=2,c=c2)
+        
         if figname is not None:
             plt.savefig(figname+'.eps', format='eps')
 
