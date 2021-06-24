@@ -41,7 +41,7 @@ class SimHelper():
 
         self.plot_tyossa(additional_income_tax,mean_tyossa,mean_htv,xlabel=xlabel,percent_scale=percent_scale,dire=dire)
         self.plot_tyossa_vertaa(additional_income_tax,mean_tyossa,mean_htv,mean_tyossa_norw,mean_htv_norw,xlabel=xlabel,percent_scale=percent_scale,dire=dire)
-        self.plot_tyoton(additional_income_tax,mean_tyotaste,xlabel=xlabel,percent_scale=True,dire=dire)
+        self.plot_tyoton(additional_income_tax,mean_tyotaste,xlabel=xlabel,percent_scale=True,percent_scale_y=True,dire=dire)
         self.plot_osatyossa(additional_income_tax,mean_osatyoratio,xlabel=xlabel,percent_scale=True,dire=dire)
 
         if baseline is not None:
@@ -112,14 +112,22 @@ class SimHelper():
         self.plot_osuus(additional_income_tax,valtio,label1=label1,xlabel=xlabel,ylabel='Etuudensaajien osuus ansiotuloverosta',dire=dire,percent_scale=percent_scale)
     
     def plot_osuus(self,x,y,dire=None,label1=None,label2=None,xlabel='Muutos [%-yks]',
-                   percent_scale=False,ylabel='Elasticity',fname='elas'):
+                   percent_scale=False,ylabel='Elasticity',fname='elas',source=None,header=None,
+                   percent_scale_y=False):
         if percent_scale:
             scale=100
         else:
             scale=1
+        if percent_scale_y:
+            scaley=100
+        else:
+            scaley=1
+            
+        if header is not None:
+            axs.title.set_text(header)
     
         fig,ax=plt.subplots()
-        ax.plot(scale*x,y,label=label1)
+        ax.plot(scale*x,scaley*y,label=label1)
         #plt.title(fname)
         #if ref_additional_tax is not None:
         #    ax.plot(scale*ref_additional_tax,ref_mean_rew,label=label2)
@@ -131,6 +139,10 @@ class SimHelper():
             #plt.savefig(dire+fname+'_'+ylabel+'.png', format='png')
             #print('dire',dire)
             
+        if source is not None:
+            plt.annotate(source, (0,0), (80,-20), fontsize=8, 
+                xycoords='axes fraction', textcoords='offset points', va='top')
+        
         plt.show()
 
     def plot_elasticity(self,additional_income_tax,htv,dire=None,label1=None,label2=None,
@@ -140,8 +152,10 @@ class SimHelper():
         #print(elx,el)
         self.plot_osuus(elx,el,label1=label1,xlabel=xlabel,ylabel=ylabel,dire=dire,percent_scale=percent_scale)
 
-    def plot_tyoton(self,additional_income_tax,osuus,dire=None,label1=None,label2=None,xlabel='Tulovero [%-yks]',percent_scale=True,ylabel='Työttömien osuus väestöstä [%-yks]'):
-        self.plot_osuus(additional_income_tax,osuus,label1=label1,xlabel=xlabel,ylabel=ylabel,dire=dire,percent_scale=percent_scale)
+    def plot_tyoton(self,additional_income_tax,osuus,dire=None,label1=None,label2=None,xlabel='Tulovero [%-yks]',
+                    percent_scale=True,percent_scale_y=True,ylabel='Työttömien osuus väestöstä [%-yks]'):
+        self.plot_osuus(additional_income_tax,osuus,label1=label1,xlabel=xlabel,ylabel=ylabel,dire=dire,percent_scale=percent_scale,
+                        percent_scale_y=percent_scale_y)
 
     def plot_osatyo(self,additional_income_tax,osuus,dire=None,label1=None,label2=None,xlabel='Tulovero [%-yks]',percent_scale=True,ylabel='Osatyön osuus [%-yks]'):
         self.plot_osuus(additional_income_tax,osuus,label1=label1,xlabel=xlabel,ylabel=ylabel,dire=dire,percent_scale=percent_scale)
