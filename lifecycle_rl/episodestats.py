@@ -146,6 +146,7 @@ class EpisodeStats():
         self.infostats_pop_wage=np.zeros((self.n_time,self.n_pop))
         self.infostats_pop_pension=np.zeros((self.n_time,self.n_pop))
         self.infostats_equivalent_income=np.zeros(self.n_time)
+        self.infostats_alv=np.zeros(self.n_time)
         if self.version==101:
             self.infostats_savings=np.zeros((self.n_time,self.n_pop))
             self.sav_actions=np.zeros((self.n_time,self.n_pop))
@@ -258,6 +259,8 @@ class EpisodeStats():
                     self.infostats_children_under7[t,n]=c7             
                     self.infostats_npv0[n]=q['multiplier']
                     self.infostats_equivalent_income[t]+=q['eq']
+                    if alv in q:
+	                    self.infostats_alv[t]+=q['alv']
                     #self.infostats_kassanjasen[t]+=1
             elif self.version in set([0,101]):
                 self.empstate[t,newemp]+=1
@@ -2535,6 +2538,7 @@ class EpisodeStats():
         _ = f.create_dataset('infostats_equivalent_income', data=self.infostats_equivalent_income, dtype=ftype)
         _ = f.create_dataset('infostats_pop_wage', data=self.infostats_pop_wage, dtype=ftype,compression="gzip", compression_opts=9)
         _ = f.create_dataset('infostats_pop_pension', data=self.infostats_pop_pension, dtype=ftype,compression="gzip", compression_opts=9)
+        #_ = f.create_dataset('infostats_alv', data=self.infostats_alv)
         _ = f.create_dataset('params', data=str(self.params))
         if self.version==101:
             _ = f.create_dataset('infostats_savings', data=self.infostats_savings, dtype=ftype)
@@ -2687,6 +2691,8 @@ class EpisodeStats():
             self.infostats_savings=f['infostats_savings'][()]
             self.sav_actions=f['sav_actions'][()]
 
+        if 'infostats_alv' in f.keys():
+            self.infostats_alv=f['infostats_alv'][()]
             
         if n_pop is not None:
             self.n_pop=n_pop
