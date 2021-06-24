@@ -391,7 +391,7 @@ class Lifecycle():
             else:
                 policy_kwargs = dict(act_fun=tf.nn.leaky_relu, net_arch=[64, 64, 16]) 
             if predict:
-                n_cpu = 16
+                n_cpu = 16 
             else:
                 n_cpu = 8 # 12 # 20
         elif rlmodel=='small_acktr' or rlmodel=='small_lnacktr':
