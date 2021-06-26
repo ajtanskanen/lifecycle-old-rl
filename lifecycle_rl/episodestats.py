@@ -259,8 +259,8 @@ class EpisodeStats():
                     self.infostats_children_under7[t,n]=c7             
                     self.infostats_npv0[n]=q['multiplier']
                     self.infostats_equivalent_income[t]+=q['eq']
-                    if alv in q:
-	                    self.infostats_alv[t]+=q['alv']
+                    if 'alv' in q:
+                        self.infostats_alv[t]+=q['alv']
                     #self.infostats_kassanjasen[t]+=1
             elif self.version in set([0,101]):
                 self.empstate[t,newemp]+=1
@@ -2715,40 +2715,112 @@ class EpisodeStats():
         self.plot_stats(figname=figname,grayscale=False)
         self.plot_reward()   
 
-    def stat_budget_2018(self,scale=False):
-        q={}
-        q['tyotulosumma']=89_134_200_000 #+4_613_400_000+1_239_900_000 # lähde: ETK, tyel + julkinen + yel + myel
-        q['tyotulosumma_eielakkeella']=0 #+4_613_400_000+1_239_900_000 # lähde: ETK, tyel + julkinen + yel + myel
-        q['etuusmeno']=0
-        q['verot+maksut']=0   # tuloverot 30_763_000_000 ml YLE ja kirkollisvero
-        q['valtionvero']=5_542_000_000
-        q['kunnallisvero']=18_991_000_000
-        q['ptel']=5_560_000_000
-        q['elakemaksut']=22_085_700_000 # Lähde: ETK
-        q['tyotvakmaksu']=0.019*q['tyotulosumma']
-        q['sairausvakuutusmaksu']=1_335_000_000+407_000_000
-        q['ylevero']=497_000_000
-        q['ansiopvraha']=3_895_333_045 # 1_930_846_464+1_964_486_581 # ansioturva + perusturva = 3 895 333 045
-        q['asumistuki']=1_488_900_000 + 600_100_000 # yleinen plus eläkkeensaajan
-        q['tyoelake']=27_865_000_000
-        q['kokoelake']=q['tyoelake']+2_357_000_000
-        q['opintotuki']=417_404_073+54_057
-        q['isyyspaivaraha']=104_212_164
-        q['aitiyspaivaraha']=341_304_991+462_228_789
-        q['kotihoidontuki']=245_768_701
-        q['sairauspaivaraha']=786_659_783
-        q['toimeentulotuki']=715_950_847
-        q['perustulo']=0
-        q['pvhoitomaksu']=0
+    def stat_budget(self,scale=False):
+        if self.year==2018:
+            q={}
+            q['tyotulosumma']=89_134_200_000 #+4_613_400_000+1_239_900_000 # lähde: ETK, tyel + julkinen + yel + myel
+            q['tyotulosumma_eielakkeella']=0 #+4_613_400_000+1_239_900_000 # lähde: ETK, tyel + julkinen + yel + myel
+            q['etuusmeno']=0
+            q['verot+maksut']=0   # tuloverot 30_763_000_000 ml YLE ja kirkollisvero
+            q['valtionvero']=5_542_000_000
+            q['kunnallisvero']=18_991_000_000 # 18_791_000_000 ?
+            q['ptel']=5_560_000_000 # vai 6_804_000_000?
+            q['elakemaksut']=22_085_700_000 # Lähde: ETK
+            q['tyotvakmaksu']=0.019*q['tyotulosumma']
+            q['sairausvakuutusmaksu']=1_335_000_000+407_000_000
+            q['ylevero']=497_000_000
+            q['ansiopvraha']=3_895_333_045 # 1_930_846_464+1_964_486_581 # ansioturva + perusturva = 3 895 333 045
+            q['asumistuki']=1_488_900_000 + 600_100_000 # yleinen plus eläkkeensaajan
+            q['tyoelake']=27_865_000_000
+            q['kokoelake']=q['tyoelake']+2_357_000_000
+            q['opintotuki']=417_404_073+54_057
+            q['isyyspaivaraha']=104_212_164
+            q['aitiyspaivaraha']=341_304_991+462_228_789
+            q['kotihoidontuki']=245_768_701
+            q['sairauspaivaraha']=786_659_783
+            q['toimeentulotuki']=715_950_847
+            q['perustulo']=0
+            q['pvhoitomaksu']=0
+            q['alv']=21_364_000_000
         
-        q['etuusmeno']=q['ansiopvraha']+q['kokoelake']+q['opintotuki']+q['isyyspaivaraha']+\
-            q['aitiyspaivaraha']+q['sairauspaivaraha']+q['toimeentulotuki']+q['perustulo']+\
-            q['asumistuki']+q['kotihoidontuki']
-        q['verot+maksut']=q['valtionvero']+q['kunnallisvero']+q['ptel']+q['tyotvakmaksu']+\
-            q['ylevero']+q['sairausvakuutusmaksu']
-        q['ta_maksut']=0.2057*q['tyotulosumma'] # karkea
-        q['tulot_netto']=q['tyotulosumma']+q['etuusmeno']-q['verot+maksut']
-        q['muut tulot']=q['etuusmeno']-q['verot+maksut']
+            q['etuusmeno']=q['ansiopvraha']+q['kokoelake']+q['opintotuki']+q['isyyspaivaraha']+\
+                q['aitiyspaivaraha']+q['sairauspaivaraha']+q['toimeentulotuki']+q['perustulo']+\
+                q['asumistuki']+q['kotihoidontuki']
+            q['verot+maksut']=q['valtionvero']+q['kunnallisvero']+q['ptel']+q['tyotvakmaksu']+\
+                q['ylevero']+q['sairausvakuutusmaksu']
+            q['ta_maksut']=0.2057*q['tyotulosumma'] # karkea
+            q['tulot_netto']=q['tyotulosumma']+q['etuusmeno']-q['verot+maksut']
+            q['muut tulot']=q['etuusmeno']-q['verot+maksut']
+        elif self.year==2019:
+            q={}
+            q['tyotulosumma']=89_134_200_000 #+4_613_400_000+1_239_900_000 # lähde: ETK, tyel + julkinen + yel + myel
+            q['tyotulosumma_eielakkeella']=0 #+4_613_400_000+1_239_900_000 # lähde: ETK, tyel + julkinen + yel + myel
+            q['etuusmeno']=0
+            q['verot+maksut']=0   # tuloverot 30_763_000_000 ml YLE ja kirkollisvero
+            q['valtionvero']=5_542_000_000
+            q['kunnallisvero']=19_376_000_000
+            q['ptel']=5_560_000_000 # vai 7_323_000_000 
+            q['elakemaksut']=22_085_700_000 # Lähde: ETK
+            q['tyotvakmaksu']=0.019*q['tyotulosumma']
+            q['sairausvakuutusmaksu']=1_335_000_000+407_000_000
+            q['ylevero']=497_000_000
+            q['ansiopvraha']=3_895_333_045 # 1_930_846_464+1_964_486_581 # ansioturva + perusturva = 3 895 333 045
+            q['asumistuki']=1_488_900_000 + 600_100_000 # yleinen plus eläkkeensaajan
+            q['tyoelake']=27_865_000_000
+            q['kokoelake']=q['tyoelake']+2_357_000_000
+            q['opintotuki']=417_404_073+54_057
+            q['isyyspaivaraha']=104_212_164
+            q['aitiyspaivaraha']=341_304_991+462_228_789
+            q['kotihoidontuki']=245_768_701
+            q['sairauspaivaraha']=786_659_783
+            q['toimeentulotuki']=715_950_847
+            q['perustulo']=0
+            q['pvhoitomaksu']=0
+            q['alv']=21_974_000_000
+        
+            q['etuusmeno']=q['ansiopvraha']+q['kokoelake']+q['opintotuki']+q['isyyspaivaraha']+\
+                q['aitiyspaivaraha']+q['sairauspaivaraha']+q['toimeentulotuki']+q['perustulo']+\
+                q['asumistuki']+q['kotihoidontuki']
+            q['verot+maksut']=q['valtionvero']+q['kunnallisvero']+q['ptel']+q['tyotvakmaksu']+\
+                q['ylevero']+q['sairausvakuutusmaksu']
+            q['ta_maksut']=0.2057*q['tyotulosumma'] # karkea
+            q['tulot_netto']=q['tyotulosumma']+q['etuusmeno']-q['verot+maksut']
+            q['muut tulot']=q['etuusmeno']-q['verot+maksut']        
+        elif self.year==2020:
+            q={}
+            q['tyotulosumma']=89_134_200_000 #+4_613_400_000+1_239_900_000 # lähde: ETK, tyel + julkinen + yel + myel
+            q['tyotulosumma_eielakkeella']=0 #+4_613_400_000+1_239_900_000 # lähde: ETK, tyel + julkinen + yel + myel
+            q['etuusmeno']=0
+            q['verot+maksut']=0   # tuloverot 30_763_000_000 ml YLE ja kirkollisvero
+            q['valtionvero']=5_542_000_000 # vai 7_700_000_000
+            q['kunnallisvero']=20_480_000_000
+            q['ptel']=5_560_000_000
+            q['elakemaksut']=22_085_700_000 # Lähde: ETK
+            q['tyotvakmaksu']=0.019*q['tyotulosumma']
+            q['sairausvakuutusmaksu']=1_335_000_000+407_000_000
+            q['ylevero']=497_000_000
+            q['ansiopvraha']=3_895_333_045 # 1_930_846_464+1_964_486_581 # ansioturva + perusturva = 3 895 333 045
+            q['asumistuki']=1_488_900_000 + 600_100_000 # yleinen plus eläkkeensaajan
+            q['tyoelake']=27_865_000_000
+            q['kokoelake']=q['tyoelake']+2_357_000_000
+            q['opintotuki']=417_404_073+54_057
+            q['isyyspaivaraha']=104_212_164
+            q['aitiyspaivaraha']=341_304_991+462_228_789
+            q['kotihoidontuki']=245_768_701
+            q['sairauspaivaraha']=786_659_783
+            q['toimeentulotuki']=715_950_847
+            q['perustulo']=0
+            q['pvhoitomaksu']=0
+            q['alv']=21_775_000_000
+        
+            q['etuusmeno']=q['ansiopvraha']+q['kokoelake']+q['opintotuki']+q['isyyspaivaraha']+\
+                q['aitiyspaivaraha']+q['sairauspaivaraha']+q['toimeentulotuki']+q['perustulo']+\
+                q['asumistuki']+q['kotihoidontuki']
+            q['verot+maksut']=q['valtionvero']+q['kunnallisvero']+q['ptel']+q['tyotvakmaksu']+\
+                q['ylevero']+q['sairausvakuutusmaksu']
+            q['ta_maksut']=0.2057*q['tyotulosumma'] # karkea
+            q['tulot_netto']=q['tyotulosumma']+q['etuusmeno']-q['verot+maksut']
+            q['muut tulot']=q['etuusmeno']-q['verot+maksut']        
 
         return q
         
@@ -2787,6 +2859,7 @@ class EpisodeStats():
         q['tulot_netto']=np.sum(self.infostats_tulot_netto*scalex)
         q['ta_maksut']=q['tyoelake_maksu']-q['ptel']+(0.2057-0.1695)*q['tyotulosumma'] # karkea
         q['verotettava etuusmeno']=q['kokoelake']+q['ansiopvraha']+q['aitiyspaivaraha']+q['isyyspaivaraha']
+        q['alv']=np.sum(self.infostats_alv*scalex)
         
         return q
 
