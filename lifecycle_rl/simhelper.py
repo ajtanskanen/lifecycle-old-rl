@@ -74,16 +74,15 @@ class SimHelper():
             #self.plot_taxes_prop(additional_income_tax,TELosuus_vero,xlabel='Verokiila')
             
         self.plot_ps(additional_income_tax,total_ps,total_ps_norw,mean_ps,mean_ps_norw,percent_scale=percent_scale,dire=dire)
-
         self.plot_elasticity(mean_kiila,mean_ps,xlabel='Verokiila',ylabel='Palkkasumman jousto',dire=dire,percent_scale=percent_scale)
         self.plot_elasticity(mean_verot,mean_ps,xlabel='verot',ylabel='Palkkasumman jousto',dire=dire,percent_scale=percent_scale)
         self.plot_elasticity(mean_verot,mean_tyossa,xlabel='verot',ylabel='Palkkasumman jousto',dire=dire,percent_scale=percent_scale)
         
         self.plot_elasticity(mean_kiila,mean_htv,xlabel='Verokiila',ylabel='Työnmäärän jousto',dire=dire,percent_scale=percent_scale)
         self.plot_elasticity(mean_kiila,mean_tyossa,xlabel='Verokiila',ylabel='Työnteon jousto',dire=dire,percent_scale=percent_scale)
-        self.plot_elasticity(additional_income_tax,mean_ps,xlabel='Veromuutos',ylabel='Palkkasumman jousto',dire=dire,percent_scale=percent_scale,diff=False)
-        self.plot_elasticity(additional_income_tax,mean_htv,xlabel='Veromuutos',ylabel='Työnmäärän jousto',dire=dire,percent_scale=percent_scale,diff=False)
-        self.plot_elasticity(additional_income_tax,mean_tyossa,xlabel='Veromuutos',ylabel='Työnteon jousto',dire=dire,percent_scale=percent_scale,diff=False)
+        self.plot_elasticity(additional_income_tax,mean_ps,xlabel=xlabel,ylabel='Palkkasumman jousto',dire=dire,percent_scale=percent_scale,diff=False)
+        self.plot_elasticity(additional_income_tax,mean_htv,xlabel=xlabel,ylabel='Työnmäärän jousto',dire=dire,percent_scale=percent_scale,diff=False)
+        self.plot_elasticity(additional_income_tax,mean_tyossa,xlabel=xlabel,ylabel='Työnteon jousto',dire=dire,percent_scale=percent_scale,diff=False)
         self.plot_osatyo(additional_income_tax,mean_osatyoratio,xlabel=xlabel,ylabel='Osuus [%-yks]',dire=dire,percent_scale=percent_scale)
 
         self.plot_elasticity2d(additional_income_tax,mean_htv,mean_tyossa,xlabel=xlabel,ylabel='Jousto',label1='Työnmäärän jousto',label2='Työnteon jousto',dire=dire,percent_scale=percent_scale,diff=False)
@@ -113,9 +112,9 @@ class SimHelper():
         self.plot_osuus(additional_income_tax,kunnallis,label1=label1,xlabel=xlabel,ylabel='Etuudensaajien osuus kunnallisverosta',dire=dire,percent_scale=percent_scale)
         self.plot_osuus(additional_income_tax,valtio,label1=label1,xlabel=xlabel,ylabel='Etuudensaajien osuus ansiotuloverosta',dire=dire,percent_scale=percent_scale)
     
-    def plot_osuus(self,x,y,dire=None,label1=None,label2=None,xlabel='Muutos [%-yks]',
+    def plot_osuus(self,x,y,y2=None,dire=None,label1=None,label2=None,xlabel='Muutos [%-yks]',
                    percent_scale=False,ylabel='Elasticity',fname='elas',source=None,header=None,
-                   percent_scale_y=False):
+                   percent_scale_y=False,legend=False):
         if percent_scale:
             scale=100
         else:
@@ -130,6 +129,8 @@ class SimHelper():
     
         fig,ax=plt.subplots()
         ax.plot(scale*x,scaley*y,label=label1)
+        if y2 is not None:
+            ax.plot(scale*x,scaley*y2,label=label2)
         #plt.title(fname)
         #if ref_additional_tax is not None:
         #    ax.plot(scale*ref_additional_tax,ref_mean_rew,label=label2)
@@ -164,7 +165,7 @@ class SimHelper():
                         xlabel='Muutos [%-yks]',percent_scale=False,ylabel='Elasticity',diff=True):
         el,elx=self.comp_elasticity(additional_income_tax,htv,diff=diff)
         el2,el2x=self.comp_elasticity(additional_income_tax,tyossa,diff=diff)
-        self.plot_osuus(elx,el,el2,label1=label1,label2=label2,xlabel=xlabel,ylabel=ylabel,dire=dire,percent_scale=percent_scale)
+        self.plot_osuus(elx,el,y2=el2,label1=label1,label2=label2,xlabel=xlabel,ylabel=ylabel,dire=dire,percent_scale=percent_scale,legend=True)
 
     def plot_osatyo(self,additional_income_tax,osuus,dire=None,label1=None,label2=None,xlabel='Tulovero [%-yks]',percent_scale=True,ylabel='Osatyön osuus [%-yks]'):
         self.plot_osuus(additional_income_tax,osuus,label1=label1,xlabel=xlabel,ylabel=ylabel,dire=dire,percent_scale=percent_scale)
