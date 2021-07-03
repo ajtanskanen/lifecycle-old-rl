@@ -164,6 +164,7 @@ class SimHelper():
     def plot_elasticity2d(self,additional_income_tax,htv,tyossa,dire=None,label1=None,label2=None,
                         xlabel='Muutos [%-yks]',percent_scale=False,ylabel='Elasticity',diff=True):
         el,elx=self.comp_elasticity(additional_income_tax,htv,diff=diff)
+        print(el,el)
         el2,el2x=self.comp_elasticity(additional_income_tax,tyossa,diff=diff)
         for ind,e in enumerate(el):
             print(f'{elx[ind]}: {el[ind]} {el2[ind]}')

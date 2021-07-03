@@ -3181,19 +3181,19 @@ class EpisodeStats():
         
         tyoll_virta,tyot_virta=self.comp_virrat(ansiosid=True,tmtuki=True,putki=True,outsider=False)
         tyoll_virta2,tyot_virta2=cc2.comp_virrat(ansiosid=True,tmtuki=True,putki=True,outsider=False)
-        self.plot_compare_virrat(tyoll_virta,tyoll_virta2,virta_label='Työllisyys')
-        self.plot_compare_virrat(tyot_virta,tyot_virta2,min_time=40,max_time=64,virta_label='Työttömyys')
-        self.plot_compare_virrat(tyot_virta,tyot_virta2,min_time=55,max_time=64,virta_label='Työttömyys')
+        self.plot_compare_virrat(tyoll_virta,tyoll_virta2,virta_label='Työllisyys',label1=label1,label2=label2)
+        self.plot_compare_virrat(tyot_virta,tyot_virta2,min_time=40,max_time=64,virta_label='Työttömyys',label1=label1,label2=label2)
+        self.plot_compare_virrat(tyot_virta,tyot_virta2,min_time=55,max_time=64,virta_label='Työttömyys',label1=label1,label2=label2)
 
         tyoll_virta,tyot_virta=self.comp_virrat(ansiosid=True,tmtuki=False,putki=True,outsider=False)
         tyoll_virta2,tyot_virta2=cc2.comp_virrat(ansiosid=True,tmtuki=False,putki=True,outsider=False)
-        self.plot_compare_virrat(tyot_virta,tyot_virta2,min_time=40,max_time=64,virta_label='ei-tm-Työttömyys')
-        self.plot_compare_virrat(tyot_virta,tyot_virta2,min_time=55,max_time=64,virta_label='ei-tm-Työttömyys')
+        self.plot_compare_virrat(tyot_virta,tyot_virta2,min_time=40,max_time=64,virta_label='ei-tm-Työttömyys',label1=label1,label2=label2)
+        self.plot_compare_virrat(tyot_virta,tyot_virta2,min_time=55,max_time=64,virta_label='ei-tm-Työttömyys',label1=label1,label2=label2)
 
         tyoll_virta,tyot_virta=self.comp_virrat(ansiosid=False,tmtuki=True,putki=True,outsider=False)
         tyoll_virta2,tyot_virta2=cc2.comp_virrat(ansiosid=False,tmtuki=True,putki=True,outsider=False)
-        self.plot_compare_virrat(tyot_virta,tyot_virta2,min_time=40,max_time=64,virta_label='tm-Työttömyys')
-        self.plot_compare_virrat(tyot_virta,tyot_virta2,min_time=55,max_time=64,virta_label='tm-Työttömyys')
+        self.plot_compare_virrat(tyot_virta,tyot_virta2,min_time=40,max_time=64,virta_label='tm-Työttömyys',label1=label1,label2=label2)
+        self.plot_compare_virrat(tyot_virta,tyot_virta2,min_time=55,max_time=64,virta_label='tm-Työttömyys',label1=label1,label2=label2)
         
     def comp_employed_by_age(self,emp=None):
         if emp is None:
