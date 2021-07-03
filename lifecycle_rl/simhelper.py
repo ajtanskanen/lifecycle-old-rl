@@ -311,7 +311,7 @@ class SimHelper():
         ax.plot(scale*additional_tax,mean_tyossa_norw,'--',label=label1+' ei ve+työ',color='black')
         if ref_additional_tax is not None:
             ax.plot(scale*ref_additional_tax,ref_mean_htv,label=label2)
-        plt.title('Työnteko')
+        #plt.title('Työnteko')
         ax.legend()
         ax.set_ylabel('Työnteko')
         ax.set_xlabel(xlabel)
