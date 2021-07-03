@@ -164,7 +164,9 @@ class SimHelper():
     def plot_elasticity2d(self,additional_income_tax,htv,tyossa,dire=None,label1=None,label2=None,
                         xlabel='Muutos [%-yks]',percent_scale=False,ylabel='Elasticity',diff=True):
         el,elx=self.comp_elasticity(additional_income_tax,htv,diff=diff)
+        print(el,el)
         el2,el2x=self.comp_elasticity(additional_income_tax,tyossa,diff=diff)
+        print(el2x,el)
         self.plot_osuus(elx,el,y2=el2,label1=label1,label2=label2,xlabel=xlabel,ylabel=ylabel,dire=dire,percent_scale=percent_scale,legend=True)
 
     def plot_osatyo(self,additional_income_tax,osuus,dire=None,label1=None,label2=None,xlabel='Tulovero [%-yks]',percent_scale=True,ylabel='Osatyön osuus [%-yks]'):
