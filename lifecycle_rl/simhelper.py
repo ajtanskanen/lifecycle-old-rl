@@ -165,6 +165,8 @@ class SimHelper():
                         xlabel='Muutos [%-yks]',percent_scale=False,ylabel='Elasticity',diff=True):
         el,elx=self.comp_elasticity(additional_income_tax,htv,diff=diff)
         el2,el2x=self.comp_elasticity(additional_income_tax,tyossa,diff=diff)
+        for ind,e in enumerate(el):
+            print(f'{elx[ind]}: {el[ind]} {el2[ind]}')
         self.plot_osuus(elx,el,y2=el2,label1=label1,label2=label2,xlabel=xlabel,ylabel=ylabel,dire=dire,percent_scale=percent_scale,legend=True)
 
     def plot_osatyo(self,additional_income_tax,osuus,dire=None,label1=None,label2=None,xlabel='Tulovero [%-yks]',percent_scale=True,ylabel='Osatyön osuus [%-yks]'):
