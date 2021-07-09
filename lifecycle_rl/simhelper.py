@@ -166,7 +166,8 @@ class SimHelper():
         el,elx=self.comp_elasticity(additional_income_tax,htv,diff=diff)
         print(el,el)
         el2,el2x=self.comp_elasticity(additional_income_tax,tyossa,diff=diff)
-        print(el2x,el)
+        for ind,e in enumerate(el):
+            print(f'{elx[ind]}: {el[ind]} {el2[ind]}')
         self.plot_osuus(elx,el,y2=el2,label1=label1,label2=label2,xlabel=xlabel,ylabel=ylabel,dire=dire,percent_scale=percent_scale,legend=True)
 
     def plot_osatyo(self,additional_income_tax,osuus,dire=None,label1=None,label2=None,xlabel='Tulovero [%-yks]',percent_scale=True,ylabel='Osatyön osuus [%-yks]'):
@@ -310,7 +311,7 @@ class SimHelper():
         ax.plot(scale*additional_tax,mean_tyossa_norw,'--',label=label1+' ei ve+työ',color='black')
         if ref_additional_tax is not None:
             ax.plot(scale*ref_additional_tax,ref_mean_htv,label=label2)
-        plt.title('Työnteko')
+        #plt.title('Työnteko')
         ax.legend()
         ax.set_ylabel('Työnteko')
         ax.set_xlabel(xlabel)
