@@ -147,6 +147,7 @@ class EpisodeStats():
         self.infostats_pop_pension=np.zeros((self.n_time,self.n_pop))
         self.infostats_equivalent_income=np.zeros(self.n_time)
         self.infostats_alv=np.zeros(self.n_time)
+        self.infostats_puoliso=np.zeros(self.n_time)
         if self.version==101:
             self.infostats_savings=np.zeros((self.n_time,self.n_pop))
             self.sav_actions=np.zeros((self.n_time,self.n_pop))
@@ -161,22 +162,31 @@ class EpisodeStats():
             bu=0
             ove=0
             jasen=0
+            puoliso=0
         elif self.version==1:
             # v1
             emp,_,_,_,a,_,_,_,_,_,_,_,_,_=self.env.state_decode(state) # current employment state
             newemp,g,newpen,newsal,a2,tis,paidpens,pink,toe,ura,oof,bu,wr,p=self.env.state_decode(newstate)
             ove=0
             jasen=0
+            puoliso=0
         elif self.version==2:
             # v2
             emp,_,_,_,a,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_=self.env.state_decode(state) # current employment state
             newemp,g,newpen,newsal,a2,tis,paidpens,pink,toe,ura,bu,wr,upr,uw,uwr,pr,c3,c7,c18,unemp_left,aa,toe58=self.env.state_decode(newstate)
             ove=0
             jasen=0
+            puoliso=0
         elif self.version==3:
             # v3
             emp,_,_,_,a,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_=self.env.state_decode(state) # current employment state
             newemp,g,newpen,newsal,a2,tis,paidpens,pink,toe,toek,ura,bu,wr,upr,uw,uwr,pr,c3,c7,c18,unemp_left,aa,toe58,ove,jasen=self.env.state_decode(newstate)
+            puoliso=0
+        elif self.version==4:
+            # v3
+            emp,_,_,_,a,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_=self.env.state_decode(state) # current employment state
+            newemp,g,newpen,newsal,a2,tis,paidpens,pink,toe,toek,ura,bu,wr,upr,uw,uwr,pr,\
+                c3,c7,c18,unemp_left,aa,toe58,ove,jasen,puoliso,puoliso_tyossa,puoliso_palkka=self.env.state_decode(newstate)
         elif self.version==101:
             emp,_,_,a,_,_,_=self.env.state_decode(state) # current employment state
             newemp,newpen,newsal,a2,tis,next_wage,savings=self.env.state_decode(newstate)
@@ -187,9 +197,9 @@ class EpisodeStats():
     
         t=int(np.round((a2-self.min_age)*self.inv_timestep))#-1
         if a2>a and newemp>=0: # new state is not reset (age2>age)
-            if a2>self.min_retirementage and newemp==3 and self.version in set([1,2,3]):
+            if a2>self.min_retirementage and newemp==3 and self.version in set([1,2,3,4]):
                 newemp=2
-            if self.version in set([1,2,3]):
+            if self.version in set([1,2,3,4]):
                 self.empstate[t,newemp]+=1
                 self.alive[t]+=1
                 self.rewstate[t,newemp]+=r
@@ -222,6 +232,7 @@ class EpisodeStats():
                 self.infostats_kassanjasen[t]+=jasen       
                 self.infostats_pop_wage[t,n]=newsal   
                 self.infostats_pop_pension[t,n]=newpen
+                self.infostats_puoliso[t]+=puoliso
                 
                 if q is not None:
                     #print(newsal,q['palkkatulot'])
@@ -1272,7 +1283,7 @@ class EpisodeStats():
         retired=emp[:,2]
         unemployed=emp[:,0]
         
-        if self.version in set([1,2,3]):
+        if self.version in set([1,2,3,4]):
             disabled=emp[:,3]
             piped=emp[:,4]
             mother=emp[:,5]
@@ -1616,7 +1627,7 @@ class EpisodeStats():
         else:
             self.plot_states(empstate_ratio,ylabel=ratio_label,stack=True)
 
-        if self.version in set([1,2,3]):
+        if self.version in set([1,2,3,4]):
             self.plot_states(empstate_ratio,ylabel=ratio_label,ylimit=20,stack=False)
             self.plot_states(empstate_ratio,ylabel=ratio_label,parent=True,stack=False)
             self.plot_parents_in_work()
@@ -1697,7 +1708,7 @@ class EpisodeStats():
             else:
                 self.plot_states(empstate_ratio,ylabel=self.labels['osuus tilassa x'].format(genderlabel),stack=True)
 
-            if self.version in set([1,2,3]):
+            if self.version in set([1,2,3,4]):
                 self.plot_states(empstate_ratio,ylabel=self.labels['osuus tilassa x'].format(genderlabel),ylimit=20,stack=False)
                 self.plot_states(empstate_ratio,ylabel=self.labels['osuus tilassa x'].format(genderlabel),parent=True,stack=False)
                 self.plot_states(empstate_ratio,ylabel=self.labels['osuus tilassa x'].format(genderlabel),unemp=True,stack=False)
@@ -1715,6 +1726,18 @@ class EpisodeStats():
         ax.plot(x,ml,label='äitiysvapaa')
         ax.plot(x,empstate_ratio[:,6],label='isyysvapaa')
         ax.legend()
+        plt.show()
+
+    def plot_spouse(self,figname=None):
+        x=np.linspace(self.min_age,self.max_age,self.n_time)
+        fig,ax=plt.subplots()
+        ax.set_xlabel(self.labels['age'])
+        spouseratio=self.infostats_puoliso/self.alive[:,0]
+        
+        ax.set_ylabel('spouses')
+        ax.plot(x,spouseratio)
+        if figname is not None:
+            plt.savefig(figname+'spouses.eps', format='eps')
         plt.show()
 
     def plot_unemp(self,unempratio=True,figname=None,grayscale=False):
@@ -1791,7 +1814,7 @@ class EpisodeStats():
         else:
             lstyle='--'            
             
-        if self.version in set([1,2,3]):
+        if self.version in set([1,2,3,4]):
             if unempratio:
                 ax.plot(x,100*self.empstats.unempratio_stats(g=1),ls=lstyle,label=self.labels['havainto, naiset'])
                 ax.plot(x,100*self.empstats.unempratio_stats(g=2),ls=lstyle,label=self.labels['havainto, miehet'])
@@ -1905,11 +1928,11 @@ class EpisodeStats():
         plt.show()
         
     def plot_pensions(self):
-        if self.version in set([1,2,3]):
+        if self.version in set([1,2,3,4]):
             self.plot_ratiostates(self.stat_pension,ylabel='Tuleva eläke [e/v]',stack=False)
 
     def plot_career(self):    
-        if self.version in set([1,2,3]):
+        if self.version in set([1,2,3,4]):
             self.plot_ratiostates(self.stat_tyoura,ylabel='Työuran pituus [v]',stack=False)
 
     def plot_ratiostates(self,statistic,ylabel='',ylimit=None, show_legend=True, parent=False,\
@@ -1946,7 +1969,7 @@ class EpisodeStats():
         ura_emp=statistic[:,1]
         ura_ret=statistic[:,2]
         ura_unemp=statistic[:,0]
-        if self.version in set([1,2,3]):
+        if self.version in set([1,2,3,4]):
             ura_disab=statistic[:,3]
             ura_pipe=statistic[:,4]
             ura_mother=statistic[:,5]
@@ -1974,17 +1997,17 @@ class EpisodeStats():
             reverse=True
             
             if parent:
-                if self.version in set([1,2,3]):
+                if self.version in set([1,2,3,4]):
                     ax.stackplot(x,ura_mother,ura_dad,ura_kht,
                         labels=('äitiysvapaa','isyysvapaa','khtuki'), colors=pal)
             elif unemp:
-                if self.version in set([1,2,3]):
+                if self.version in set([1,2,3,4]):
                     ax.stackplot(x,ura_unemp,ura_pipe,ura_student,ura_outsider,ura_tyomarkkinatuki,
                         labels=('tyött','putki','opiskelija','ulkona','tm-tuki'), colors=pal)
                 else:
                     ax.stackplot(x,ura_unemp,labels=('tyött'), colors=pal)
             elif onlyunemp:
-                if self.version in set([1,2,3]):
+                if self.version in set([1,2,3,4]):
                     #urasum=np.nansum(statistic[:,[0,4,11,13]],axis=1)/100
                     urasum=np.nansum(statistic[:,[0,4,13]],axis=1)/100
                     osuus=(1.0-np.array([0.84,0.68,0.62,0.58,0.57,0.55,0.53,0.50,0.29]))*100
@@ -1997,7 +2020,7 @@ class EpisodeStats():
                 else:
                     ax.stackplot(x,ura_unemp,labels=('tyött'), colors=pal)
             else:
-                if self.version in set([1,2,3]):
+                if self.version in set([1,2,3,4]):
                     #ax.stackplot(x,ura_emp,ura_osatyo,ura_vetyo,ura_veosatyo,ura_unemp,ura_tyomarkkinatuki,ura_pipe,ura_disab,ura_mother,ura_dad,ura_kht,ura_ret,ura_student,ura_outsider,ura_army,
                     #    labels=('työssä','osatyö','ve+työ','ve+osatyö','työtön','tm-tuki','työttömyysputki','tk-eläke','äitiysvapaa','isyysvapaa','kh-tuki','vanhuuseläke','opiskelija','työvoiman ulkop.','armeijassa'), 
                     #    colors=pal)
@@ -2018,20 +2041,20 @@ class EpisodeStats():
                 ax.set_ylim(yminlim,ymaxlim)
         else:
             if parent:
-                if self.version in set([1,2,3]):
+                if self.version in set([1,2,3,4]):
                     ax.plot(x,ura_mother,label='äitiysvapaa')
                     ax.plot(x,ura_dad,label='isyysvapaa')
                     ax.plot(x,ura_kht,label='khtuki')
             elif unemp:
                 ax.plot(x,ura_unemp,label='tyött')
-                if self.version in set([1,2,3]):
+                if self.version in set([1,2,3,4]):
                     ax.plot(x,ura_tyomarkkinatuki,label='tm-tuki')
                     ax.plot(x,ura_student,label='student')
                     ax.plot(x,ura_outsider,label='outsider')
                     ax.plot(x,ura_pipe,label='putki')
             elif oa_unemp:
                 ax.plot(x,ura_unemp,label='tyött')
-                if self.version in set([1,2,3]):
+                if self.version in set([1,2,3,4]):
                     ax.plot(x,ura_tyomarkkinatuki,label='tm-tuki')
                     ax.plot(x,ura_student,label='student')
                     ax.plot(x,ura_outsider,label='outsider')
@@ -2039,14 +2062,14 @@ class EpisodeStats():
                     ax.plot(x,ura_osatyo,label='osa-aika')
             elif emp:
                 ax.plot(x,ura_emp,label='työssä')
-                #if self.version in set([1,2,3]):
+                #if self.version in set([1,2,3,4]):
                 ax.plot(x,ura_osatyo,label='osatyö')
             else:
                 ax.plot(x,ura_unemp,label='tyött')
                 ax.plot(x,ura_ret,label='eläke')
                 ax.plot(x,ura_emp,label='työ')
                 ax.plot(x,ura_osatyo,label='osatyö')
-                if self.version in set([1,2,3]):
+                if self.version in set([1,2,3,4]):
                     ax.plot(x,ura_disab,label='tk')
                     ax.plot(x,ura_pipe,label='putki')
                     ax.plot(x,ura_tyomarkkinatuki,label='tm-tuki')
@@ -2078,7 +2101,7 @@ class EpisodeStats():
         plt.show()
 
     def plot_toe(self):    
-        if self.version in set([1,2,3]):
+        if self.version in set([1,2,3,4]):
             self.plot_ratiostates(self.stat_toe,'työssäolo-ehdon pituus 28 kk aikana [v]',stack=False)
             
     def plot_sal(self):
@@ -2295,9 +2318,9 @@ class EpisodeStats():
 
         #self.plot_emp(figname=figname)
 
-        if self.version in set([1,2,3]):            
+        if self.version in set([1,2,3,4]):            
             q=self.comp_budget(scale=True)
-            q_stat=self.stat_budget_2018()
+            q_stat=self.stat_budget()
             df1 = pd.DataFrame.from_dict(q,orient='index',columns=['e/v'])
             df2 = pd.DataFrame.from_dict(q_stat,orient='index',columns=['toteuma'])
             df=df1.copy()
@@ -2344,7 +2367,7 @@ class EpisodeStats():
         print('Real discounted reward {}'.format(self.comp_realoptimrew()))
         
         self.plot_emp(figname=figname)
-        if self.version in set([1,2,3]):
+        if self.version in set([1,2,3,4]):
             self.plot_outsider()
         
         print('Keskikestot käytettyjen ansiosidonnaisten päivärahojen mukaan')
@@ -2357,8 +2380,11 @@ class EpisodeStats():
         df = pd.DataFrame.from_dict(keskikesto,orient='index',columns=['0-6 kk','6-12 kk','12-18 kk','18-24kk','yli 24 kk'])
         print(tabulate(df, headers='keys', tablefmt='psql', floatfmt=",.2f"))
         
-        if self.version in set([1,2,3]):
+        if self.version in set([1,2,3,4]):
             print('Lisäpäivillä on {:.0f} henkilöä'.format(self.count_putki()))
+
+        if self.version in set([4]):
+            self.plot_spouse()
 
         if self.version==101:
             self.plot_savings()
@@ -2369,12 +2395,12 @@ class EpisodeStats():
         self.plot_unemp(unempratio=True,figname=figname)
         self.plot_unemp(unempratio=False)
         self.plot_unemp_shares()
-        if self.version in set([1,2,3]):
+        if self.version in set([1,2,3,4]):
             self.plot_group_emp(figname=figname)
             self.plot_parttime_ratio(figname=figname)
             
         self.plot_sal()
-        if self.version in set([1,2,3]):
+        if self.version in set([1,2,3,4]):
             self.plot_taxes()
             self.plot_pinkslip()
             self.plot_outsider()
@@ -2395,7 +2421,7 @@ class EpisodeStats():
         self.plot_distrib(label='Jakauma ansiosidonnainen+tmtuki+putki, no max age',ansiosid=True,tmtuki=True,putki=True,outsider=False)
         self.plot_distrib(label='Jakauma ansiosidonnainen+tmtuki+putki, jakso päättynyt ennen 50v ikää',ansiosid=True,tmtuki=True,putki=True,outsider=False,max_age=50,figname=figname)
         
-        if self.version in set([1,2,3]):
+        if self.version in set([1,2,3,4]):
             #self.plot_distrib(label='Jakauma ansiosidonnainen+tmtuki+putki, jakso päättynyt ennen 50v ikää, jäljellä oleva aika',plot_bu=True,ansiosid=True,tmtuki=True,putki=True,outsider=False,max_age=50)
             self.plot_distrib(label='Jakauma ansiosidonnainen+putki, jakso päättynyt ennen 50v ikää, jäljellä oleva aika',plot_bu=False,ansiosid=True,tmtuki=False,putki=True,outsider=False,max_age=50)
             #self.plot_distrib(label='Jakauma ansiosidonnainen+tmtuki ilman putkea',ansiosid=True,tmtuki=True,putki=False,outsider=False)
@@ -2418,12 +2444,12 @@ class EpisodeStats():
         print(tabulate(df, headers='keys', tablefmt='psql', floatfmt=",.2f"))
         
         self.plot_emp()
-        if self.version in set([1,2,3]):
+        if self.version in set([1,2,3,4]):
             print('Lisäpäivillä on {:.0f} henkilöä'.format(self.count_putki()))
         self.plot_unemp(unempratio=True)
         self.plot_unemp(unempratio=False)
         self.plot_unemp_shares()
-        if self.version in set([1,2,3]):
+        if self.version in set([1,2,3,4]):
             self.plot_group_emp()
         self.plot_parttime_ratio()
         self.plot_sal()
@@ -2438,7 +2464,7 @@ class EpisodeStats():
         #self.plot_distrib(label='Jakauma työvoiman ulkopuoliset',ansiosid=False,tmtuki=False,putki=False,outsider=True)
         #self.plot_distrib(label='Jakauma laaja (ansiosidonnainen+tmtuki+putki+ulkopuoliset)',laaja=True)
 
-        if self.version in set([1,2,3]):
+        if self.version in set([1,2,3,4]):
             self.plot_outsider()
             self.plot_student()
             #self.plot_army()
@@ -2538,6 +2564,7 @@ class EpisodeStats():
         _ = f.create_dataset('infostats_equivalent_income', data=self.infostats_equivalent_income, dtype=ftype)
         _ = f.create_dataset('infostats_pop_wage', data=self.infostats_pop_wage, dtype=ftype,compression="gzip", compression_opts=9)
         _ = f.create_dataset('infostats_pop_pension', data=self.infostats_pop_pension, dtype=ftype,compression="gzip", compression_opts=9)
+        _ = f.create_dataset('infostats_puoliso', data=self.infostats_puoliso, dtype=ftype)
         #_ = f.create_dataset('infostats_alv', data=self.infostats_alv)
         _ = f.create_dataset('params', data=str(self.params))
         if self.version==101:
@@ -2660,6 +2687,9 @@ class EpisodeStats():
             self.n_pop=int(f['n_pop'][()])
         else:
             self.n_pop=np.sum(self.empstate[0,:])
+            
+        if 'infostats_puoliso' in f.keys():
+            self.infostats_puoliso=f['infostats_puoliso'][()]
             
         if 'infostats_ove' in f.keys():
             self.infostats_ove=f['infostats_ove'][()]
@@ -2872,7 +2902,7 @@ class EpisodeStats():
         scalex=np.squeeze(demog2/self.n_pop*self.timestep)
         
         q={}
-        if self.version in set([1,2,3]):
+        if self.version in set([1,2,3,4]):
             q['yhteensä']=np.sum(np.sum(self.empstate[:,:],1)*scalex)
             if include_retwork:
                 q['palkansaajia']=np.sum((self.empstate[:,1]+self.empstate[:,10]+self.empstate[:,8]+self.empstate[:,9])*scalex)
@@ -3008,7 +3038,7 @@ class EpisodeStats():
         ax.set_ylabel('rew diff')
         plt.show()
 
-        if self.version in set([1,2,3]):
+        if self.version in set([1,2,3,4]):
             print('Rahavirrat skaalattuna väestötasolle')
             print(tabulate(df, headers='keys', tablefmt='psql', floatfmt=",.2f"))
         
@@ -3034,7 +3064,7 @@ class EpisodeStats():
         diff_emp=diff_emp*100
         ax.plot(x,100*(tyot_osuus1-tyot_osuus2),label='unemployment')
         ax.plot(x,100*(kokotyo_osuus1-kokotyo_osuus2),label='fulltime work')
-        if self.version in set([1,2,3]):
+        if self.version in set([1,2,3,4]):
             ax.plot(x,100*(osatyo_osuus1-osatyo_osuus2),label='osa-aikatyö')
             ax.plot(x,100*(tyolliset1-tyolliset2),label='työ yhteensä')
             ax.plot(x,100*(htv_osuus1-htv_osuus2),label='htv yhteensä')
