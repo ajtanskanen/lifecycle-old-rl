@@ -264,13 +264,21 @@ class Lifecycle():
 
             self.minimal=True
             #self.version=0
-            self.gym_kwargs={'step': self.timestep,'gamma':self.gamma,
-                'min_age': self.min_age, 'max_age': self.max_age,
+            self.gym_kwargs={'step': self.timestep,
+            'gamma':self.gamma,
+                'min_age': self.min_age, 
+                'max_age': self.max_age,
                 'plotdebug': self.plotdebug, 
-                'min_retirementage': self.min_retirementage, 'max_retirementage':self.max_retirementage,
-                'reset_exploration_go': self.exploration,'reset_exploration_ratio': self.exploration_ratio,
-                'irr_vain_tyoelake': self.irr_vain_tyoelake,'perustulomalli': perustulomalli,'perustulo': perustulo,
-                'osittainen_perustulo': self.osittainen_perustulo, 'perustulo_korvaa_toimeentulotuen': self.perustulo_korvaa_toimeentulotuen }
+                'min_retirementage': self.min_retirementage, 
+                'max_retirementage':self.max_retirementage,
+                'reset_exploration_go': self.exploration,
+                'reset_exploration_ratio': self.exploration_ratio,
+                'irr_vain_tyoelake': self.irr_vain_tyoelake,
+                'perustulomalli': perustulomalli,
+                'perustulo': perustulo,
+                'osittainen_perustulo': self.osittainen_perustulo, 
+                'perustulo_korvaa_toimeentulotuen': self.perustulo_korvaa_toimeentulotuen,
+                'year': self.year}
         else:
             #if EK:
             #    self.environment='unemploymentEK-v1'
@@ -278,20 +286,33 @@ class Lifecycle():
             #    self.environment='unemployment-v1'
 
             self.minimal=False
-            self.gym_kwargs={'step': self.timestep,'gamma':self.gamma,
-                'min_age': self.min_age, 'max_age': self.max_age,
-                'min_retirementage': self.min_retirementage, 'max_retirementage':self.max_retirementage,
-                'ansiopvraha_kesto300': self.ansiopvraha_kesto300,'ansiopvraha_kesto400': self.ansiopvraha_kesto400,
-                'ansiopvraha_toe': self.ansiopvraha_toe,'include_pinkslip':self.include_pinkslip,
-                'perustulo': self.perustulo, 'karenssi_kesto': self.karenssi_kesto,
-                'mortality': self.mortality, 'randomness': self.randomness,
-                'porrasta_putki': self.porrasta_putki, 'porrasta_1askel': self.porrasta_1askel,
-                'porrasta_2askel': self.porrasta_2askel, 'porrasta_3askel': self.porrasta_3askel,
-                'include_putki': self.include_putki, 'use_sigma_reduction': self.use_sigma_reduction,
-                'plotdebug': self.plotdebug, 'include_preferencenoise': self.include_preferencenoise,
+            self.gym_kwargs={'step': self.timestep,
+                'gamma':self.gamma,
+                'min_age': self.min_age, 
+                'max_age': self.max_age,
+                'min_retirementage': self.min_retirementage, 
+                'max_retirementage':self.max_retirementage,
+                'ansiopvraha_kesto300': self.ansiopvraha_kesto300,
+                'ansiopvraha_kesto400': self.ansiopvraha_kesto400,
+                'ansiopvraha_toe': self.ansiopvraha_toe,
+                'include_pinkslip':self.include_pinkslip,
+                'perustulo': self.perustulo, 
+                'karenssi_kesto': self.karenssi_kesto,
+                'mortality': self.mortality, 
+                'randomness': self.randomness,
+                'porrasta_putki': self.porrasta_putki, 
+                'porrasta_1askel': self.porrasta_1askel,
+                'porrasta_2askel': self.porrasta_2askel, 
+                'porrasta_3askel': self.porrasta_3askel,
+                'include_putki': self.include_putki, 
+                'use_sigma_reduction': self.use_sigma_reduction,
+                'plotdebug': self.plotdebug, 
+                'include_preferencenoise': self.include_preferencenoise,
                 'preferencenoise_level': self.preferencenoise_level,
-                'perustulomalli': self.perustulomalli, 'osittainen_perustulo':self.osittainen_perustulo,
-                'reset_exploration_go': self.exploration,'reset_exploration_ratio': self.exploration_ratio,
+                'perustulomalli': self.perustulomalli, 
+                'osittainen_perustulo':self.osittainen_perustulo,
+                'reset_exploration_go': self.exploration,
+                'reset_exploration_ratio': self.exploration_ratio,
                 'irr_vain_tyoelake': self.irr_vain_tyoelake, 
                 'additional_income_tax': self.additional_income_tax,
                 'additional_tyel_premium': self.additional_tyel_premium, 
@@ -305,7 +326,8 @@ class Lifecycle():
                 'porrasta_toe': self.porrasta_toe,
                 'include_ove': self.include_ove,
                 'unemp_limit_reemp': self.unemp_limit_reemp,
-                'extra_ppr': self.extra_ppr}
+                'extra_ppr': self.extra_ppr,
+                'year': self.year}
                 
         # Create log dir & results dirs
         self.log_dir = "tmp/" # +str(env_id)
