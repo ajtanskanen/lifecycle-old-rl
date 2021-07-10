@@ -2976,7 +2976,7 @@ class EpisodeStats():
 
         return q
         
-    def compare_with(self,cc2,label2='perus',label1='vaihtoehto',grayscale=True,figname=None,dash=False):
+    def compare_with(self,cc2,label1='perus',label2='vaihtoehto',grayscale=True,figname=None,dash=False):
         if grayscale:
             plt.style.use('grayscale')
             plt.rcParams['figure.facecolor'] = 'white' # Or any suitable colour...
