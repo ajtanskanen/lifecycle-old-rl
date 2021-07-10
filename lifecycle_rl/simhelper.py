@@ -231,7 +231,7 @@ class SimHelper():
             ax.plot(scale*ref_additional_tax,ref_mean_muut,label=label2)
         else:
             ax.plot(scale*additional_tax,mean_muut,label=label1)
-        ax.legend()
+        #ax.legend()
         ax.set_ylabel('Muut tulot [euroa]')
         ax.set_xlabel(xlabel)
         if dire is not None:
