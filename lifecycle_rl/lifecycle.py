@@ -1096,7 +1096,7 @@ class Lifecycle():
                deterministic=True,train=True,predict=True,batch1=1,batch2=100,cont=False,
                start_from=None,plot=False,twostage=False,callback_minsteps=None,
                stats_results='results/distrib_stats',startn=None,verbose=1,
-               learning_rate=0.25,learning_schedule='linear'):
+               learning_rate=0.25,learning_schedule='linear',log_interval=100):
    
         '''
         run_verify
@@ -1120,7 +1120,8 @@ class Lifecycle():
                twostage=twostage,save=bestname2,debug=debug,simut=simut,results=results2,
                deterministic=deterministic,train=train,predict=predict,
                batch1=batch1,batch2=batch2,cont=cont,start_from=start_from,plot=False,
-               callback_minsteps=callback_minsteps,verbose=verbose,learning_rate=learning_rate,learning_schedule=learning_schedule)
+               callback_minsteps=callback_minsteps,verbose=verbose,learning_rate=learning_rate,
+               learning_schedule=learning_schedule,log_interval=log_interval)
 
         #self.render_distrib(load=results,n=n,stats_results=stats_results)
             
