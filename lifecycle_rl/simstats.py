@@ -638,48 +638,48 @@ class SimStats(EpisodeStats):
     def load_simdistribs(self,filename):
         f = h5py.File(filename, 'r')
         if 'tyoll_virta' in f:
-            unemp_distrib = f.get('unemp_distrib').value
+            unemp_distrib = f['unemp_distrib'][()] #f.get('unemp_distrib').value
         else:
             unemp_distrib=np.zeros((self.n_time,self.n_pop))
         
         if 'tyoll_virta' in f:
-            emp_distrib = f.get('emp_distrib').value
+            emp_distrib = f['emp_distrib'][()] #f.get('emp_distrib').value
         else:
             emp_distrib=np.zeros((self.n_time,self.n_pop))
         if 'tyoll_virta' in f:
-            unemp_distrib_bu = f.get('unemp_distrib_bu').value
+            unemp_distrib_bu = f['unemp_distrib_bu'][()] #f.get('unemp_distrib_bu').value
         else:
             unemp_distrib_bu=np.zeros((self.n_time,self.n_pop))
         if 'tyoll_virta' in f:
-            tyoll_distrib = f.get('tyoll_distrib').value
+            tyoll_distrib =f['tyoll_distrib'][()] # f.get('tyoll_distrib').value
         else:
             tyoll_distrib=np.zeros((self.n_time,self.n_pop))
         if 'tyoll_virta' in f:
-            tyoll_distrib_bu = f.get('tyoll_distrib_bu').value
+            tyoll_distrib_bu = f['tyoll_distrib_bu'][()] #f.get('tyoll_distrib_bu').value
         else:
             tyoll_distrib_bu=np.zeros((self.n_time,self.n_pop))
         if 'tyoll_virta' in f:
-            tyoll_virta = f.get('tyoll_virta').value
+            tyoll_virta = f['tyoll_virta'][()] #f.get('tyoll_virta').value
         else:
             tyoll_virta=np.zeros((self.n_time,self.n_pop))
         if 'tyot_virta' in f:
-            tyot_virta = f.get('tyot_virta').value
+            tyot_virta = f['tyot_virta'][()] #f.get('tyot_virta').value
         else:
             tyot_virta=np.zeros((self.n_time,self.n_pop))
         if 'tyot_virta_ansiosid' in f:
-            tyot_virta_ansiosid = f.get('tyot_virta_ansiosid').value
+            tyot_virta_ansiosid = f['tyot_virta_ansiosid'][()] #f.get('tyot_virta_ansiosid').value
         else:
             tyot_virta_ansiosid=np.zeros((self.n_time,self.n_pop))
         if 'tyot_virta_tm' in f:
-            tyot_virta_tm = f.get('tyot_virta_tm').value
+            tyot_virta_tm = f['tyot_virta_tm'][()] #f.get('tyot_virta_tm').value
         else:
             tyot_virta_tm=np.zeros((self.n_time,self.n_pop))
         if 'unemp_dur' in f:
-            unemp_dur = f.get('unemp_dur').value
+            unemp_dur = f['unemp_dur'][()] #f.get('unemp_dur').value
         else:
             unemp_dur=np.zeros((1,5,5))
         if 'unemp_lastdur' in f:
-            unemp_lastdur = f.get('unemp_lastdur').value
+            unemp_lastdur = f['unemp_lastdur'][()] #f.get('unemp_lastdur').value
         else:
             unemp_lastdur=np.zeros((1,5,5))
         
