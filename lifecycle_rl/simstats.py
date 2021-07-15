@@ -615,19 +615,19 @@ class SimStats(EpisodeStats):
     def load_simstats(self,filename):
         f = h5py.File(filename, 'r')
         #n_pop = f.get('n_pop').value
-        agg_htv = f.get('agg_htv').value
-        agg_tyoll = f.get('agg_tyoll').value
-        agg_rew = f.get('agg_rew').value
-        emps = f.get('emps').value
-        best_rew = f.get('best_rew').value
-        best_emp = int(f.get('best_emp').value)
-        emp_tyolliset = f.get('emp_tyolliset').value
-        emp_tyolliset_osuus = f.get('emp_tyolliset_osuus').value
-        emp_tyottomat = f.get('emp_tyottomat').value
-        emp_tyottomat_osuus = f.get('emp_tyottomat_osuus').value
-        emp_htv = f.get('emp_htv').value
-        agg_netincome = f.get('agg_netincome').value
-        agg_equivalent_netincome = f.get('agg_equivalent_netincome').value
+        agg_htv = f['agg_htv'][()] #f.get('agg_htv').value
+        agg_tyoll = f['agg_tyoll'][()] #f.get('agg_tyoll').value
+        agg_rew = f['agg_rew'][()] #f.get('agg_rew').value
+        emps = f['emps'][()] #f.get('emps').value
+        best_rew = f['best_rew'][()] #f.get('best_rew').value
+        best_emp = int(f['best_emp'][()]) #int(f.get('best_emp').value)
+        emp_tyolliset = f['emp_tyolliset'][()] #f.get('emp_tyolliset').value
+        emp_tyolliset_osuus = f['emp_tyolliset_osuus'][()] #f.get('emp_tyolliset_osuus').value
+        emp_tyottomat = f['emp_tyottomat'][()] #f.get('emp_tyottomat').value
+        emp_tyottomat_osuus = f['emp_tyottomat_osuus'][()] #f.get('emp_tyottomat_osuus').value
+        emp_htv = f['emp_htv'][()] #f.get('emp_htv').value
+        agg_netincome = f['agg_netincome'][()] #f.get('agg_netincome').value
+        agg_equivalent_netincome = f['agg_equivalent_netincome'][()] #f.get('agg_equivalent_netincome').value
         
         f.close()
 
