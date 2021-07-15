@@ -2608,7 +2608,8 @@ class EpisodeStats():
         self.siirtyneet=f['siirtyneet'][()]
         self.pysyneet=f['pysyneet'][()]
         self.salaries=f['salaries'][()]
-        self.aveV=f['aveV'][()]
+        if 'aveV' in f.keys():
+            self.aveV=f['aveV'][()]
         self.time_in_state=f['time_in_state'][()]
         self.stat_tyoura=f['stat_tyoura'][()]
         self.stat_toe=f['stat_toe'][()]
