@@ -79,13 +79,13 @@ class SimHelper():
         self.plot_elasticity(mean_verot,mean_tyossa,xlabel='verot',ylabel='Palkkasumman jousto',dire=dire,percent_scale=percent_scale)
         
         self.plot_elasticity(mean_kiila,mean_htv,xlabel='Verokiila',ylabel='Työnmäärän jousto',dire=dire,percent_scale=percent_scale)
-        self.plot_elasticity(mean_kiila,mean_tyossa,xlabel='Verokiila',ylabel='Työnteon jousto',dire=dire,percent_scale=percent_scale)
+        self.plot_elasticity(mean_kiila,mean_tyossa,xlabel='Verokiila',ylabel='Osallistumisjousto',dire=dire,percent_scale=percent_scale)
         self.plot_elasticity(additional_income_tax,mean_ps,xlabel=xlabel,ylabel='Palkkasumman jousto',dire=dire,percent_scale=percent_scale,diff=False)
         self.plot_elasticity(additional_income_tax,mean_htv,xlabel=xlabel,ylabel='Työnmäärän jousto',dire=dire,percent_scale=percent_scale,diff=False)
-        self.plot_elasticity(additional_income_tax,mean_tyossa,xlabel=xlabel,ylabel='Työnteon jousto',dire=dire,percent_scale=percent_scale,diff=False)
+        self.plot_elasticity(additional_income_tax,mean_tyossa,xlabel=xlabel,ylabel='Osallistumisjousto',dire=dire,percent_scale=percent_scale,diff=False)
         self.plot_osatyo(additional_income_tax,mean_osatyoratio,xlabel=xlabel,ylabel='Osuus [%-yks]',dire=dire,percent_scale=percent_scale)
 
-        self.plot_elasticity2d(additional_income_tax,mean_htv,mean_tyossa,xlabel=xlabel,ylabel='Jousto',label1='Työnmäärän jousto',label2='Työnteon jousto',dire=dire,percent_scale=percent_scale,diff=False)
+        self.plot_elasticity2d(additional_income_tax,mean_htv,mean_tyossa,xlabel=xlabel,ylabel='Jousto',label1='Työnmäärän jousto',label2='Osallistumisjousto',dire=dire,percent_scale=percent_scale,diff=False)
         
         self.plot_veroosuudet(additional_income_tax,osuus_vero,osuus_kunnallisvero,osuus_valtionvero)
 

@@ -455,17 +455,30 @@ class SimStats(EpisodeStats):
 
         fig,ax=plt.subplots()
         ax.set_xlabel('Age [y]')
-        ax.set_ylabel('Unemployment rate [%]')
+        ax.set_ylabel('Unemployment proportion [%]')
         x=np.linspace(self.min_age,self.max_age,self.n_time)
         ax.plot(x[1:],100*u_tmtuki1[1:],ls='--',label='tm-tuki, '+label1)
         ax.plot(x[1:],100*u_tmtuki2[1:],label='tm-tuki, '+label2)
         ax.plot(x[1:],100*u_ansiosid1[1:],ls='--',label='ansiosidonnainen, '+label1)
         ax.plot(x[1:],100*u_ansiosid2[1:],label='ansiosidonnainen, '+label2)
+        ax.plot(x[1:],100*(u_tmtuki1[1:]+u_ansiosid1[1:]),ls='--',label='yhteensä, '+label1)
+        ax.plot(x[1:],100*(u_tmtuki2[1:]+u_ansiosid2[1:]),label='yhteensä, '+label2)
         #ax.plot(x[1:],100*u_ansiosid2[1:],label=label2)
         #ax.plot(x[1:],100*u_ansiosid1[1:],ls='--',label=label1)
         ax.legend()
         if figname is not None:
             plt.savefig(figname+'tyottomyydet.eps')        
+        plt.show()
+
+        fig,ax=plt.subplots()
+        ax.set_xlabel('Ikä [v]')
+        ax.set_ylabel('Työttömien osuus ikäluokasta [%]')
+        x=np.linspace(self.min_age,self.max_age,self.n_time)
+        ax.plot(x[1:],100*(u_tmtuki1[1:]+u_ansiosid1[1:]),ls='--',label=label1)
+        ax.plot(x[1:],100*(u_tmtuki2[1:]+u_ansiosid2[1:]),label=label2)
+        ax.legend()
+        if figname is not None:
+            plt.savefig(figname+'tyottomyydet2.eps')        
         plt.show()
 
         fig,ax=plt.subplots()
