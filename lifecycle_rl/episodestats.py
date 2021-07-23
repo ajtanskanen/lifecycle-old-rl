@@ -100,6 +100,7 @@ class EpisodeStats():
         self.stat_wage_reduction_g=np.zeros((self.n_time,n_emps,self.n_groups))
         self.infostats_group=np.zeros((self.n_pop,1))
         self.infostats_taxes=np.zeros((self.n_time,1))
+        self.infostats_wagetaxes=np.zeros((self.n_time,1))
         self.infostats_taxes_distrib=np.zeros((self.n_time,n_emps))
         self.infostats_etuustulo=np.zeros((self.n_time,1))
         self.infostats_perustulo=np.zeros((self.n_time,1))
@@ -238,6 +239,7 @@ class EpisodeStats():
                 if q is not None:
                     #print(newsal,q['palkkatulot'])
                     self.infostats_taxes[t]+=q['verot']*self.timestep*12
+                    self.infostats_wagetaxes[t]+=q['verot_ilman_etuuksia']*self.timestep*12
                     self.infostats_taxes_distrib[t,newemp]+=q['verot']*self.timestep*12
                     self.infostats_etuustulo[t]+=q['etuustulo_brutto']*self.timestep*12
                     self.infostats_perustulo[t]+=q['perustulo']*self.timestep*12
@@ -2521,6 +2523,7 @@ class EpisodeStats():
         _ = f.create_dataset('popunemprightleft', data=self.popunemprightleft, dtype=ftype,compression="gzip", compression_opts=9)
         _ = f.create_dataset('popunemprightused', data=self.popunemprightused, dtype=ftype,compression="gzip", compression_opts=9)
         _ = f.create_dataset('infostats_taxes', data=self.infostats_taxes, dtype=ftype,compression="gzip", compression_opts=9)
+        _ = f.create_dataset('infostats_wagetaxes', data=self.infostats_wagetaxes, dtype=ftype,compression="gzip", compression_opts=9)
         _ = f.create_dataset('infostats_taxes_distrib', data=self.infostats_taxes_distrib, dtype=ftype,compression="gzip", compression_opts=9)
         _ = f.create_dataset('infostats_etuustulo', data=self.infostats_etuustulo, dtype=ftype,compression="gzip", compression_opts=9)
         _ = f.create_dataset('infostats_perustulo', data=self.infostats_perustulo, dtype=ftype,compression="gzip", compression_opts=9)
@@ -2621,6 +2624,9 @@ class EpisodeStats():
         self.popunemprightleft=f['popunemprightleft'][()]
         self.popunemprightused=f['popunemprightused'][()]
         
+        if 'infostats_wagetaxes' in f.keys(): # older runs do not have these
+            self.infostats_wagetaxes=f['infostats_wagetaxes'][()]
+
         if 'infostats_taxes' in f.keys(): # older runs do not have these
             self.infostats_taxes=f['infostats_taxes'][()]
             self.infostats_etuustulo=f['infostats_etuustulo'][()]
@@ -2868,6 +2874,7 @@ class EpisodeStats():
             
         q['etuusmeno']=np.sum(self.infostats_etuustulo*scalex)
         q['verot+maksut']=np.sum(self.infostats_taxes*scalex)
+        q['palkkaverot+maksut']=np.sum(self.infostats_wagetaxes*scalex)
         q['muut tulot']=q['etuusmeno']-q['verot+maksut']
         q['valtionvero']=np.sum(self.infostats_valtionvero*scalex)
         q['kunnallisvero']=np.sum(self.infostats_kunnallisvero*scalex)

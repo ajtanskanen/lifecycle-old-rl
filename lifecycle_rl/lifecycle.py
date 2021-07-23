@@ -890,7 +890,8 @@ class Lifecycle():
         kiila2,qcb=self.episodestats.comp_verokiila_kaikki_ansiot()
         tyollaste,_=self.episodestats.comp_employed_aggregate()
         tyotaste=self.episodestats.comp_unemployed_aggregate()
-        print(tyollaste,tyotaste)
+        menot=q['etuusmeno']
+        #print(tyollaste,tyotaste)
         #tyollaste,tyotaste=0,0
         #
         #qq={}
@@ -900,7 +901,7 @@ class Lifecycle():
         #
         #print(qq,qc)
             
-        return rew,tyotulosumma,q['verot+maksut'],htv,muut_tulot,kiila,tyollaste,tyotaste,palkansaajia,osatyossa,kiila2
+        return rew,tyotulosumma,q['verot+maksut'],htv,muut_tulot,kiila,tyollaste,tyotaste,palkansaajia,osatyossa,kiila2,menot
    
     def load_sim(self,load=None):
         self.episodestats.load_sim(load)
