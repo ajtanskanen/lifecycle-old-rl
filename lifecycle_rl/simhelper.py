@@ -379,7 +379,8 @@ class SimHelper():
         plt.show()
     
 
-    def plot_ps(self,additional_tax,total_ps,total_ps_norw,mean_ps,mean_ps_norw,ref_tax=None,ref_ps=None,dire=None,xlabel=None,percent_scale=False):
+    def plot_ps(self,additional_tax,total_ps,total_ps_norw,mean_ps,mean_ps_norw,ref_tax=None,
+                ref_ps=None,dire=None,xlabel=None,percent_scale=False,label1=None,label2=None):
         if percent_scale:
             scale=100
         else:
@@ -391,10 +392,10 @@ class SimHelper():
         #plt.show()
         
         fig,ax=plt.subplots()
-        ax.plot(scale*additional_tax,mean_ps,label='kaikki')
-        ax.plot(scale*additional_tax,mean_ps_norw,'--',label='ilman ve+työ')
+        ax.plot(scale*additional_tax,mean_ps,label=label1+'kaikki')
+        ax.plot(scale*additional_tax,mean_ps_norw,'--',label=label1+'ilman ve+työ')
         if ref_ps is not None:
-            ax.plot(scale*ref_tax,ref_ps,label='baseline')
+            ax.plot(scale*ref_tax,ref_ps,label=label2)
         plt.title('Palkkasumma')
         ax.set_ylabel('Palkkasumma [euroa]')
         ax.set_xlabel(xlabel)
