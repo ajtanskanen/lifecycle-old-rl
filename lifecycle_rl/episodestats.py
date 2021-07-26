@@ -23,14 +23,14 @@ from . empstats import Empstats
 #locale.setlocale(locale.LC_ALL, 'fi_FI')
 
 class EpisodeStats():
-    def __init__(self,timestep,n_time,n_emps,n_pop,env,minimal,min_age,max_age,min_retirementage,year=2018,version=3,params=None,gamma=0.92):
+    def __init__(self,timestep,n_time,n_emps,n_pop,env,minimal,min_age,max_age,min_retirementage,year=2018,version=3,params=None,gamma=0.92,lang='Finnish'):
         self.version=version
         self.gamma=gamma
         self.params=params
-        self.reset(timestep,n_time,n_emps,n_pop,env,minimal,min_age,max_age,min_retirementage,year,params=params)
+        self.reset(timestep,n_time,n_emps,n_pop,env,minimal,min_age,max_age,min_retirementage,year,params=params,lang=lang)
         print('version',version)
 
-    def reset(self,timestep,n_time,n_emps,n_pop,env,minimal,min_age,max_age,min_retirementage,year,version=None,params=None):
+    def reset(self,timestep,n_time,n_emps,n_pop,env,minimal,min_age,max_age,min_retirementage,year,version=None,params=None,lang=None):
         self.min_age=min_age
         self.max_age=max_age
         self.min_retirementage=min_retirementage
@@ -39,7 +39,10 @@ class EpisodeStats():
         if params is not None:
             self.params=params
         
-        self.language='English'
+        if lang is None:
+            self.language='English'
+        else:
+            self.language=lang
         
         if version is not None:
             self.version=version

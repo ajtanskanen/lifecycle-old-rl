@@ -94,7 +94,7 @@ class SimStats(EpisodeStats):
 
         if plot:
             fig,ax=plt.subplots()
-            ax.set_xlabel('Ikä [v]')
+            ax.set_xlabel(self.labels['age'])
             ax.set_ylabel('Työllisyysaste [%]')
             x=np.linspace(self.min_age,self.max_age,self.n_time)
             ax.plot(x,100*tyolliset_base,alpha=0.9,lw=2.0)
@@ -254,7 +254,7 @@ class SimStats(EpisodeStats):
         plt.show()
 
         fig,ax=plt.subplots()
-        ax.set_xlabel('Ikä [v]')
+        ax.set_xlabel(self.labels['age'])
         ax.set_ylabel('Työllisyysaste [%]')
         x=np.linspace(self.min_age,self.max_age,self.n_time)
         ax.plot(x,100*np.transpose(emp_tyolliset_osuus),linewidth=0.4)
@@ -281,7 +281,7 @@ class SimStats(EpisodeStats):
         plt.show()
 
         fig,ax=plt.subplots()
-        ax.set_xlabel('Ikä [v]')
+        ax.set_xlabel(self.labels['age'])
         ax.set_ylabel('Työllisyysaste [%]')
         x=np.linspace(self.min_age,self.max_age,self.n_time)
         ax.plot(x,100*m_mean,label='keskiarvo')
@@ -295,7 +295,7 @@ class SimStats(EpisodeStats):
         plt.show()
 
         fig,ax=plt.subplots()
-        ax.set_xlabel('Ikä [v]')
+        ax.set_xlabel(self.labels['age'])
         ax.set_ylabel('Työttömyysaste [%]')
         x=np.linspace(self.min_age,self.max_age,self.n_time)
         ax.plot(x,100*um_mean,label='keskiarvo')
@@ -306,7 +306,7 @@ class SimStats(EpisodeStats):
         plt.show()
 
         fig,ax=plt.subplots()
-        ax.set_xlabel('Ikä [v]')
+        ax.set_xlabel(self.labels['age'])
         ax.set_ylabel('Hajonta työllisyysasteessa [%]')
         x=np.linspace(self.min_age,self.max_age,self.n_time)
         ax.plot(x,100*s_emp)
@@ -403,8 +403,8 @@ class SimStats(EpisodeStats):
 
         if False: # mediaani
             fig,ax=plt.subplots()
-            ax.set_xlabel('Ikä [v]')
-            ax.set_ylabel('Työllisyys [%]')
+            ax.set_xlabel(self.labels['age'])
+            ax.set_ylabel( self.labels['tyollisyysaste %'])
             x=np.linspace(self.min_age,self.max_age,self.n_time)
             ax.plot(x[1:],100*m_median1[1:],label=label1)
             ax.plot(x[1:],100*m_median2[1:],label=label2)
@@ -414,8 +414,8 @@ class SimStats(EpisodeStats):
             plt.show()
 
         fig,ax=plt.subplots()
-        ax.set_xlabel('Age [y]')
-        ax.set_ylabel('Employment rate [%]')
+        ax.set_xlabel(self.labels['age'])
+        ax.set_ylabel( self.labels['tyollisyysaste %'])
         x=np.linspace(self.min_age,self.max_age,self.n_time)
         ax.plot(x[1:],100*m_mean2[1:],label=label2)
         ax.plot(x[1:],100*m_mean1[1:],ls='--',label=label1)
@@ -428,8 +428,8 @@ class SimStats(EpisodeStats):
         plt.show()
 
         fig,ax=plt.subplots()
-        ax.set_xlabel('Ikä [v]')
-        ax.set_ylabel('Työllisyysero [hlö/htv]')
+        ax.set_xlabel(self.labels['age'])
+        ax.set_ylabel(self.labels['ero osuuksissa'])
         x=np.linspace(self.min_age,self.max_age,self.n_time)
         ax.plot(x[1:],mn_median2[1:]-mn_median1[1:],label=label2+' miinus '+label1)
         ax.plot(x[1:],h_median2[1:]-h_median1[1:],label=label2+' miinus '+label1+' htv')
@@ -439,7 +439,7 @@ class SimStats(EpisodeStats):
         plt.show()
 
         fig,ax=plt.subplots()
-        ax.set_xlabel('Age [y]')
+        ax.set_xlabel(self.labels['age'])
         ax.set_ylabel('Earning-related Unemployment rate [%]')
         x=np.linspace(self.min_age,self.max_age,self.n_time)
         #ax.plot(x[1:],100*u_tmtuki1[1:],ls='--',label='tm-tuki, '+label1)
@@ -454,8 +454,8 @@ class SimStats(EpisodeStats):
         plt.show()
 
         fig,ax=plt.subplots()
-        ax.set_xlabel('Age [y]')
-        ax.set_ylabel('Unemployment proportion [%]')
+        ax.set_xlabel(self.labels['age'])
+        ax.set_ylabel(self.labels['tyottomien osuus'])
         x=np.linspace(self.min_age,self.max_age,self.n_time)
         ax.plot(x[1:],100*u_tmtuki1[1:],ls='--',label='tm-tuki, '+label1)
         ax.plot(x[1:],100*u_tmtuki2[1:],label='tm-tuki, '+label2)
@@ -471,8 +471,8 @@ class SimStats(EpisodeStats):
         plt.show()
 
         fig,ax=plt.subplots()
-        ax.set_xlabel('Ikä [v]')
-        ax.set_ylabel('Työttömien osuus ikäluokasta [%]')
+        ax.set_xlabel(self.labels['age'])
+        ax.set_ylabel(self.labels['tyottomien osuus'])
         x=np.linspace(self.min_age,self.max_age,self.n_time)
         ax.plot(x[1:],100*(u_tmtuki1[1:]+u_ansiosid1[1:]),ls='--',label=label1)
         ax.plot(x[1:],100*(u_tmtuki2[1:]+u_ansiosid2[1:]),label=label2)
@@ -482,8 +482,8 @@ class SimStats(EpisodeStats):
         plt.show()
 
         fig,ax=plt.subplots()
-        ax.set_xlabel('Ikä [v]')
-        ax.set_ylabel('työllisyysero [%]')
+        ax.set_xlabel(self.labels['age'])
+        ax.set_ylabel(self.labels['ero osuuksissa'])
         x=np.linspace(self.min_age,self.max_age,self.n_time)
         ax.plot(x[1:],100*(m_median2[1:]-m_median1[1:]),label=label1)
         #emp_statsratio=100*self.emp_stats()
@@ -493,7 +493,7 @@ class SimStats(EpisodeStats):
 
         demog2=self.empstats.get_demog()
         fig,ax=plt.subplots()
-        ax.set_xlabel('Ikä [v]')
+        ax.set_xlabel(self.labels['age'])
         ax.set_ylabel('cumsum työllisyys [lkm]')
         x=np.linspace(self.min_age,self.max_age,self.n_time)
         cs=np.cumsum(h_mean2[1:]-h_mean1[1:])
@@ -553,7 +553,7 @@ class SimStats(EpisodeStats):
         print('Vaikutus keskiarvotyöllisyyteen {:.0f} htv ({:.0f} vs {:.0f})'.format(mean_htv2-mean_htv1,mean_htv2,mean_htv1))
 
         fig,ax=plt.subplots()
-        ax.set_xlabel('Age [y]')
+        ax.set_xlabel(self.labels['age'])
         ax.set_ylabel('Employment rate [%]')
         x=np.linspace(self.min_age,self.max_age,self.n_time)
         ax.plot(x[1:],100*m_mean2[1:],label=label2)
@@ -565,7 +565,7 @@ class SimStats(EpisodeStats):
         plt.show()
 
         fig,ax=plt.subplots()
-        ax.set_xlabel('Ikä [v]')
+        ax.set_xlabel(self.labels['age'])
         ax.set_ylabel('Työllisyysero [hlö/htv]')
         x=np.linspace(self.min_age,self.max_age,self.n_time)
         ax.plot(x[1:],mn_median2[1:]-mn_median1[1:],label=label2+' miinus '+label1)
@@ -574,8 +574,8 @@ class SimStats(EpisodeStats):
         plt.show()
 
         fig,ax=plt.subplots()
-        ax.set_xlabel('Ikä [v]')
-        ax.set_ylabel('Osuus väestöstä [%]')
+        ax.set_xlabel(self.labels['age'])
+        ax.set_ylabel(self.labels['tyottomien osuus'])
         x=np.linspace(self.min_age,self.max_age,self.n_time)
         ax.plot(x[1:],100*u_tmtuki1[1:],ls='--',label='tm-tuki, '+label1)
         ax.plot(x[1:],100*u_tmtuki2[1:],label='tm-tuki, '+label2)
@@ -587,8 +587,8 @@ class SimStats(EpisodeStats):
         plt.show()
 
         fig,ax=plt.subplots()
-        ax.set_xlabel('Ikä [v]')
-        ax.set_ylabel('työllisyysero [%]')
+        ax.set_xlabel(self.labels['age'])
+        ax.set_ylabel(self.labels['tyottomien osuus'])
         x=np.linspace(self.min_age,self.max_age,self.n_time)
         ax.plot(x[1:],100*(m_median2[1:]-m_median1[1:]),label=label1)
         plt.show()
@@ -711,12 +711,12 @@ class SimStats(EpisodeStats):
         x=np.linspace(self.min_age,self.max_age,self.n_time)
         plt.plot(x,nc1)
         plt.plot(x,nc2)
-        ax.set_xlabel('Aika')
+        ax.set_xlabel(self.labels['age'])
         ax.set_ylabel(lbl)
         plt.show()
         fig,ax=plt.subplots()
         plt.plot(x,nc1-nc2)
-        ax.set_xlabel('Aika')
+        ax.set_xlabel(self.labels['age'])
         ax.set_ylabel('diff '+lbl)
         plt.show()
 
@@ -727,7 +727,7 @@ class SimStats(EpisodeStats):
         fig,ax=plt.subplots()
         plt.plot(m1,label=label1)
         plt.plot(m2,label=label2)
-        ax.set_xlabel('Aika')
+        ax.set_xlabel(self.labels['age'])
         ax.set_ylabel('Keskimääräinen työllisyysvirta')
         plt.show()
         self.plot_compare_virrat(m1,m2,virta_label='työllisyys',label1=label1,label2=label2,ymin=0,ymax=5000)
