@@ -22,11 +22,84 @@ from . empstats import Empstats
 
 #locale.setlocale(locale.LC_ALL, 'fi_FI')
 
+class Labels():
+    def get_labels(self,language='English'):
+        labels={}
+        if language=='English':
+            labels['osuus tilassa x']='Proportion in state {} [%]'
+            labels['age']='Age [y]'
+            labels['ratio']='Proportion [%]'
+            labels['unemp duration']='Length of unemployment [y]'
+            labels['scaled freq']='Scaled frequency'
+            labels['telp']='Employee pension premium'
+            labels['sairausvakuutus']='Health insurance'
+            labels['työttömyysvakuutusmaksu']='Unemployment insurance'
+            labels['puolison verot']='Partners taxes'
+            labels['taxes']='Taxes'
+            labels['asumistuki']='Housing benefit'
+            labels['toimeentulotuki']='Supplementary benefit'
+            labels['tyottomyysturva']='Unemployment benefit'
+            labels['paivahoito']='Daycare'
+            labels['elake']='Pension'
+            labels['tyollisyysaste']='Employment rate'
+            labels['tyottomien osuus']='Proportion of unemployed'
+            labels['havainto']='Observation'
+            labels['tyottomyysaste']='Unemployment rate [%]'
+            labels['tyottomien osuus']='Proportion of unemployed [%]'
+            labels['tyollisyysaste %']='Employment rate [%]'
+            labels['ero osuuksissa']='Difference in proportions [%]'
+            labels['osuus']='proportion'
+            labels['havainto, naiset']='data, women'
+            labels['havainto, miehet']='data, men'
+            labels['palkkasumma']='Palkkasumma [euroa]'
+            labels['Verokiila %']='Verokiila [%]'
+            labels['Työnteko [Hlö/Htv]']='Työnteko [Hlö/Htv]'
+            labels['Osatyönteko [%-yks]']='Osatyönteko [%-yks]'
+            labels['Muut tulot [euroa]']='Muut tulot [euroa]'
+            labels['Henkilöitä']='Henkilöitä'
+            labels['Verot [euroa]']='Verot [euroa]'
+        else:
+            labels['osuus tilassa x']='Osuus tilassa {} [%]'
+            labels['age']='Ikä [v]'
+            labels['ratio']='Osuus tilassa [%]'
+            labels['unemp duration']='työttömyysjakson pituus [v]'
+            labels['scaled freq']='skaalattu taajuus'
+            labels['telp']='TEL-P'
+            labels['sairausvakuutus']='Sairausvakuutus'
+            labels['työttömyysvakuutusmaksu']='Työttömyysvakuutusmaksu'
+            labels['puolison verot']='puolison verot'
+            labels['taxes']='Verot'
+            labels['asumistuki']='Asumistuki'
+            labels['toimeentulotuki']='Toimeentulotuki'
+            labels['tyottomyysturva']='Työttömyysturva'
+            labels['paivahoito']='Päivähoito'
+            labels['elake']='Eläke'    
+            labels['tyollisyysaste']='työllisyysaste'
+            labels['tyottomien osuus']='työttömien osuus'
+            labels['havainto']='havainto'
+            labels['tyottomyysaste']='Työttömyysaste [%]'
+            labels['tyottomien osuus']='Työttömien osuus väestöstö [%]'
+            labels['tyollisyysaste %']='Työllisyysaste [%]'
+            labels['ero osuuksissa']='Ero osuuksissa [%]'
+            labels['osuus']='Osuus'
+            labels['havainto, naiset']='havainto, naiset'
+            labels['havainto, miehet']='havainto, miehet'
+            labels['palkkasumma']='Palkkasumma [euroa]'
+            labels['Verokiila %']='Verokiila [%]'
+            labels['Työnteko [Hlö/Htv]']='Työnteko [Hlö/Htv]'
+            labels['Osatyönteko [%-yks]']='Osatyönteko [%-yks]'
+            labels['Muut tulot [euroa]']='Muut tulot [euroa]'
+            labels['Henkilöitä']='Henkilöitä'
+            labels['Verot [euroa]']='Verot [euroa]'
+        return labels
+
+
 class EpisodeStats():
     def __init__(self,timestep,n_time,n_emps,n_pop,env,minimal,min_age,max_age,min_retirementage,year=2018,version=3,params=None,gamma=0.92,lang='Finnish'):
         self.version=version
         self.gamma=gamma
         self.params=params
+        self.lab=Labels()
         self.reset(timestep,n_time,n_emps,n_pop,env,minimal,min_age,max_age,min_retirementage,year,params=params,lang=lang)
         print('version',version)
 
@@ -334,59 +407,7 @@ class EpisodeStats():
         print(f'min pension {min_pension} max pension {max_pension}')
             
     def setup_labels(self):
-        self.labels={}
-        if self.language=='English':
-            self.labels['osuus tilassa x']='Proportion in state {} [%]'
-            self.labels['age']='Age [y]'
-            self.labels['ratio']='Proportion [%]'
-            self.labels['unemp duration']='Length of unemployment [y]'
-            self.labels['scaled freq']='Scaled frequency'
-            self.labels['telp']='Employee pension premium'
-            self.labels['sairausvakuutus']='Health insurance'
-            self.labels['työttömyysvakuutusmaksu']='Unemployment insurance'
-            self.labels['puolison verot']='Partners taxes'
-            self.labels['taxes']='Taxes'
-            self.labels['asumistuki']='Housing benefit'
-            self.labels['toimeentulotuki']='Supplementary benefit'
-            self.labels['tyottomyysturva']='Unemployment benefit'
-            self.labels['paivahoito']='Daycare'
-            self.labels['elake']='Pension'
-            self.labels['tyollisyysaste']='Employment rate'
-            self.labels['tyottomien osuus']='Proportion of unemployed'
-            self.labels['havainto']='Observation'
-            self.labels['tyottomyysaste']='Unemployment rate [%]'
-            self.labels['tyottomien osuus']='Proportion of unemployed [%]'
-            self.labels['tyollisyysaste %']='Employment rate [%]'
-            self.labels['ero osuuksissa']='Difference in proportions [%]'
-            self.labels['osuus']='proportion'
-            self.labels['havainto, naiset']='data, women'
-            self.labels['havainto, miehet']='data, men'
-        else:
-            self.labels['osuus tilassa x']='Osuus tilassa {} [%]'
-            self.labels['age']='Ikä [v]'
-            self.labels['ratio']='Osuus tilassa [%]'
-            self.labels['unemp duration']='työttömyysjakson pituus [v]'
-            self.labels['scaled freq']='skaalattu taajuus'
-            self.labels['telp']='TEL-P'
-            self.labels['sairausvakuutus']='Sairausvakuutus'
-            self.labels['työttömyysvakuutusmaksu']='Työttömyysvakuutusmaksu'
-            self.labels['puolison verot']='puolison verot'
-            self.labels['taxes']='Verot'
-            self.labels['asumistuki']='Asumistuki'
-            self.labels['toimeentulotuki']='Toimeentulotuki'
-            self.labels['tyottomyysturva']='Työttömyysturva'
-            self.labels['paivahoito']='Päivähoito'
-            self.labels['elake']='Elake'    
-            self.labels['tyollisyysaste']='työllisyysaste'
-            self.labels['tyottomien osuus']='työttömien osuus'
-            self.labels['havainto']='havainto'
-            self.labels['tyottomyysaste']='Työttömyysaste [%]'
-            self.labels['tyottomien osuus']='Työttömien osuus väestöstö [%]'
-            self.labels['tyollisyysaste %']='Työllisyysaste [%]'
-            self.labels['ero osuuksissa']='Ero osuuksissa [%]'
-            self.labels['osuus']='Osuus'
-            self.labels['havainto, naiset']='havainto, naiset'
-            self.labels['havainto, miehet']='havainto, miehet'
+        self.labels=self.lab.get_labels(self.language)
     
     def map_age(self,age,start_zero=False):
         if start_zero:

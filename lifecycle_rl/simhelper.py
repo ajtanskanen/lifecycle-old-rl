@@ -19,8 +19,13 @@ import pandas as pd
 #import smoothfit
 from tqdm import tqdm_notebook as tqdm
 from . lifecycle import Lifecycle
+from . episodestats import Labels
 
 class SimHelper():
+    def __init__(self):
+        epi=Labels()
+        self.labels=epi.get_labels()
+
     def plot_stats(self,datafile,baseline=None,ref=None,xlabel=None,dire=None,
                     plot_kiila=True,percent_scale=False,grayscale=False,label1='ref',label2='baseline'):
                     
@@ -51,8 +56,8 @@ class SimHelper():
             bmean_rew,bmean_verot,bmean_ps,bmean_htv,bmean_muut,bmean_kiila,bmean_tyossa,bmean_osatyoratio,bmean_tyotaste,\
                 bmean_ps_norw,bmean_htv_norw,bmean_tyossa_norw,bmean_etuus=self.comp_means_norw(baseline)
                 
-            self.plot_etuusmeno(additional_income_tax,mean_etuusmeno,ref_additional_tax=baseline_tax,ref_etuusmeno=bmean_etuus,xlabel=xlabel,label1=label1,label2=label2,dire=dire)
-            self.plot_etuusmeno(additional_income_tax,total_etuusmeno,ref_additional_tax=baseline_tax,ref_etuusmeno=bmean_etuus,xlabel=xlabel,label1=label1,label2=label2,dire=None)
+            self.plot_etuusmeno(additional_income_tax,mean_etuusmeno,ref_additional_tax=baseline_tax,ref_etuusmeno=bmean_etuus,xlabel=xlabel,label1=label1,label2=label2,dire=dire,percent_scale=percent_scale)
+            self.plot_etuusmeno(additional_income_tax,total_etuusmeno,ref_additional_tax=baseline_tax,ref_etuusmeno=bmean_etuus,xlabel=xlabel,label1=label1,label2=label2,dire=None,percent_scale=percent_scale)
             self.plot_tyossa(additional_income_tax,mean_tyossa,mean_htv,ref_additional_tax=baseline_tax,ref_mean_htv=bmean_htv,label1=label1,label2=label2,
                     ref_mean_tyossa=bmean_tyossa,xlabel=xlabel,percent_scale=percent_scale,dire=dire)
             if plot_kiila:
@@ -61,11 +66,12 @@ class SimHelper():
             self.plot_taxes(additional_income_tax,mean_rew,mean_verot,mean_ps,mean_htv,mean_muut,
                        ref_additional_tax=baseline_tax,ref_mean_verot=bmean_verot,ref_mean_ps=bmean_ps,
                        ref_mean_htv=bmean_htv,ref_mean_muut=bmean_muut,ref_mean_rew=bmean_rew,
-                       xlabel=xlabel,dire=dire,percent_scale=percent_scale,label1=label1,label2=label2,)
+                       xlabel=xlabel,dire=dire,percent_scale=percent_scale,label1=label1,label2=label2)
             self.plot_ps(additional_income_tax,total_ps,total_ps_norw,mean_ps,mean_ps_norw,ref_tax=baseline_tax,ref_ps=bmean_ps,
                         percent_scale=percent_scale,dire=dire,label1=label1,label2=label2,)
-            self.plot_veroosuudet(additional_income_tax,osuus_vero,osuus_kunnallisvero,osuus_valtionvero,label1=label1,label2=label2,)
-            self.plot_veroosuudet_abs(additional_income_tax,osuus_vero,mean_verot,bosuus_vero=baseline_osuus_vero,btotal_vero=bmean_verot,label1=label1,label2=label2,)
+            self.plot_veroosuudet(additional_income_tax,osuus_vero,osuus_kunnallisvero,osuus_valtionvero,label1=label1,label2=label2)
+            self.plot_veroosuudet_abs(additional_income_tax,osuus_vero,mean_verot,
+                ref_tax=baseline_tax,bosuus_vero=baseline_osuus_vero,btotal_vero=baseline_verot,label1=label1,label2=label2)
         elif ref is not None:
             ref_rew,ref_verot,ref_ps,ref_htv,ref_muut,ref_kiila=self.get_refstats(ref,scale=additional_income_tax)
             self.plot_etuusmeno(additional_income_tax,mean_etuusmeno,xlabel=xlabel,dire=dire)
@@ -124,22 +130,24 @@ class SimHelper():
         self.plot_osuus(additional_income_tax,kunnallis,label1=label1,xlabel=xlabel,ylabel='Etuudensaajien osuus kunnallisverosta',dire=dire,percent_scale=percent_scale)
         self.plot_osuus(additional_income_tax,valtio,label1=label1,xlabel=xlabel,ylabel='Etuudensaajien osuus ansiotuloverosta',dire=dire,percent_scale=percent_scale)
 
-    def plot_veroosuudet_abs(self,additional_income_tax,osuus_vero,total_vero,bosuus_vero=None,btotal_vero=None,
-                        dire=None,xlabel='Muutos [%-yks]',percent_scale=False,ylabel='Eläkeläisten osuus veroista',fname='elas'):
-        el_vero=np.squeeze(osuus_vero[:,:,2])/np.squeeze(np.sum(osuus_vero,axis=2))*total_vero
-        tyo_vero=np.squeeze(osuus_vero[:,:,1])/np.squeeze(np.sum(osuus_vero,axis=2))*total_vero
-        etuus_vero=np.squeeze(osuus_vero[:,:,0])/np.squeeze(np.sum(osuus_vero,axis=2))*total_vero
+    def plot_veroosuudet_abs(self,additional_income_tax,osuus_vero,total_vero,ref_tax=None,bosuus_vero=None,btotal_vero=None,
+                        dire=None,xlabel='Muutos [%-yks]',percent_scale=False,ylabel='Eläkeläisten osuus veroista',fname='elas',
+                        label1=None,label2=None):
+        el_vero=osuus_vero[:,:,2]/np.sum(osuus_vero,axis=2)*total_vero
+        tyo_vero=osuus_vero[:,:,1]/np.sum(osuus_vero,axis=2)*total_vero
+        etuus_vero=osuus_vero[:,:,0]/np.sum(osuus_vero,axis=2)*total_vero
         self.plot_osuus(additional_income_tax,el_vero,y2=tyo_vero,y3=etuus_vero,label1='Eläkeläiset',label2='Työssä',label3='Etuudensaajat',
             xlabel=xlabel,ylabel='Verot (euroa)',dire=dire,percent_scale=percent_scale,legend=True)
+            
         if btotal_vero is not None:
-            bel_vero=np.squeeze(bosuus_vero[:,:,2])/np.squeeze(np.sum(bosuus_vero,axis=2))*btotal_vero
-            btyo_vero=np.squeeze(bosuus_vero[:,:,1])/np.squeeze(np.sum(bosuus_vero,axis=2))*btotal_vero
-            betuus_vero=np.squeeze(bosuus_vero[:,:,0])/np.squeeze(np.sum(bosuus_vero,axis=2))*btotal_vero
-            self.plot_osuus(additional_income_tax,el_vero,y2=bel_vero,label1='Eläkeläiset',label2='baseline',
+            bel_vero=bosuus_vero[:,:,2]/np.sum(bosuus_vero,axis=2)*btotal_vero
+            btyo_vero=bosuus_vero[:,:,1]/np.sum(bosuus_vero,axis=2)*btotal_vero
+            betuus_vero=bosuus_vero[:,:,0]/np.sum(bosuus_vero,axis=2)*btotal_vero
+            self.plot_osuus(additional_income_tax,el_vero,x2=ref_tax,y2=bel_vero,label1='Eläkeläiset',label2='baseline',
                 xlabel=xlabel,ylabel='Verot (euroa)',dire=dire,percent_scale=percent_scale,legend=True)
-            self.plot_osuus(additional_income_tax,tyo_vero,y2=btyo_vero,label1='Työssä',label2='baseline',
+            self.plot_osuus(additional_income_tax,tyo_vero,x2=ref_tax,y2=btyo_vero,label1='Työssä',label2='baseline',
                 xlabel=xlabel,ylabel='Verot (euroa)',dire=dire,percent_scale=percent_scale,legend=True)
-            self.plot_osuus(additional_income_tax,etuus_vero,y2=betuus_vero,label1='Etuudensaajat',label2='baseline',
+            self.plot_osuus(additional_income_tax,etuus_vero,x2=ref_tax,y2=betuus_vero,label1='Etuudensaajat',label2='baseline',
                 xlabel=xlabel,ylabel='Verot (euroa)',dire=dire,percent_scale=percent_scale,legend=True)
         else:
             self.plot_osuus(additional_income_tax,el_vero,label1='Eläkeläiset',
@@ -149,7 +157,7 @@ class SimHelper():
             self.plot_osuus(additional_income_tax,etuus_vero,label1='Etuudensaajat',
                 xlabel=xlabel,ylabel='Verot (euroa)',dire=dire,percent_scale=percent_scale,legend=True)
     
-    def plot_osuus(self,x,y,y2=None,y3=None,dire=None,label1=None,label2=None,label3=None,xlabel='Muutos [%-yks]',
+    def plot_osuus(self,x,y,x2=None,y2=None,x3=None,y3=None,dire=None,label1=None,label2=None,label3=None,xlabel='Muutos [%-yks]',
                    percent_scale=False,ylabel='Elasticity',fname='elas',source=None,header=None,
                    percent_scale_y=False,legend=False):
         if percent_scale:
@@ -167,9 +175,15 @@ class SimHelper():
         fig,ax=plt.subplots()
         ax.plot(scale*x,scaley*y,label=label1)
         if y2 is not None:
-            ax.plot(scale*x,scaley*y2,label=label2)
+            if x2 is not None:
+                ax.plot(scale*x2,scaley*y2,label=label2)
+            else:
+                ax.plot(scale*x,scaley*y2,label=label2)
         if y3 is not None:
-            ax.plot(scale*x,scaley*y3,label=label3)
+            if x3 is not None:
+                ax.plot(scale*x3,scaley*y3,label=label3)
+            else:
+                ax.plot(scale*x,scaley*y3,label=label3)
         #plt.title(fname)
         #if ref_additional_tax is not None:
         #    ax.plot(scale*ref_additional_tax,ref_mean_rew,label=label2)
@@ -212,11 +226,13 @@ class SimHelper():
     def plot_osatyo(self,additional_income_tax,osuus,dire=None,label1=None,label2=None,xlabel='Tulovero [%-yks]',percent_scale=True,ylabel='Osatyön osuus [%-yks]'):
         self.plot_osuus(additional_income_tax,osuus,label1=label1,xlabel=xlabel,ylabel=ylabel,dire=dire,percent_scale=percent_scale)
 
-    def plot_etuusmeno(self,additional_tax,etuusmeno,ref_additional_tax=None,ref_etuusmeno=None,dire=None,label1='',label2='',xlabel='Muutos [%-yks]'):    
+    def plot_etuusmeno(self,additional_tax,etuusmeno,ref_additional_tax=None,ref_etuusmeno=None,dire=None,label1='',label2='',xlabel='Muutos [%-yks]',percent_scale=True):    
 
         fig,ax=plt.subplots()
-        #plt.title('Etuusmeno')
-        scale=1
+        if percent_scale:
+            scale=100
+        else:
+            scale=1
         ax.plot(scale*additional_tax,etuusmeno,label=label1)
         ax.legend()
         ax.set_ylabel('Etuusmeno')
@@ -230,8 +246,7 @@ class SimHelper():
     def plot_taxes(self,additional_tax,mean_rew,mean_verot,mean_ps,mean_htv,mean_muut,
                    ref_additional_tax=None,ref_mean_verot=None,ref_mean_ps=None,ref_mean_htv=None,ref_mean_muut=None,
                    ref_mean_rew=None,percent_scale=False,legend=True,
-                   dire=None,label1='',label2='baseline',xlabel='Muutos [%-yks]'):    
-        #print(rew,ps,verot)
+                   dire=None,label1='',label2='baseline',xlabel='Muutos [%-yks]',nulline=None):    
         if percent_scale:
             scale=100
         else:
@@ -241,7 +256,7 @@ class SimHelper():
         plt.title('Reward')
         if ref_additional_tax is not None:
             ax.plot(scale*additional_tax,mean_rew,label=label1)
-            ax.plot(scale*ref_additional_tax,ref_mean_rew,label=label2)
+            ax.plot(scale*ref_additional_tax,ref_mean_rew,'--',label=label2)
         else:
             ax.plot(scale*additional_tax,mean_rew,label=label1)
         if legend:
@@ -255,13 +270,13 @@ class SimHelper():
         fig,ax=plt.subplots()
         if ref_additional_tax is not None:
             ax.plot(scale*additional_tax,mean_verot,label=label1)
-            ax.plot(scale*ref_additional_tax,ref_mean_verot,label=label2)
+            ax.plot(scale*ref_additional_tax,ref_mean_verot,'--',label=label2)
         else:
             ax.plot(scale*additional_tax,mean_verot,label=label1)
         #plt.title('Verot ja veronluonteiset maksut')
         if legend:
             ax.legend()
-        ax.set_ylabel('Verot [euroa]')
+        ax.set_ylabel(self.labels['Verot [euroa]'])
         ax.set_xlabel(xlabel)
         if dire is not None:
             plt.savefig(dire+'verot.eps', format='eps')
@@ -270,13 +285,13 @@ class SimHelper():
         fig,ax=plt.subplots()
         if ref_additional_tax is not None:
             ax.plot(scale*additional_tax,mean_htv,label=label1)
-            ax.plot(scale*ref_additional_tax,ref_mean_htv,label=label2)
+            ax.plot(scale*ref_additional_tax,ref_mean_htv,'--',label=label2)
         else:
             ax.plot(scale*additional_tax,mean_htv,label=label1)
         #plt.title('Työnteko')
         if legend:
             ax.legend()
-        ax.set_ylabel('Henkilöitä')
+        ax.set_ylabel(self.labels['Henkilöitä'])
         ax.set_xlabel(xlabel)
         if dire is not None:
             plt.savefig(dire+'htv.eps', format='eps')
@@ -285,17 +300,19 @@ class SimHelper():
         fig,ax=plt.subplots()
         if ref_additional_tax is not None:
             ax.plot(scale*additional_tax,mean_muut,label=label1)
-            ax.plot(scale*ref_additional_tax,ref_mean_muut,label=label2)
+            ax.plot(scale*ref_additional_tax,ref_mean_muut,'--',label=label2)
         else:
             ax.plot(scale*additional_tax,mean_muut,label=label1)
         if legend:
             ax.legend()
-        ax.set_ylabel('Muut tulot [euroa]')
+        ax.set_ylabel(self.labels['Muut tulot [euroa]'])
         ax.set_xlabel(xlabel)
+        print(mean_muut)
+        if nulline is not None:
+            ref_nulline=ref_mean_muut*0+nulline
+            ax.plot(scale*ref_additional_tax,ref_mean_muut,'--',label=label2)
         if dire is not None:
             plt.savefig(dire+'muut.eps', format='eps')
-
-        plt.title('Tarvittavat muut tulot')
         plt.show()
 
     def plot_osatyossa(self,additional_tax,mean_tyossa,ref_mean_htv=None,ref_additional_tax=None,
@@ -308,7 +325,7 @@ class SimHelper():
         fig,ax=plt.subplots()
         if ref_additional_tax is not None:
             ax.plot(scale*additional_tax,100*mean_tyossa,label=label1)
-            ax.plot(scale*ref_additional_tax,100*ref_mean_htv,label=label2)
+            ax.plot(scale*ref_additional_tax,100*ref_mean_htv,'--',label=label2)
         else:
             ax.plot(scale*additional_tax,100*mean_tyossa)
         
@@ -343,7 +360,7 @@ class SimHelper():
         
         #plt.title('Työnteko')
         ax.legend()
-        ax.set_ylabel('Työnteko [Hlö/Htv]')
+        ax.set_ylabel(self.labels['Työnteko [Hlö/Htv]'])
         ax.set_xlabel(xlabel)
         if dire is not None:
             if ref_additional_tax is not None:
@@ -392,12 +409,12 @@ class SimHelper():
         #plt.show()
         
         fig,ax=plt.subplots()
-        ax.plot(scale*additional_tax,mean_ps,label=label1+'kaikki')
-        ax.plot(scale*additional_tax,mean_ps_norw,'--',label=label1+'ilman ve+työ')
+        ax.plot(scale*additional_tax,mean_ps,label=label1+' kaikki')
+        ax.plot(scale*additional_tax,mean_ps_norw,'--',label=label1+' ilman ve+työ')
         if ref_ps is not None:
             ax.plot(scale*ref_tax,ref_ps,label=label2)
         plt.title('Palkkasumma')
-        ax.set_ylabel('Palkkasumma [euroa]')
+        ax.set_ylabel(self.labels['palkkasumma'])
         ax.set_xlabel(xlabel)
         ax.legend()
         if dire is not None:
@@ -441,7 +458,7 @@ class SimHelper():
         ax.plot(100*additional_tax,100*kiila)
         if ref_additional_tax is not None:
             ax.plot(100*ref_additional_tax,ref_kiila,label=label2)
-        ax.set_ylabel('Verokiila [%]')
+        ax.set_ylabel(self.labels['Verokiila %'])
         ax.set_xlabel('Lisävero [%-yks]')
         if dire is not None:
             plt.savefig(dire+'verot_kaikki.png', format='png')
@@ -476,7 +493,6 @@ class SimHelper():
         _ = f.create_dataset('total_htv_norw', data=total_htv_norw, dtype=ftype)
         _ = f.create_dataset('total_tyossa_norw', data=total_tyossa_norw, dtype=ftype)
         _ = f.create_dataset('total_etuusmeno', data=total_etuusmeno, dtype=ftype)
-        
 
         f.close()
 
