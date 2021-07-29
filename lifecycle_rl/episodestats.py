@@ -58,6 +58,8 @@ class Labels():
             labels['Muut tulot [euroa]']='Muut tulot [euroa]'
             labels['Henkilöitä']='Henkilöitä'
             labels['Verot [euroa]']='Verot [euroa]'
+            labels['Verokertymä [euroa]']='Verokertymä [euroa]'
+            labels['Muut tarvittavat tulot [euroa]']='Muut tarvittavat tulot [euroa]'
         else:
             labels['osuus tilassa x']='Osuus tilassa {} [%]'
             labels['age']='Ikä [v]'
@@ -91,6 +93,9 @@ class Labels():
             labels['Muut tulot [euroa]']='Muut tulot [euroa]'
             labels['Henkilöitä']='Henkilöitä'
             labels['Verot [euroa]']='Verot [euroa]'
+            labels['Verokertymä [euroa]']='Verokertymä [euroa]'
+            labels['Muut tarvittavat tulot [euroa]']='Muut tarvittavat tulot [euroa]'
+
         return labels
 
 
