@@ -65,9 +65,9 @@ class SimHelper():
             if plot_kiila:
                 self.plot_verokiila(additional_income_tax,kiila,ref_additional_tax=baseline_tax,ref_kiila=baseline_kiila)
 
-            self.plot_taxes(additional_income_tax,mean_rew,mean_verot,mean_ps,mean_htv,mean_muut,
+            self.plot_taxes(additional_income_tax,mean_rew,mean_verot,mean_ps,mean_htv,mean_muut,muut,
                        ref_additional_tax=baseline_tax,ref_mean_verot=bmean_verot,ref_mean_ps=bmean_ps,
-                       ref_mean_htv=bmean_htv,ref_mean_muut=bmean_muut,ref_mean_rew=bmean_rew,
+                       ref_mean_htv=bmean_htv,ref_mean_muut=bmean_muut,ref_mean_rew=bmean_rew,ref_total_muut=baseline_muut,
                        xlabel=xlabel,dire=dire,percent_scale=percent_scale,label1=label1,label2=label2)
             self.plot_ps(additional_income_tax,total_ps,total_ps_norw,mean_ps,mean_ps_norw,ref_tax=baseline_tax,ref_ps=bmean_ps,
                         percent_scale=percent_scale,dire=dire,label1=label1,label2=label2,)
@@ -245,9 +245,9 @@ class SimHelper():
             plt.savefig(dire+'etuusmeno.eps', format='eps')
         plt.show()
 
-    def plot_taxes(self,additional_tax,mean_rew,mean_verot,mean_ps,mean_htv,mean_muut,
+    def plot_taxes(self,additional_tax,mean_rew,mean_verot,mean_ps,mean_htv,mean_muut,total_muut,
                    ref_additional_tax=None,ref_mean_verot=None,ref_mean_ps=None,ref_mean_htv=None,ref_mean_muut=None,
-                   ref_mean_rew=None,percent_scale=False,legend=True,
+                   ref_mean_rew=None,ref_total_muut=None,percent_scale=False,legend=True,
                    dire=None,label1='',label2='baseline',xlabel='Muutos [%-yks]',nulline=None):    
         if percent_scale:
             scale=100
@@ -278,7 +278,7 @@ class SimHelper():
         #plt.title('Verot ja veronluonteiset maksut')
         if legend:
             ax.legend()
-        ax.set_ylabel(self.labels['Verot [euroa]'])
+        ax.set_ylabel(self.labels['Verokertymä [euroa]'])
         ax.set_xlabel(xlabel)
         if dire is not None:
             plt.savefig(dire+'verot.eps', format='eps')
@@ -307,14 +307,29 @@ class SimHelper():
             ax.plot(scale*additional_tax,mean_muut,label=label1)
         if legend:
             ax.legend()
-        ax.set_ylabel(self.labels['Muut tulot [euroa]'])
+        ax.set_ylabel(self.labels['Muut tarvittavat tulot [euroa]'])
         ax.set_xlabel(xlabel)
-        print(mean_muut)
-        if nulline is not None:
-            ref_nulline=ref_mean_muut*0+nulline
-            ax.plot(scale*ref_additional_tax,ref_mean_muut,'--',label=label2)
+        #print(mean_muut)
+        #nulline=9.49009466e+09
+        #if nulline is not None:
+        #    ref_nulline=ref_mean_muut*0+nulline
+        #    ax.plot(scale*ref_additional_tax,ref_nulline,label='budjettitasapaino')
         if dire is not None:
             plt.savefig(dire+'muut.eps', format='eps')
+        plt.show()
+
+        fig,ax=plt.subplots()
+        if ref_additional_tax is not None:
+            ax.plot(scale*additional_tax,total_muut,label=label1)
+            ax.plot(scale*ref_additional_tax,ref_mean_muut,'--',label=label2)
+        else:
+            ax.plot(scale*additional_tax,total_muut,label=label1)
+        if legend:
+            ax.legend()
+        ax.set_ylabel(self.labels['Muut tarvittavat tulot [euroa]'])
+        ax.set_xlabel(xlabel)
+        #if dire is not None:
+        #    plt.savefig(dire+'muut.eps', format='eps')
         plt.show()
 
     def plot_osatyossa(self,additional_tax,mean_tyossa,ref_mean_htv=None,ref_additional_tax=None,
