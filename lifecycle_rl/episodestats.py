@@ -1344,7 +1344,7 @@ class EpisodeStats():
 
         return tyollisyysaste,osatyoaste,tyottomyysaste,ka_tyottomyysaste
 
-    def comp_L1error(self):
+    def comp_L2error(self):
         
         tyollisyysaste_m,osatyoaste_m,tyottomyysaste_m,ka_tyottomyysaste=self.comp_gempratios(gender='men',unempratio=False)
         tyollisyysaste_w,osatyoaste_w,tyottomyysaste_w,ka_tyottomyysaste=self.comp_gempratios(gender='women',unempratio=False)
@@ -1363,6 +1363,16 @@ class EpisodeStats():
         L2=L2/self.n_pop
             
         #print(L1,emp_statsratio_m,tyollisyysaste_m,tyollisyysaste_w,unemp_statsratio_m,tyottomyysaste_m,tyottomyysaste_w)
+
+        print('L2 error {}'.format(L2))
+
+        return L2
+
+    def comp_budgetL2error(self,ref_muut):
+
+        q=self.comp_budget()
+        muut=q['muut tulot']
+        L2=(ref_muut-muut)**2        
 
         print('L2 error {}'.format(L2))
 

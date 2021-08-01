@@ -56,6 +56,8 @@ class SimHelper():
             bmean_rew,bmean_verot,bmean_ps,bmean_htv,bmean_muut,bmean_kiila,bmean_tyossa,bmean_osatyoratio,bmean_tyotaste,\
                 bmean_ps_norw,bmean_htv_norw,bmean_tyossa_norw,bmean_etuus=self.comp_means_norw(baseline)
                 
+            print(bmean_muut)
+                
             self.plot_etuusmeno(additional_income_tax,mean_etuusmeno,ref_additional_tax=baseline_tax,ref_etuusmeno=bmean_etuus,xlabel=xlabel,label1=label1,label2=label2,dire=dire,percent_scale=percent_scale)
             self.plot_etuusmeno(additional_income_tax,total_etuusmeno,ref_additional_tax=baseline_tax,ref_etuusmeno=bmean_etuus,xlabel=xlabel,label1=label1,label2=label2,dire=None,percent_scale=percent_scale)
             self.plot_tyossa(additional_income_tax,mean_tyossa,mean_htv,ref_additional_tax=baseline_tax,ref_mean_htv=bmean_htv,label1=label1,label2=label2,

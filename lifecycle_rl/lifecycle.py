@@ -1305,6 +1305,15 @@ class Lifecycle():
         
         return L2
         
+    def L2BudgetError(self,ref_muut):
+        '''
+        Laskee L2-virheen budjettineutraaliuteen
+        Käytetään optimoinnissa
+        '''
+        L2=self.episodestats.comp_L1error(ref_muut)
+        
+        return L2
+        
     def comp_aggkannusteet(self,n=None,savefile=None):
         self.episodestats.comp_aggkannusteet(self.env.ben,n=n,savefile=savefile)
         

@@ -3,5 +3,5 @@ from .lifecycle import Lifecycle
 from .dyn_prog_rev import DynProgLifecycleRev
 from .episodestats import EpisodeStats
 from .simstats import SimStats
-from .optimizer import OptimizeLifecycle
+from .optimizer import OptimizeLifecycle,BalanceLifeCycle
 from .simhelper import SimHelper

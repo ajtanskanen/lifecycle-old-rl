@@ -62,3 +62,57 @@ class OptimizeLifecycle():
         )
         
         print('The best parameters found {}'.format(optimizer.max))
+        
+class BalanceLifeCycle():
+    def __init__(self,initargs=None,runargs=None,ref_muut=9.5e9,additional_tax=0):
+        '''
+        Alusta muuttujat
+        '''
+        self.runargs=runargs
+        self.initargs=initargs
+        self.ref_muut=ref_muut
+        self.additional_tax=additional_tax
+        
+    def black_box_function(self,**x):
+        """
+        Function with unknown internals we wish to maximize.
+        """
+        print(x)
+        initargs2=self.initargs
+        initargs2['extra_ppr']=x['extra_ppr']
+        initargs2['additional_income_tax']=self.additional_tax
+        cc=Lifecycle(**initargs2)
+        cc.run_results(**self.runargs)
+        return -cc.L2error(self.ref_muut)
+
+    def optimize(self,reset=False,min_ppr=-0.3,max_ppr=0.3,additional_income_tax=0):
+        # Bounded region of parameter space
+        pbounds = {'extra_ppr': (min_ppr, max_ppr)} #, 'women_mu_scale': (0.01,0.3), 'women_mu_age': (57,62)}
+
+        optimizer = BayesianOptimization(
+            f=self.black_box_function,
+            pbounds=pbounds,
+            verbose=2, # verbose = 1 prints only when a maximum is observed, verbose = 0 is silent
+            random_state=1,
+        )
+        
+        LOG_DIR = Path().absolute() / 'bayes_opt_logs'
+        LOG_DIR.mkdir(exist_ok=True)
+        filename = 'log_0.json'
+
+        # talletus
+        logfile=str(LOG_DIR / filename)
+        logger = JSONLogger(path=logfile)
+        if Path(logfile).exists() and not reset:
+            load_logs(optimizer, logs=[logfile]);
+        optimizer.subscribe(Events.OPTIMIZATION_STEP, logger)
+
+        optimizer.maximize(
+            init_points=2,
+            n_iter=20,
+        )
+        
+        print('The best parameters found {}'.format(optimizer.max))
+        
+        return optimizer.max
+
