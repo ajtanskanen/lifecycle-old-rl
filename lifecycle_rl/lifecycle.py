@@ -1301,16 +1301,16 @@ class Lifecycle():
         Laskee L2-virheen havaittuun työllisyysasteen L2-virhe/vuosi tasossa
         Käytetään optimoinnissa
         '''
-        L2=self.episodestats.comp_L1error()
+        L2=self.episodestats.comp_L2error()
         
         return L2
         
-    def L2BudgetError(self,ref_muut):
+    def L2BudgetError(self,ref_muut,scale=1e10):
         '''
         Laskee L2-virheen budjettineutraaliuteen
         Käytetään optimoinnissa
         '''
-        L2=self.episodestats.comp_L1error(ref_muut)
+        L2=self.episodestats.comp_budgetL2error(ref_muut,scale=scale)
         
         return L2
         

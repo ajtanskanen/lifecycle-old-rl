@@ -402,6 +402,20 @@ class EpisodeStats():
                 self.pysyneet[t,emp]+=1
         elif newemp<0:
             self.deceiced[t]+=1
+            
+    def comp_scaled_consumption(self,env,x):
+        u=0
+        for k in range(n):
+            for t in range(t):
+                age=t+min_age
+                income=self.pop_net_income[k,t]
+                employment_state=self.pop_empstate[k,t]
+                g=self.pop_g[t,k]
+                pinkslip=self.pop_pinkslip[t,k]
+                u+=log_utility(self,(1+x)*income,employment_state,age,g=g,pinkslip=pinkslip):
+    
+    def scale_error(env,x,target):
+        return (target-self.comp_scaled_consumption(env,x))**2
     
     def min_max(self):
         min_wage=np.min(self.infostats_pop_wage)
@@ -1373,13 +1387,13 @@ class EpisodeStats():
 
         return L2
 
-    def comp_budgetL2error(self,ref_muut):
+    def comp_budgetL2error(self,ref_muut,scale=1):
 
         q=self.comp_budget()
         muut=q['muut tulot']
-        L2=(ref_muut-muut)**2        
+        L2=((ref_muut-muut)/scale)**2        
 
-        print('L2 error {}'.format(L2))
+        print(f'L2 error {L2} (muut {muut} muut_ref {ref_muut})')
 
         return L2
 

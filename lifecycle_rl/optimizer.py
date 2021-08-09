@@ -12,6 +12,7 @@ from bayes_opt.util import load_logs
 from bayes_opt.event import Events
 from pathlib import Path
 from os import path
+import numpy as np
 
 from .lifecycle import Lifecycle
 
@@ -64,14 +65,14 @@ class OptimizeLifecycle():
         print('The best parameters found {}'.format(optimizer.max))
         
 class BalanceLifeCycle():
-    def __init__(self,initargs=None,runargs=None,ref_muut=9.5e9,additional_tax=0):
+    def __init__(self,initargs=None,runargs=None,ref_muut=9.5e9,additional_income_tax=0):
         '''
         Alusta muuttujat
         '''
         self.runargs=runargs
         self.initargs=initargs
         self.ref_muut=ref_muut
-        self.additional_tax=additional_tax
+        self.additional_income_tax=additional_income_tax
         
     def black_box_function(self,**x):
         """
@@ -80,12 +81,20 @@ class BalanceLifeCycle():
         print(x)
         initargs2=self.initargs
         initargs2['extra_ppr']=x['extra_ppr']
-        initargs2['additional_income_tax']=self.additional_tax
-        cc=Lifecycle(**initargs2)
-        cc.run_results(**self.runargs)
-        return -cc.L2error(self.ref_muut)
+        initargs2['additional_income_tax']=self.additional_income_tax
+        repeats=1
+        err=np.empty(repeats)
+        for r in range(repeats):
+            cc=Lifecycle(**initargs2)
+            cc.run_results(**self.runargs)
+            err[r]=cc.L2BudgetError(self.ref_muut)
+            
+        ave=np.nanmean(err)
+        print(f'ave {ave}')
+            
+        return ave
 
-    def optimize(self,reset=False,min_ppr=-0.3,max_ppr=0.3,additional_income_tax=0):
+    def optimize(self,reset=False,min_ppr=-0.3,max_ppr=0.3):
         # Bounded region of parameter space
         pbounds = {'extra_ppr': (min_ppr, max_ppr)} #, 'women_mu_scale': (0.01,0.3), 'women_mu_age': (57,62)}
 
@@ -93,12 +102,13 @@ class BalanceLifeCycle():
             f=self.black_box_function,
             pbounds=pbounds,
             verbose=2, # verbose = 1 prints only when a maximum is observed, verbose = 0 is silent
-            random_state=1,
+            #random_state=1,
         )
         
         LOG_DIR = Path().absolute() / 'bayes_opt_logs'
         LOG_DIR.mkdir(exist_ok=True)
-        filename = 'log_0.json'
+        num=int(self.additional_income_tax*100)
+        filename = 'log_'+str(num)+'.json'
 
         # talletus
         logfile=str(LOG_DIR / filename)
@@ -109,7 +119,7 @@ class BalanceLifeCycle():
 
         optimizer.maximize(
             init_points=2,
-            n_iter=20,
+            n_iter=6,
         )
         
         print('The best parameters found {}'.format(optimizer.max))
