@@ -17,6 +17,7 @@ from scipy.stats import norm
 #import locale
 from tabulate import tabulate
 import pandas as pd
+import scipy.optimize
 from tqdm import tqdm_notebook as tqdm
 from . empstats import Empstats
 
@@ -205,6 +206,7 @@ class EpisodeStats():
         self.infostats_toimeentulotuki=np.zeros((self.n_time,1))
         self.infostats_tulot_netto=np.zeros((self.n_time,1))
         self.infostats_pinkslip=np.zeros((self.n_time,n_emps))
+        self.infostats_pop_pinkslip=np.zeros((self.n_time,self.n_pop))
         self.infostats_chilren18_emp=np.zeros((self.n_time,n_emps))
         self.infostats_chilren7_emp=np.zeros((self.n_time,n_emps))
         self.infostats_chilren18=np.zeros((self.n_time,1))
@@ -296,6 +298,7 @@ class EpisodeStats():
                 if tis<=0.25 and newemp==5:
                     self.infostats_mother_in_workforce[t]+=1
                 self.infostats_pinkslip[t,newemp]+=pink
+                self.infostats_pop_pinkslip[t,n]=pink
                 self.gempstate[t,newemp,g]+=1
                 self.stat_wage_reduction[t,newemp]+=wr
                 self.stat_wage_reduction_g[t,newemp,g]+=wr
@@ -402,20 +405,14 @@ class EpisodeStats():
                 self.pysyneet[t,emp]+=1
         elif newemp<0:
             self.deceiced[t]+=1
-            
-    def comp_scaled_consumption(self,env,x):
-        u=0
-        for k in range(n):
-            for t in range(t):
-                age=t+min_age
-                income=self.pop_net_income[k,t]
-                employment_state=self.pop_empstate[k,t]
-                g=self.pop_g[t,k]
-                pinkslip=self.pop_pinkslip[t,k]
-                u+=log_utility(self,(1+x)*income,employment_state,age,g=g,pinkslip=pinkslip):
-    
-    def scale_error(env,x,target):
-        return (target-self.comp_scaled_consumption(env,x))**2
+
+    def scale_error(self,x,target=None):
+        return (target-self.comp_scaled_consumption(x))
+        
+    def optimize_scale(self,target):
+        opt=scipy.optimize.least_squares(self.scale_error,0.20,bounds=(-1,1),kwargs={'target':target})
+        
+        print(opt)
     
     def min_max(self):
         min_wage=np.min(self.infostats_pop_wage)
@@ -439,24 +436,6 @@ class EpisodeStats():
     
     def episodestats_exit(self):
         plt.close(self.episode_fig)
-        
-    def comp_realoptimrew(self):
-        '''
-        Computes discounted actual reward at each time point
-        '''
-        realrew=np.zeros(self.n_time)
-        for k in range(self.n_pop):
-            prew=np.zeros(self.n_time)
-            prew[-1]=self.poprewstate[-1,k]
-            for t in range(self.n_time-2,0,-1):
-                prew[t]=self.gamma*prew[t+1]+self.poprewstate[t,k]
-            
-            realrew+=prew
-        
-        realrew/=self.n_pop
-        realrew=np.mean(realrew[1:])
-                
-        return realrew
         
     def comp_gini(self):
         '''
@@ -2256,15 +2235,86 @@ class EpisodeStats():
         ax.legend()
         plt.show() 
         
-    def comp_total_reward(self,output=True): 
-        total_reward=np.sum(self.rewstate)
-        rr=total_reward/self.n_pop
+    def vector_to_array(self,x):
+        return x[:,None]
+
+    def comp_scaled_consumption(self,x0):
+        '''
+        Computes discounted actual reward at each time point
+        with a given scaling x
+        '''    
+        x=x0[0]
+        u=np.zeros(self.n_time)
+        for k in range(self.n_pop):
+            #g=self.infostats_group[k]
+            for t in range(1,self.n_time-1):
+                age=t+self.min_age
+                income=self.infostats_poptulot_netto[t,k] 
+                employment_state=self.popempstate[t,k]
+                #pinkslip=self.infostats_pop_pinkslip[t,k]
+                v,_=self.env.log_utility((1+x)*income,employment_state,age) #,g=g,pinkslip=pinkslip)
+                u[t]+=v
+            t=self.n_time-1
+            age=t-1+self.min_age
+            income=self.infostats_poptulot_netto[t,k] 
+            employment_state=self.popempstate[t,k]
+            v0,_=self.env.log_utility(income,employment_state,age) #,g=g,pinkslip=pinkslip)
+            factor=self.poprewstate[t,k]/v0 # life expectancy
+            #pinkslip=self.infostats_pop_pinkslip[t,k]
+            v,_=self.env.log_utility((1+x)*income,employment_state,age) #,g=g,pinkslip=pinkslip)
+            u[t]+=v*factor
+                
+        u=u/self.n_pop 
+        w=np.zeros(self.n_time)
+        w[-1]=u[-1]
+        for t in range(self.n_time-2,0,-1):
+            w[t]=u[t]+self.gamma*w[t+1]
+            
+        ret=np.mean(w[1:])               
+        
+        print(x,ret)
+         
+        return ret
+        
+    def comp_realoptimrew(self,discountfactor=None):
+        '''
+        Computes discounted actual reward at each time point
+        '''
+        if discountfactor is None:
+            discountfactor=self.gamma
+        
+        realrew=np.zeros(self.n_time)
+        for k in range(self.n_pop):
+            prew=np.zeros(self.n_time)
+            prew[-1]=self.poprewstate[-1,k]
+            for t in range(self.n_time-2,0,-1):
+                prew[t]=discountfactor*prew[t+1]+self.poprewstate[t,k]
+            
+            realrew+=prew
+        
+        realrew/=self.n_pop
+        realrew=np.mean(realrew[1:])
+                
+        return realrew
+        
+    def comp_total_reward(self,output=True,discounted=False,discountfactor=None): 
+        if not discounted:
+            total_reward=np.sum(self.rewstate)
+            rr=total_reward/self.n_pop
+            disco='undiscounted'
+        else:
+            #discount=discountfactor**np.arange(0,self.n_time*self.timestep,self.timestep)[:,None]
+            #total_reward=np.sum(self.poprewstate*discount)
+
+            rr=self.comp_realoptimrew(discountfactor) #total_reward/self.n_pop
+            disco='discounted'
+
         #print('total rew1 {} rew2 {}'.format(total_reward,np.sum(self.poprewstate)))
         #print('ave rew1 {} rew2 {}'.format(rr,np.mean(np.sum(self.poprewstate,axis=0))))
         #print('shape rew2 {} pop {} alive {}'.format(self.poprewstate.shape,self.n_pop,self.alive[0]))
         
         if output:
-            print('Ave reward {}'.format(rr))
+            print(f'Ave {disco} reward {rr}')
         
         return rr
 
@@ -2369,6 +2419,7 @@ class EpisodeStats():
             plt.rcParams['figure.facecolor'] = 'white' # Or any suitable colour...
 
         self.comp_total_reward()
+        self.comp_total_reward(discounted=True)
         self.comp_total_netincome()
         #self.plot_rewdist()
 
@@ -2421,6 +2472,7 @@ class EpisodeStats():
         print('Gini coefficient is {}'.format(G))
         
         print('Real discounted reward {}'.format(self.comp_realoptimrew()))
+        print('vrt reward {}'.format(self.comp_scaled_consumption(np.array([0]))))
         
         self.plot_emp(figname=figname)
         if self.version in set([1,2,3,4]):
@@ -2601,6 +2653,9 @@ class EpisodeStats():
         _ = f.create_dataset('infostats_tulot_netto', data=self.infostats_tulot_netto, dtype=ftype)
         _ = f.create_dataset('poprewstate', data=self.poprewstate, dtype=ftype,compression="gzip", compression_opts=9)
         _ = f.create_dataset('infostats_pinkslip', data=self.infostats_pinkslip, dtype=int)
+        if self.version<2:
+            _ = f.create_dataset('infostats_pop_pinkslip', data=self.infostats_pop_pinkslip, dtype=int)
+            
         _ = f.create_dataset('infostats_paid_tyel_pension', data=self.infostats_paid_tyel_pension, dtype=ftype,compression="gzip", compression_opts=9)
         _ = f.create_dataset('infostats_tyelpremium', data=self.infostats_tyelpremium, dtype=ftype,compression="gzip", compression_opts=9)
         _ = f.create_dataset('infostats_npv0', data=self.infostats_npv0, dtype=ftype,compression="gzip", compression_opts=9)
@@ -2712,9 +2767,12 @@ class EpisodeStats():
         if 'infostats_pinkslip' in f.keys(): # older runs do not have these
             self.infostats_pinkslip=f['infostats_pinkslip'][()]      
             
+        if 'infostats_pop_pinkslip' in f.keys():
+            self.infostats_pop_pinkslip=f['infostats_pop_pinkslip'][()]
+            
         if 'infostats_paid_tyel_pension' in f.keys(): # older runs do not have these
             self.infostats_paid_tyel_pension=f['infostats_paid_tyel_pension'][()]      
-            self.infostats_tyelpremium=f['infostats_tyelpremium'][()]                  
+            self.infostats_tyelpremium=f['infostats_tyelpremium'][()]
 
         if 'infostats_npv0' in f.keys(): # older runs do not have these
             self.infostats_npv0=f['infostats_npv0'][()]      

@@ -822,25 +822,25 @@ class Lifecycle():
 
         states = env.reset()
         n=n_cpu-1
-        p=np.zeros(self.n_pop)
         pop_num=np.array([k for k in range(n_cpu)])
         tqdm_e = tqdm(range(int(self.n_pop)), desc='Population', leave=True, unit=" p")
 
         print('predict')
-        while n<self.n_pop:
+        while np.any(pop_num<self.n_pop):
             act, predstate = model.predict(states,deterministic=deterministic)
             newstate, rewards, dones, infos = env.step(act)
-            #done=False
             for k in range(n_cpu):
-                if dones[k]:
-                    self.episodestats.add(pop_num[k],act[k],rewards[k],states[k],infos[k]['terminal_observation'] ,infos[k],debug=debug)
-                    tqdm_e.update(1)
-                    n+=1
-                    tqdm_e.set_description("Pop " + str(n))
-                    #done=True
-                    pop_num[k]=n
-                else:
-                    self.episodestats.add(pop_num[k],act[k],rewards[k],states[k],newstate[k],infos[k],debug=debug)
+                if pop_num[k]<self.n_pop: # do not save extras
+                    if dones[k]:
+                        self.episodestats.add(pop_num[k],act[k],rewards[k],states[k],infos[k]['terminal_observation'],infos[k],debug=debug)
+                        tqdm_e.update(1)
+                        n+=1
+                        tqdm_e.set_description("Pop " + str(n))
+                        pop_num[k]=n
+                    else:
+                        self.episodestats.add(pop_num[k],act[k],rewards[k],states[k],newstate[k],infos[k],debug=debug)
+                #else:
+                #    print(f'n{n} vs n_pop {self.n_pop}')
     
             states = newstate
 
@@ -1313,6 +1313,16 @@ class Lifecycle():
         L2=self.episodestats.comp_budgetL2error(ref_muut,scale=scale)
         
         return L2
+        
+    def optimize_scale(self,target):
+        '''
+        Optimoi utiliteetin skaalaus
+        Vertailupaperia varten
+        '''
+        
+        res=self.episodestats.optimize_scale(target)
+        
+        print(res)
         
     def comp_aggkannusteet(self,n=None,savefile=None):
         self.episodestats.comp_aggkannusteet(self.env.ben,n=n,savefile=savefile)
