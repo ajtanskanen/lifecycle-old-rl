@@ -2253,6 +2253,7 @@ class EpisodeStats():
                 employment_state=self.popempstate[t,k]
                 #pinkslip=self.infostats_pop_pinkslip[t,k]
                 v,_=self.env.log_utility((1+x)*income,employment_state,age) #,g=g,pinkslip=pinkslip)
+                #print(t,k,v,income)
                 u[t]+=v
             t=self.n_time-1
             age=t-1+self.min_age
@@ -2262,6 +2263,7 @@ class EpisodeStats():
             factor=self.poprewstate[t,k]/v0 # life expectancy
             #pinkslip=self.infostats_pop_pinkslip[t,k]
             v,_=self.env.log_utility((1+x)*income,employment_state,age) #,g=g,pinkslip=pinkslip)
+            #print(t,k,v,income)
             u[t]+=v*factor
                 
         u=u/self.n_pop 

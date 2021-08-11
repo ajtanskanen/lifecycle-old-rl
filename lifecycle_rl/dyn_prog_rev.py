@@ -781,23 +781,24 @@ class DynProgLifecycleRev(Lifecycle):
         a_set=list(act_set)
         act_set=set(act_set)
             
-        for k in act_set:
-            apx1=(1-wp2)*((1-wp)*((1-we)*(self.actHila[t,pmin,emin,emp,tismax,p2min,k])
-                                  +we*(self.actHila[t,pmin,emax,emp,tismax,p2min,k]))+\
-                            wp*((1-we)*(self.actHila[t,pmax,emin,emp,tismax,p2min,k])
-                                  +we*(self.actHila[t,pmax,emax,emp,tismax,p2min,k])))+\
-                    wp2*((1-wp)*((1-we)*(self.actHila[t,pmin,emin,emp,tismax,p2max,k])
-                                    +we*(self.actHila[t,pmin,emax,emp,tismax,p2max,k]))+\
-                            wp*((1-we)*(self.actHila[t,pmax,emin,emp,tismax,p2max,k])
-                                    +we*(self.actHila[t,pmax,emax,emp,tismax,p2max,k])))
-            V[k]=max(0,apx1)
+        #for k in act_set:
+        #    apx1=(1-wp2)*((1-wp)*((1-we)*(self.actHila[t,pmin,emin,emp,tismax,p2min,k])
+        #                          +we*(self.actHila[t,pmin,emax,emp,tismax,p2min,k]))+\
+        #                    wp*((1-we)*(self.actHila[t,pmax,emin,emp,tismax,p2min,k])
+        #                          +we*(self.actHila[t,pmax,emax,emp,tismax,p2min,k])))+\
+        #            wp2*((1-wp)*((1-we)*(self.actHila[t,pmin,emin,emp,tismax,p2max,k])
+        #                            +we*(self.actHila[t,pmin,emax,emp,tismax,p2max,k]))+\
+        #                    wp*((1-we)*(self.actHila[t,pmax,emin,emp,tismax,p2max,k])
+        #                            +we*(self.actHila[t,pmax,emax,emp,tismax,p2max,k])))
+        #    V[k]=max(0,apx1)
             
         #act=int(np.argmax(V))
         #maxV=np.max(V)
         act=a_set[np.random.randint(len(act_set))]
-        maxV=V[act]
+        #maxV=V[act]
         
-        reward=self.get_actReward(s=s,act=act)
+        reward=0 #self.get_actReward(s=s,act=act)
+        maxV=0
         
         if full:
             return act,maxV,V,reward
@@ -1241,6 +1242,8 @@ class DynProgLifecycleRev(Lifecycle):
                  
                 if done: 
                     self.episodestats.add(n,act,r,state,newstate,info,debug=debug,aveV=maxV)
+                    #print(info,r)
+                    #print(newstate,info[0]['terminal_observation'])
                     tqdm_e.update(1)
                     tqdm_e.set_description("Pop " + str(n))
                     break
