@@ -30,6 +30,7 @@ class SimStats(EpisodeStats):
         agg_htv=np.zeros(n)
         agg_tyoll=np.zeros(n)
         agg_rew=np.zeros(n)
+        agg_discounted_rew=np.zeros(n)
         t_aste=np.zeros(self.n_time)
         emps=np.zeros((n,self.n_time,self.n_employment))
         emp_tyolliset=np.zeros((n,self.n_time))
@@ -55,10 +56,12 @@ class SimStats(EpisodeStats):
         emps[0,:,:]=base_empstate
         htv_base,tyoll_base,haj_base,tyollaste_base,tyolliset_base=self.comp_tyollisyys_stats(base_empstate,scale_time=True)
         reward=self.get_reward()
+        discounted_reward=self.get_reward(discounted=True)
         net,equiv=self.comp_total_netincome(output=False)
         agg_htv[0]=htv_base
         agg_tyoll[0]=tyoll_base
         agg_rew[0]=reward
+        agg_discounted_rew[0]=discounted_reward
         agg_netincome[0]=net
         agg_equivalent_netincome[0]=equiv
         
@@ -107,6 +110,8 @@ class SimStats(EpisodeStats):
                 empstate=self.empstate/self.n_pop
                 emps[i,:,:]=empstate
                 reward=self.get_reward()
+                discounted_reward=self.get_reward(discounted=True)
+                
                 net,equiv=self.comp_total_netincome(output=False)
                 if reward>best_rew:
                     best_rew=reward
@@ -120,6 +125,8 @@ class SimStats(EpisodeStats):
                 agg_htv[i]=htv
                 agg_tyoll[i]=tyollvaikutus
                 agg_rew[i]=reward
+                agg_discounted_rew[i]=discounted_reward
+
                 agg_netincome[i]=net
                 agg_equivalent_netincome[i]=equiv
                 t_aste[i]=tyollisyysaste
@@ -156,9 +163,10 @@ class SimStats(EpisodeStats):
                 unemp_lastdur0=self.comp_unemp_durations_v2(return_q=False)
                 unemp_dur[i,:,:]=unemp_dur0[:,:]
                 unemp_lastdur[i,:,:]=unemp_lastdur0[:,:]
+                tqdm_e.update(1)
                 tqdm_e.set_description("Pop " + str(n))
 
-        self.save_simstats(save,agg_htv,agg_tyoll,agg_rew,\
+        self.save_simstats(save,agg_htv,agg_tyoll,agg_rew,agg_discounted_rew,\
                             emp_tyolliset,emp_tyolliset_osuus,\
                             emp_tyottomat,emp_tyottomat_osuus,\
                             emp_htv,emps,\
@@ -197,7 +205,7 @@ class SimStats(EpisodeStats):
         return putkessa        
         
     def plot_simstats(self,filename,grayscale=False,figname=None):
-        agg_htv,agg_tyoll,agg_rew,emp_tyolliset,emp_tyolliset_osuus,\
+        agg_htv,agg_tyoll,agg_rew,agg_discounted_rew,emp_tyolliset,emp_tyolliset_osuus,\
             emp_tyottomat,emp_tyottomat_osuus,emp_htv,emps,best_rew,\
             best_emp,emps,agg_netincome,agg_equivalent_netincome=self.load_simstats(filename)
 
@@ -217,10 +225,12 @@ class SimStats(EpisodeStats):
         diff_htv=agg_htv-mean_htv
         diff_tyoll=agg_tyoll-median_tyoll
         mean_rew=np.mean(agg_rew)
+        mean_discounted_rew=np.mean(agg_discounted_rew)
         mean_netincome=np.mean(agg_netincome)
         mean_equi_netincome=np.mean(agg_equivalent_netincome)
 
-        print(f'Mean reward {mean_rew}')
+        print(f'Mean undiscounted reward {mean_rew}')
+        print(f'Mean discounted reward {mean_discounted_rew}')
         print(f'Mean net income {mean_netincome} mean equivalent net income {mean_equi_netincome}')
         fig,ax=plt.subplots()
         ax.set_xlabel('Rewards')
@@ -328,7 +338,7 @@ class SimStats(EpisodeStats):
         self.plot_tyolldistribs_both(unemp_distrib1,tyoll_distrib1,max=4,figname=figname)
 
     def get_simstats(self,filename1,plot=False,use_mean=False):
-        agg_htv,agg_tyoll,agg_rew,emp_tyolliset,emp_tyolliset_osuus,\
+        agg_htv,agg_tyoll,agg_rew,agg_discounted_rew,emp_tyolliset,emp_tyolliset_osuus,\
             emp_tyottomat,emp_tyottomat_osuus,emp_htv,emps,best_rew,\
             best_emp,emps,agg_netincome,agg_equivalent_netincome=self.load_simstats(filename1)
 
@@ -593,13 +603,14 @@ class SimStats(EpisodeStats):
         ax.plot(x[1:],100*(m_median2[1:]-m_median1[1:]),label=label1)
         plt.show()
 
-    def save_simstats(self,filename,agg_htv,agg_tyoll,agg_rew,emp_tyolliset,emp_tyolliset_osuus,\
+    def save_simstats(self,filename,agg_htv,agg_tyoll,agg_rew,agg_discounted_rew,emp_tyolliset,emp_tyolliset_osuus,\
                         emp_tyottomat,emp_tyottomat_osuus,emp_htv,emps,best_rew,best_emp,\
                         unemp_distrib,emp_distrib,unemp_distrib_bu,\
                         tyoll_distrib,tyoll_distrib_bu,\
                         tyoll_virta,tyot_virta,tyot_virta_ansiosid,tyot_virta_tm,\
                         unemp_dur,unemp_lastdur,agg_netincome,agg_equivalent_netincome):
         f = h5py.File(filename, 'w')
+        dset = f.create_dataset('agg_discounted_rew', data=agg_discounted_rew, dtype='float64')
         dset = f.create_dataset('agg_htv', data=agg_htv, dtype='float64')
         dset = f.create_dataset('agg_tyoll', data=agg_tyoll, dtype='float64')
         dset = f.create_dataset('agg_rew', data=agg_rew, dtype='float64')
@@ -627,24 +638,24 @@ class SimStats(EpisodeStats):
 
     def load_simstats(self,filename):
         f = h5py.File(filename, 'r')
-        #n_pop = f.get('n_pop').value
-        agg_htv = f['agg_htv'][()] #f.get('agg_htv').value
-        agg_tyoll = f['agg_tyoll'][()] #f.get('agg_tyoll').value
-        agg_rew = f['agg_rew'][()] #f.get('agg_rew').value
-        emps = f['emps'][()] #f.get('emps').value
-        best_rew = f['best_rew'][()] #f.get('best_rew').value
-        best_emp = int(f['best_emp'][()]) #int(f.get('best_emp').value)
-        emp_tyolliset = f['emp_tyolliset'][()] #f.get('emp_tyolliset').value
-        emp_tyolliset_osuus = f['emp_tyolliset_osuus'][()] #f.get('emp_tyolliset_osuus').value
-        emp_tyottomat = f['emp_tyottomat'][()] #f.get('emp_tyottomat').value
-        emp_tyottomat_osuus = f['emp_tyottomat_osuus'][()] #f.get('emp_tyottomat_osuus').value
-        emp_htv = f['emp_htv'][()] #f.get('emp_htv').value
-        agg_netincome = f['agg_netincome'][()] #f.get('agg_netincome').value
-        agg_equivalent_netincome = f['agg_equivalent_netincome'][()] #f.get('agg_equivalent_netincome').value
+        agg_htv = f['agg_htv'][()]
+        agg_tyoll = f['agg_tyoll'][()]
+        agg_rew = f['agg_rew'][()]
+        agg_discounted_rew = f['agg_discounted_rew'][()]
+        emps = f['emps'][()]
+        best_rew = f['best_rew'][()]
+        best_emp = int(f['best_emp'][()])
+        emp_tyolliset = f['emp_tyolliset'][()]
+        emp_tyolliset_osuus = f['emp_tyolliset_osuus'][()]
+        emp_tyottomat = f['emp_tyottomat'][()]
+        emp_tyottomat_osuus = f['emp_tyottomat_osuus'][()]
+        emp_htv = f['emp_htv'][()]
+        agg_netincome = f['agg_netincome'][()]
+        agg_equivalent_netincome = f['agg_equivalent_netincome'][()]
         
         f.close()
 
-        return agg_htv,agg_tyoll,agg_rew,emp_tyolliset,emp_tyolliset_osuus,\
+        return agg_htv,agg_tyoll,agg_rew,agg_discounted_rew,emp_tyolliset,emp_tyolliset_osuus,\
                emp_tyottomat,emp_tyottomat_osuus,emp_htv,emps,best_rew,best_emp,emps,\
                agg_netincome,agg_equivalent_netincome
 

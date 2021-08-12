@@ -2299,6 +2299,9 @@ class EpisodeStats():
                 
         return realrew
         
+    def get_reward(self,discounted=False):
+        return self.comp_total_reward(output=False,discounted=discounted) #np.sum(self.rewstate)/self.n_pop
+
     def comp_total_reward(self,output=True,discounted=False,discountfactor=None): 
         if not discounted:
             total_reward=np.sum(self.rewstate)
@@ -3571,9 +3574,6 @@ class EpisodeStats():
         #print(f'vaikutus {vaikutus} x {x} y {y}\n s {state[min_cage:max_cage]} mean {np.mean(state[min_cage:max_cage])}\n d {demog2[min_cage:max_cage]}')
             
         return vaikutus
-
-    def get_reward(self):
-        return np.sum(self.rewstate)/self.n_pop
 
     def get_vanhempainvapaat(self):
         '''
