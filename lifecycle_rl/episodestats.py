@@ -414,6 +414,24 @@ class EpisodeStats():
         
         print(opt)
     
+    def optimize_logutil(self,target,source):
+        n_time=110
+        gy=np.empty(n_time)
+        g=1
+        gx=np.empty(n_time)
+        for t in range(0,n_time):
+            gx[t]=g
+            g*=self.gamma
+
+        for t in range(1,n_time):
+            gy[t]=np.sum(gx[0:t])
+        
+        gf=np.mean(gy[1:])/10
+        lx=(target-source)
+        opt=np.exp(lx/gf)-1.0
+        
+        print(opt)
+    
     def min_max(self):
         min_wage=np.min(self.infostats_pop_wage)
         max_wage=np.max(self.infostats_pop_wage)
