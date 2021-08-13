@@ -101,7 +101,7 @@ class Labels():
 
 
 class EpisodeStats():
-    def __init__(self,timestep,n_time,n_emps,n_pop,env,minimal,min_age,max_age,min_retirementage,year=2018,version=3,params=None,gamma=0.92,lang='Finnish'):
+    def __init__(self,timestep,n_time,n_emps,n_pop,env,minimal,min_age,max_age,min_retirementage,year=2018,version=3,params=None,gamma=0.92,lang='English'):
         self.version=version
         self.gamma=gamma
         self.params=params
@@ -412,9 +412,14 @@ class EpisodeStats():
     def optimize_scale(self,target):
         opt=scipy.optimize.least_squares(self.scale_error,0.20,bounds=(-1,1),kwargs={'target':target})
         
-        print(opt)
+        #print(opt)
+        return opt['x']
     
     def optimize_logutil(self,target,source):
+        '''
+        analytical compensated consumption 
+        does not implement final reward, hence duration 110 y
+        '''
         n_time=110
         gy=np.empty(n_time)
         g=1
@@ -2269,20 +2274,27 @@ class EpisodeStats():
                 age=t+self.min_age
                 income=self.infostats_poptulot_netto[t,k] 
                 employment_state=self.popempstate[t,k]
-                #pinkslip=self.infostats_pop_pinkslip[t,k]
-                v,_=self.env.log_utility((1+x)*income,employment_state,age) #,g=g,pinkslip=pinkslip)
-                #print(t,k,v,income)
+                v,_=self.env.log_utility((1+x)*income,employment_state,age)
+                if np.isnan(v):
+                    print(v,income,employment_state,age)
                 u[t]+=v
+                #print(age,v)
+                
             t=self.n_time-1
-            age=t-1+self.min_age
+            age=t+self.min_age
             income=self.infostats_poptulot_netto[t,k] 
             employment_state=self.popempstate[t,k]
-            v0,_=self.env.log_utility(income,employment_state,age) #,g=g,pinkslip=pinkslip)
+            v0,_=self.env.log_utility(income,employment_state,age)
             factor=self.poprewstate[t,k]/v0 # life expectancy
-            #pinkslip=self.infostats_pop_pinkslip[t,k]
-            v,_=self.env.log_utility((1+x)*income,employment_state,age) #,g=g,pinkslip=pinkslip)
-            #print(t,k,v,income)
+            v,_=self.env.log_utility((1+x)*income,employment_state,age)
+            if np.isnan(v):
+                print(v,income,employment_state,age)
+            if np.isnan(factor):
+                print(factor,v0)
+            #print(age,v*factor,factor)
             u[t]+=v*factor
+            if np.isnan(u[t]):
+                print(age,v,v*factor,factor,u[t],income,employment_state)
                 
         u=u/self.n_pop 
         w=np.zeros(self.n_time)
@@ -2292,7 +2304,29 @@ class EpisodeStats():
             
         ret=np.mean(w[1:])               
         
-        print(x,ret)
+        if np.isnan(ret):
+            print(u,w)
+            u=np.zeros(self.n_time)
+            for k in range(self.n_pop):
+                #g=self.infostats_group[k]
+                for t in range(1,self.n_time-1):
+                    age=t+self.min_age
+                    income=self.infostats_poptulot_netto[t,k] 
+                    employment_state=self.popempstate[t,k]
+                    v,_=self.env.log_utility((1+x)*income,employment_state,age) #,g=g,pinkslip=pinkslip)
+                    #print(t,k,v,income)
+                    u[t]+=v
+                t=self.n_time-1
+                age=t-1+self.min_age
+                income=self.infostats_poptulot_netto[t,k] 
+                employment_state=self.popempstate[t,k]
+                v0,_=self.env.log_utility(income,employment_state,age) #,g=g,pinkslip=pinkslip)
+                factor=self.poprewstate[t,k]/v0 # life expectancy
+                v,_=self.env.log_utility((1+x)*income,employment_state,age) #,g=g,pinkslip=pinkslip)
+                #print(t,k,v,income)
+                u[t]+=v*factor
+        
+        #print(x,ret)
          
         return ret
         
@@ -2720,7 +2754,7 @@ class EpisodeStats():
         f.close()
         return val
         
-    def load_sim(self,filename,n_pop=None):
+    def load_sim(self,filename,n_pop=None,print_pop=False):
         f = h5py.File(filename, 'r')
         
         if 'version' in f.keys():
@@ -2875,8 +2909,8 @@ class EpisodeStats():
         else:
             self.params=None
 
-        print('n_pop {}'.format(self.n_pop))
-
+        if print_pop:
+            print('n_pop {}'.format(self.n_pop))
             
         f.close()
         

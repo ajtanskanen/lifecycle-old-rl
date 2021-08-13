@@ -906,6 +906,9 @@ class Lifecycle():
     def load_sim(self,load=None):
         self.episodestats.load_sim(load)
    
+    def run_optimize_x(self,target,results,n,startn=0):
+        self.episodestats.run_optimize_x(target,results,n,startn=startn)
+   
     def run_dummy(self,strategy='emp',debug=False,pop=None):
         '''
         Lasketaan työllisyysasteet ikäluokittain satunnaisella politiikalla

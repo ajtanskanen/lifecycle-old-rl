@@ -48,9 +48,9 @@ class SimStats(EpisodeStats):
         agg_equivalent_netincome=np.zeros(n)
 
         if singlefile:
-            self.load_sim(results)
+            self.load_sim(results,print_pop=False)
         else:
-            self.load_sim(results+'_'+str(100+startn))
+            self.load_sim(results+'_'+str(100+startn),print_pop=False)
 
         base_empstate=self.empstate/self.n_pop
         emps[0,:,:]=base_empstate
@@ -106,7 +106,7 @@ class SimStats(EpisodeStats):
             tqdm_e = tqdm(range(int(n)), desc='Sim', leave=True, unit=" ")
 
             for i in range(startn+1,n): 
-                self.load_sim(results+'_'+str(100+i))
+                self.load_sim(results+'_'+str(100+i),print_pop=False)
                 empstate=self.empstate/self.n_pop
                 emps[i,:,:]=empstate
                 reward=self.get_reward()
@@ -184,6 +184,27 @@ class SimStats(EpisodeStats):
         print('done')
         print('best_emp',best_emp)
         
+    def run_optimize_x(self,target,results,n,startn=0):
+        '''
+        Laskee statistiikat ajoista
+        '''
+        
+        print('computing simulation statistics...')
+        #n=self.load_hdf(results+'_simut','n')
+        x_rate=np.zeros(n-startn)
+
+        tqdm_e = tqdm(range(int(n-startn)), desc='Sim', leave=True, unit=" ")
+        for i in range(startn,n): 
+            self.load_sim(results+'_'+str(100+i),print_pop=False)
+            x_rate[i-startn]=self.optimize_scale(target)
+            tqdm_e.update(1)
+            tqdm_e.set_description("Pop " + str(i-startn))
+                    
+        print(x_rate)
+        print('Average x {}'.format(np.mean(x_rate)))
+                    
+        print('done')
+        
     def fit_norm(self,diff):
         diff_stdval=np.std(diff)
         diff_meanval=np.mean(diff)
@@ -233,9 +254,9 @@ class SimStats(EpisodeStats):
         print(f'Mean discounted reward {mean_discounted_rew}')
         print(f'Mean net income {mean_netincome} mean equivalent net income {mean_equi_netincome}')
         fig,ax=plt.subplots()
-        ax.set_xlabel('Rewards')
+        ax.set_xlabel('Discounted rewards')
         ax.set_ylabel('Lukumäärä')
-        ax.hist(agg_rew,color='lightgray')
+        ax.hist(agg_discounted_rew,color='lightgray')
         plt.show()
         
         x,y=self.fit_norm(diff_htv)
@@ -434,7 +455,7 @@ class SimStats(EpisodeStats):
         #ax.plot(x,emp_statsratio,label='havainto')
         ax.legend()
         if figname is not None:
-            plt.savefig(figname+'emp.eps')        
+            plt.savefig(figname+'emp.eps', format='eps')
         plt.show()
 
         fig,ax=plt.subplots()
@@ -460,7 +481,7 @@ class SimStats(EpisodeStats):
         ax.plot(x[1:],100*u_ansiosid1[1:],ls='--',label=label1)
         ax.legend()
         if figname is not None:
-            plt.savefig(figname+'unemp.eps')        
+            plt.savefig(figname+'unemp.pdf', format='pdf')
         plt.show()
 
         fig,ax=plt.subplots()
@@ -477,7 +498,7 @@ class SimStats(EpisodeStats):
         #ax.plot(x[1:],100*u_ansiosid1[1:],ls='--',label=label1)
         ax.legend()
         if figname is not None:
-            plt.savefig(figname+'tyottomyydet.eps')        
+            plt.savefig(figname+'tyottomyydet.eps', format='eps')
         plt.show()
 
         fig,ax=plt.subplots()
@@ -488,7 +509,7 @@ class SimStats(EpisodeStats):
         ax.plot(x[1:],100*(u_tmtuki2[1:]+u_ansiosid2[1:]),label=label2)
         ax.legend()
         if figname is not None:
-            plt.savefig(figname+'tyottomyydet2.eps')        
+            plt.savefig(figname+'tyottomyydet2.eps', format='eps')
         plt.show()
 
         fig,ax=plt.subplots()
@@ -641,7 +662,10 @@ class SimStats(EpisodeStats):
         agg_htv = f['agg_htv'][()]
         agg_tyoll = f['agg_tyoll'][()]
         agg_rew = f['agg_rew'][()]
-        agg_discounted_rew = f['agg_discounted_rew'][()]
+        if 'agg_discounted_rew' in f.keys(): # older runs do not have these
+            agg_discounted_rew = f['agg_discounted_rew'][()]
+        else:
+            agg_discounted_rew=0*agg_rew
         emps = f['emps'][()]
         best_rew = f['best_rew'][()]
         best_emp = int(f['best_emp'][()])

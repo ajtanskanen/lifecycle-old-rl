@@ -38,7 +38,7 @@ class DynProgLifecycleRev(Lifecycle):
         '''
         Alusta muuttujat
         '''
-        self.min_salary=1000
+        #self.min_salary=1000
         self.hila_palkka0 = self.min_salary # 0
         self.hila_elake0 = 0
         self.spline=True
@@ -53,8 +53,6 @@ class DynProgLifecycleRev(Lifecycle):
         self.min_wage=1_000
         self.max_wage=85_000
         self.max_pension=50_000
-        self.perustulo=False
-        self.perustulomalli=None
         
         if n_palkka is not None:
             self.n_palkka=n_palkka
@@ -68,10 +66,6 @@ class DynProgLifecycleRev(Lifecycle):
             self.max_wage=max_wage
         if max_pension is not None:
             self.max_pension=max_pension
-        if perustulo is not None:
-            self.perustulo=perustulo
-        if perustulomalli is not None:
-            self.perustulomalli=perustulomalli
             
         self.deltapalkka = self.max_wage/(self.n_palkka-1)
         self.deltaelake = self.max_pension/(self.n_elake-1)
@@ -112,7 +106,7 @@ class DynProgLifecycleRev(Lifecycle):
         print('deltapalkka {} deltaelake {}'.format(self.deltapalkka,self.deltaelake))
         print('n_tis {} deltatis {}'.format(self.n_tis,self.deltatis))
         print('gamma {} timestep {}'.format(self.gamma,self.timestep))
-        print(f'basic income {self.perustulo}\nbasic income model {self.perustulomalli}')
+        self.env.explain()
 
     def map_elake(self,v):
         return self.hila_elake0+self.deltaelake*v # pitäisikö käyttää exp-hilaa?
