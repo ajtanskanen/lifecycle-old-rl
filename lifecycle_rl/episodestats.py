@@ -109,7 +109,7 @@ class EpisodeStats():
         self.reset(timestep,n_time,n_emps,n_pop,env,minimal,min_age,max_age,min_retirementage,year,params=params,lang=lang)
         print('version',version)
 
-    def reset(self,timestep,n_time,n_emps,n_pop,env,minimal,min_age,max_age,min_retirementage,year,version=None,params=None,lang=None):
+    def reset(self,timestep,n_time,n_emps,n_pop,env,minimal,min_age,max_age,min_retirementage,year,version=None,params=None,lang=None,dynprog=False):
         self.min_age=min_age
         self.max_age=max_age
         self.min_retirementage=min_retirementage
@@ -138,7 +138,7 @@ class EpisodeStats():
         self.reaalinen_palkkojenkasvu=0.016
         self.palkkakerroin=(0.8*1+0.2*1.0/(1+self.reaalinen_palkkojenkasvu))**self.timestep
         self.elakeindeksi=(0.2*1+0.8*1.0/(1+self.reaalinen_palkkojenkasvu))**self.timestep
-        self.dynprog=False
+        self.dynprog=dynprog
         
         if self.minimal:
             self.version=0
@@ -406,11 +406,11 @@ class EpisodeStats():
         elif newemp<0:
             self.deceiced[t]+=1
 
-    def scale_error(self,x,target=None):
-        return (target-self.comp_scaled_consumption(x))
+    def scale_error(self,x,target=None,averaged=True):
+        return (target-self.comp_scaled_consumption(x,averaged=averaged))
         
-    def optimize_scale(self,target):
-        opt=scipy.optimize.least_squares(self.scale_error,0.20,bounds=(-1,1),kwargs={'target':target})
+    def optimize_scale(self,target,averaged=True):
+        opt=scipy.optimize.least_squares(self.scale_error,0.20,bounds=(-1,1),kwargs={'target':target,'averaged':averaged})
         
         #print(opt)
         return opt['x']
@@ -2261,10 +2261,12 @@ class EpisodeStats():
     def vector_to_array(self,x):
         return x[:,None]
 
-    def comp_scaled_consumption(self,x0):
+    def comp_scaled_consumption(self,x0,averaged=True,t0=1):
         '''
         Computes discounted actual reward at each time point
         with a given scaling x
+        
+        averaged determines whether the value is averaged over time or not
         '''    
         x=x0[0]
         u=np.zeros(self.n_time)
@@ -2302,7 +2304,10 @@ class EpisodeStats():
         for t in range(self.n_time-2,0,-1):
             w[t]=u[t]+self.gamma*w[t+1]
             
-        ret=np.mean(w[1:])               
+        if averaged:
+            ret=np.mean(w[t0:])               
+        else:
+            ret=w[t0]
         
         if np.isnan(ret):
             print(u,w)
@@ -2329,6 +2334,22 @@ class EpisodeStats():
         #print(x,ret)
          
         return ret
+        
+    def comp_presentvalue(self):
+        '''
+        Computes discounted actual reward at each time point
+        with a given scaling x
+        
+        averaged determines whether the value is averaged over time or not
+        '''    
+        u=np.zeros((self.n_time,self.n_pop))
+        for k in range(self.n_pop):
+            u[self.n_time-1,k]=self.poprewstate[self.n_time-1,k]
+            for t in range(self.n_time-2,0,-1):
+                age=t+self.min_age
+                u[t,k]=self.poprewstate[t,k]+self.gamma*u[t+1,k]
+         
+        return u
         
     def comp_realoptimrew(self,discountfactor=None):
         '''
@@ -2530,6 +2551,8 @@ class EpisodeStats():
         
         print('Real discounted reward {}'.format(self.comp_realoptimrew()))
         print('vrt reward {}'.format(self.comp_scaled_consumption(np.array([0]))))
+        real=self.comp_presentvalue()
+        print('Initial discounted reward {}'.format(np.mean(real[1,:])))
         
         self.plot_emp(figname=figname)
         if self.version in set([1,2,3,4]):

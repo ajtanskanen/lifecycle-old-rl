@@ -906,8 +906,8 @@ class Lifecycle():
     def load_sim(self,load=None):
         self.episodestats.load_sim(load)
    
-    def run_optimize_x(self,target,results,n,startn=0):
-        self.episodestats.run_optimize_x(target,results,n,startn=startn)
+    def run_optimize_x(self,target,results,n,startn=0,averaged=True):
+        self.episodestats.run_optimize_x(target,results,n,startn=startn,averaged=averaged)
    
     def run_dummy(self,strategy='emp',debug=False,pop=None):
         '''
@@ -1167,11 +1167,11 @@ class Lifecycle():
 
     def get_RL_act(self,t,emp=0,time_in_state=0,rlmodel='acktr',load='perus',debug=True,deterministic=True,
                         n_palkka=80,deltapalkka=1000,n_elake=40,deltaelake=1500,
-                        hila_palkka0=0,hila_elake0=0):
+                        min_wage=1000,hila_elake0=0):
         model,env,n_cpu=self.setup_model(rlmodel=rlmodel,load=load,debug=debug)
         return self.RL_simulate_V(model,env,t,emp=emp,deterministic=deterministic,time_in_state=time_in_state,
                         n_palkka=n_palkka,deltapalkka=deltapalkka,n_elake=n_elake,deltaelake=deltaelake,
-                        hila_palkka0=hila_palkka0,hila_elake0=hila_elake0)
+                        min_wage=min_wage,hila_elake0=hila_elake0)
 
     def get_rl_act(self,t,emp=0,time_in_state=0,rlmodel='acktr',load='perus',debug=True,deterministic=True):
         model,env,n_cpu=self.setup_model(rlmodel=rlmodel,load=load,debug=debug)
@@ -1273,13 +1273,13 @@ class Lifecycle():
 
     def RL_simulate_V(self,model,env,age,emp=0,time_in_state=0,deterministic=True,
                         n_palkka=80,deltapalkka=1000,n_elake=40,deltaelake=1500,
-                        hila_palkka0=0,hila_elake0=0):
+                        min_wage=0,hila_elake0=0):
         # dynaamisen ohjelmoinnin parametrejä
         def map_elake(v):
-            return hila_elake0+deltaelake*v 
+            return min_wage+deltaelake*v 
 
         def map_palkka(v):
-            return hila_palkka0+deltapalkka*v 
+            return min_wage+max(0,deltapalkka*v) 
     
         prev=0
         toe=0

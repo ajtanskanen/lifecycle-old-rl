@@ -184,7 +184,7 @@ class SimStats(EpisodeStats):
         print('done')
         print('best_emp',best_emp)
         
-    def run_optimize_x(self,target,results,n,startn=0):
+    def run_optimize_x(self,target,results,n,startn=0,averaged=True):
         '''
         Laskee statistiikat ajoista
         '''
@@ -196,7 +196,7 @@ class SimStats(EpisodeStats):
         tqdm_e = tqdm(range(int(n-startn)), desc='Sim', leave=True, unit=" ")
         for i in range(startn,n): 
             self.load_sim(results+'_'+str(100+i),print_pop=False)
-            x_rate[i-startn]=self.optimize_scale(target)
+            x_rate[i-startn]=self.optimize_scale(target,averaged=averaged)
             tqdm_e.update(1)
             tqdm_e.set_description("Pop " + str(i-startn))
                     
