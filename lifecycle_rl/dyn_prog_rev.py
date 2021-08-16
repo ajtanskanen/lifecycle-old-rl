@@ -423,12 +423,6 @@ class DynProgLifecycleRev(Lifecycle):
             emp=int(emp)
             p = np.linspace(0, self.max_pension, self.n_elake)
             w = np.linspace(self.min_wage, self.max_wage, self.n_palkka)
-#             for ind,wage in enumerate(wages):
-#                 values=(1-wp)*self.Hila[t,pmin,:,emp,tismax,:]+wp*self.Hila[t,pmax,:,emp,tismax,:]
-#                 g=RectBivariateSpline(p,w, values)
-#                 #f=RectBivariateSpline(p,w, values,kx=1,ky=1)
-#                 V1 = np.squeeze(g(elake,wage))
-#                 Vs[ind]=max(0,V1)
 
             if self.pw_bivariate:
                 values=(1-wp)*self.Hila[t,pmin,:,emp,tismax,:]+wp*self.Hila[t,pmax,:,emp,tismax,:]
@@ -554,16 +548,6 @@ class DynProgLifecycleRev(Lifecycle):
                 #f=RectBivariateSpline(p,w, values,kx=1,ky=1)
                 apx1 = np.squeeze(f(old_wage,wage))
 
-            
-#             apx1=(1-wp2)*((1-wp)*((1-we)*(self.actHila[t,pmin,emin,emp,tismax,p2min,act])
-#                                     +we*(self.actHila[t,pmin,emax,emp,tismax,p2min,act]))+\
-#                             wp*((1-we)*(self.actHila[t,pmax,emin,emp,tismax,p2min,act])
-#                                     +we*(self.actHila[t,pmax,emax,emp,tismax,p2min,act])))+\
-#                     wp2*((1-wp)*((1-we)*(self.actHila[t,pmin,emin,emp,tismax,p2max,act])
-#                                     +we*(self.actHila[t,pmin,emax,emp,tismax,p2max,act]))+\
-#                             wp*((1-we)*(self.actHila[t,pmax,emin,emp,tismax,p2max,act])
-#                                     +we*(self.actHila[t,pmax,emax,emp,tismax,p2max,act])))
-        
         if debug:
             if wp2<0 or wp2>1:
                 print('actV: emp {} elake {} old_wage {} wage {} tis {}: wp2 {}'.format(emp,elake,old_wage,wage,time_in_state,wp2))
@@ -849,20 +833,7 @@ class DynProgLifecycleRev(Lifecycle):
             
         a_set=list(act_set)
         act_set=set(act_set)
-            
-        #for k in act_set:
-        #    apx1=(1-wp2)*((1-wp)*((1-we)*(self.actHila[t,pmin,emin,emp,tismax,p2min,k])
-        #                          +we*(self.actHila[t,pmin,emax,emp,tismax,p2min,k]))+\
-        #                    wp*((1-we)*(self.actHila[t,pmax,emin,emp,tismax,p2min,k])
-        #                          +we*(self.actHila[t,pmax,emax,emp,tismax,p2min,k])))+\
-        #            wp2*((1-wp)*((1-we)*(self.actHila[t,pmin,emin,emp,tismax,p2max,k])
-        #                            +we*(self.actHila[t,pmin,emax,emp,tismax,p2max,k]))+\
-        #                    wp*((1-we)*(self.actHila[t,pmax,emin,emp,tismax,p2max,k])
-        #                            +we*(self.actHila[t,pmax,emax,emp,tismax,p2max,k])))
-        #    V[k]=max(0,apx1)
-            
-        #act=int(np.argmax(V))
-        #maxV=np.max(V)
+
         act=a_set[np.random.randint(len(act_set))]
         #maxV=V[act]
         
@@ -1086,59 +1057,23 @@ class DynProgLifecycleRev(Lifecycle):
             weight_old_s0=0
             weight_old_s1=0
             
-            if True:
-                palkka_next_mid0_v=self.map_palkka_future_v2(palkka,ika2,state=0,midpoint=True)
-                palkka_next_mid1_v=self.map_palkka_future_v2(palkka,ika2,state=1,midpoint=True)
-                wagetable_future[p,:,0]=self.map_palkka_future_v2(palkka,ika2,state=0,midpoint=False)
-                wagetable_future[p,:,[1,3]]=self.map_palkka_future_v2(palkka,ika2,state=1,midpoint=False)
-                for pnext in range(self.n_palkka_future-1): 
-                    palkka_next_mid0=palkka_next_mid0_v[pnext]
-                    weight_new_s0=self.env.wage_process_cumulative(palkka_next_mid0,palkka,ika2,state=0) # tila ei saa vaikuttaa tässä kuin palkka_next_mid0:n kautta
-                    pn_weight[p,pnext,0]=weight_new_s0-weight_old_s0
-                    weight_old_s0=weight_new_s0
-                    palkka_next_mid1=palkka_next_mid1_v[pnext]
-                    weight_new_s1=self.env.wage_process_cumulative(palkka_next_mid1,palkka,ika2,state=1) # tila ei saa vaikuttaa tässä kuin palkka_next_mid1:n kautta
-                    pn_weight[p,pnext,[1,3]]=weight_new_s1-weight_old_s1
-                    weight_old_s1=weight_new_s1
-            
-                pn_weight[p,self.n_palkka_future-1,0]=1.0-weight_old_s0
-                pn_weight[p,self.n_palkka_future-1,[1,3]]=1.0-weight_old_s1
-#             elif False:
-#                 palkka_next_mid0_v=self.map_palkka_future_v2(palkka,ika2,state=0,midpoint=True)
-#                 palkka_next_mid1_v=self.map_palkka_future_v2(palkka,ika2,state=1,midpoint=True)
-#                 wagetable_future[p,:,0]=self.map_palkka_future_v2(palkka,ika2,state=0,midpoint=False)
-#                 wagetable_future[p,:,[1,3]]=self.map_palkka_future_v2(palkka,ika2,state=1,midpoint=False)
-#                 for pnext in range(self.n_palkka_future-1): 
-#                     palkka_next_mid0=palkka_next_mid0_v[pnext] #self.map_palkka_future(palkka,pnext,med0,midpoint=True)
-#                     weight_new_s0=self.env.wage_process_cumulative(palkka_next_mid0,palkka,ika2,state=0) # tila ei saa vaikuttaa tässä kuin palkka_next_mid0:n kautta
-#                     pn_weight[p,pnext,0]=weight_new_s0-weight_old_s0
-#                     weight_old_s0=weight_new_s0
-#                     palkka_next_mid1=palkka_next_mid1_v[pnext] #self.map_palkka_future(palkka,pnext,med0,midpoint=True)
-#                     weight_new_s1=self.env.wage_process_cumulative(palkka_next_mid1,palkka,ika2,state=1) # tila ei saa vaikuttaa tässä kuin palkka_next_mid1:n kautta
-#                     pn_weight[p,pnext,[1,3]]=weight_new_s1-weight_old_s1
-#                     weight_old_s1=weight_new_s1
-#             
-#                 pn_weight[p,self.n_palkka_future-1,0]=1.0-weight_old_s0
-#                 pn_weight[p,self.n_palkka_future-1,[1,3]]=1.0-weight_old_s1            
-#             else: # vanha tapa
-#                 med0=self.env.wage_process_mean(palkka,ika2,state=0)
-#                 med1=self.env.wage_process_mean(palkka,ika2,state=1)
-#                 for pnext in range(self.n_palkka_future-1): 
-#                     palkka_next_mid0=self.map_palkka_future(palkka,pnext,med0,midpoint=True)
-#                     weight_new_s0=self.env.wage_process_cumulative(palkka_next_mid0,palkka,ika2,state=0) # tila ei saa vaikuttaa tässä kuin palkka_next_mid0:n kautta
-#                     pn_weight[p,pnext,0]=weight_new_s0-weight_old_s0
-#                     weight_old_s0=weight_new_s0
-#                     palkka_next_mid1=self.map_palkka_future(palkka,pnext,med1,midpoint=True)
-#                     weight_new_s1=self.env.wage_process_cumulative(palkka_next_mid1,palkka,ika2,state=1) # tila ei saa vaikuttaa tässä kuin palkka_next_mid1:n kautta
-#                     pn_weight[p,pnext,[1,3]]=weight_new_s1-weight_old_s1
-#                     weight_old_s1=weight_new_s1
-#                     wagetable_future[p,pnext,0]=self.map_palkka_future(palkka,pnext,med0)
-#                     wagetable_future[p,pnext,[1,3]]=self.map_palkka_future(palkka,pnext,med1)
-#             
-#                 wagetable_future[p,self.n_palkka_future-1,0]=self.map_palkka_future(palkka,self.n_palkka_future-1,med0)
-#                 wagetable_future[p,self.n_palkka_future-1,[1,3]]=self.map_palkka_future(palkka,self.n_palkka_future-1,med1)
-#                 pn_weight[p,self.n_palkka_future-1,0]=1.0-weight_old_s0
-#                 pn_weight[p,self.n_palkka_future-1,[1,3]]=1.0-weight_old_s1
+            palkka_next_mid0_v=self.map_palkka_future_v2(palkka,ika2,state=0,midpoint=True)
+            palkka_next_mid1_v=self.map_palkka_future_v2(palkka,ika2,state=1,midpoint=True)
+            wagetable_future[p,:,0]=self.map_palkka_future_v2(palkka,ika2,state=0,midpoint=False)
+            wagetable_future[p,:,[1,3]]=self.map_palkka_future_v2(palkka,ika2,state=1,midpoint=False)
+            for pnext in range(self.n_palkka_future-1): 
+                palkka_next_mid0=palkka_next_mid0_v[pnext]
+                weight_new_s0=self.env.wage_process_cumulative(palkka_next_mid0,palkka,ika2,state=0) # tila ei saa vaikuttaa tässä kuin palkka_next_mid0:n kautta
+                pn_weight[p,pnext,0]=weight_new_s0-weight_old_s0
+                weight_old_s0=weight_new_s0
+                palkka_next_mid1=palkka_next_mid1_v[pnext]
+                weight_new_s1=self.env.wage_process_cumulative(palkka_next_mid1,palkka,ika2,state=1) # tila ei saa vaikuttaa tässä kuin palkka_next_mid1:n kautta
+                pn_weight[p,pnext,[1,3]]=weight_new_s1-weight_old_s1
+                weight_old_s1=weight_new_s1
+        
+            pn_weight[p,self.n_palkka_future-1,0]=1.0-weight_old_s0
+            pn_weight[p,self.n_palkka_future-1,[1,3]]=1.0-weight_old_s1
+
             
             #print(wagetable_future[p,:,0])
             #print(wagetable_future[p,:,1])
