@@ -70,7 +70,7 @@ class Lifecycle():
                     year=2018,scale_tyel_accrual=None,preferencenoise_level=None,
                     scale_additional_tyel_accrual=None,valtionverotaso=None,perustulo_asetettava=None,
                     porrasta_toe=None,include_halftoe=None,include_ove=None,min_retirementage=None,
-                    max_retirementage=None,unemp_limit_reemp=None):
+                    max_retirementage=None,unemp_limit_reemp=None,lang=None):
         '''
         Alusta muuttujat
         '''
@@ -78,6 +78,9 @@ class Lifecycle():
         self.inv_timestep=int(np.round(1/self.timestep)) # pitäisi olla kokonaisluku
         self.min_age = 18
         self.max_age = 70
+        
+        self.lang='Finnish'
+        
         if minimal:
             self.min_retirementage=63.5
         else:
@@ -209,6 +212,9 @@ class Lifecycle():
             
         if min_retirementage is not None:
             self.min_retirementage=min_retirementage
+        
+        if lang is not None:
+            self.lang=lang
 
         if gamma is not None:
             self.gamma=gamma
@@ -344,7 +350,8 @@ class Lifecycle():
 
         self.episodestats=SimStats(self.timestep,self.n_time,self.n_employment,self.n_pop,
                                    self.env,self.minimal,self.min_age,self.max_age,self.min_retirementage,
-                                   version=self.version,params=self.gym_kwargs,year=self.year,gamma=self.gamma)
+                                   version=self.version,params=self.gym_kwargs,year=self.year,gamma=self.gamma,
+                                   lang=self.lang)
 
     def explain(self):
         '''
@@ -868,11 +875,11 @@ class Lifecycle():
         else:
             return self.episodestats.comp_total_reward()
    
-    def render_laffer(self,load=None,figname=None,include_retwork=True):
+    def render_laffer(self,load=None,figname=None,include_retwork=True,grouped=False,g=0):
         if load is not None:
             self.episodestats.load_sim(load)
             
-        rew=self.episodestats.comp_total_reward()
+        rew=self.episodestats.comp_total_reward(output=False)
             
         q=self.episodestats.comp_budget()
         if include_retwork:
@@ -880,17 +887,29 @@ class Lifecycle():
         else:
             tyotulosumma=q['tyotulosumma_eielakkeella']
         
-        q2=self.episodestats.comp_participants(scale=True,include_retwork=include_retwork)
-        kokotyossa,osatyossa=self.episodestats.comp_parttime_aggregate()
+        q2=self.episodestats.comp_participants(scale=True,include_retwork=include_retwork,grouped=grouped,g=g)
+        kokotyossa,osatyossa=self.episodestats.comp_parttime_aggregate(grouped=grouped,g=g)
         htv=q2['htv']
         palkansaajia=q2['palkansaajia']
         muut_tulot=q['muut tulot']
         tC=0.2*max(0,q['tyotulosumma']-q['verot+maksut'])
-        kiila,qc=self.episodestats.comp_verokiila()
-        kiila2,qcb=self.episodestats.comp_verokiila_kaikki_ansiot()
-        tyollaste,_=self.episodestats.comp_employed_aggregate()
-        tyotaste=self.episodestats.comp_unemployed_aggregate()
-        menot=q['etuusmeno']
+        if grouped:
+            kiila,qc=self.episodestats.comp_verokiila()
+            kiila2,qcb=self.episodestats.comp_verokiila_kaikki_ansiot()
+        else:
+            kiila,qc=self.episodestats.comp_verokiila()
+            kiila2,qcb=self.episodestats.comp_verokiila_kaikki_ansiot()
+            
+        tyollaste,_=self.episodestats.comp_employed_aggregate(grouped=grouped,g=g)
+        tyotaste=self.episodestats.comp_unemployed_aggregate(grouped=grouped,g=g)
+        menot={}
+        menot['etuusmeno']=q['etuusmeno']
+        menot['tyottomyysmenot']=q['ansiopvraha']
+        menot['kokoelake']=q['kokoelake']
+        menot['asumistuki']=q['asumistuki']
+        menot['toimeentulotuki']=q['toimeentulotuki']
+        menot['muutmenot']=q['opintotuki']+q['isyyspaivaraha']+q['aitiyspaivaraha']+q['sairauspaivaraha']++q['perustulo']+q['kotihoidontuki']
+        
         #print(tyollaste,tyotaste)
         #tyollaste,tyotaste=0,0
         #
@@ -1155,23 +1174,23 @@ class Lifecycle():
 
     def plot_RL_act(self,t,rlmodel='acktr',load='perus',debug=True,deterministic=True,
                         n_palkka=80,deltapalkka=1000,n_elake=40,deltaelake=1500,
-                        hila_palkka0=0,hila_elake0=0):
+                        hila_palkka0=0,min_pension=0):
         model,env,n_cpu=self.setup_model(rlmodel=rlmodel,load=load,debug=debug)
         RL_unemp=self.RL_simulate_V(model,env,t,emp=0,deterministic=deterministic,n_palkka=n_palkka,deltapalkka=deltapalkka,n_elake=n_elake,deltaelake=deltaelake,
-                        hila_palkka0=hila_palkka0,hila_elake0=hila_elake0)
+                        min_wage=min_wage,min_pension=min_pension)
         RL_emp=self.RL_simulate_V(model,env,t,emp=1,deterministic=deterministic,n_palkka=n_palkka,deltapalkka=deltapalkka,n_elake=n_elake,deltaelake=deltaelake,
-                        hila_palkka0=hila_palkka0,hila_elake0=hila_elake0)
+                        min_wage=min_wage,min_pension=min_pension)
         self.plot_img(RL_emp,xlabel="Pension",ylabel="Wage",title='Töissä')
         self.plot_img(RL_unemp,xlabel="Pension",ylabel="Wage",title='Työttömänä')
         self.plot_img(RL_emp-RL_unemp,xlabel="Pension",ylabel="Wage",title='Työssä-Työtön')
 
     def get_RL_act(self,t,emp=0,time_in_state=0,rlmodel='acktr',load='perus',debug=True,deterministic=True,
                         n_palkka=80,deltapalkka=1000,n_elake=40,deltaelake=1500,
-                        min_wage=1000,hila_elake0=0):
+                        min_wage=1000,min_pension=0):
         model,env,n_cpu=self.setup_model(rlmodel=rlmodel,load=load,debug=debug)
         return self.RL_simulate_V(model,env,t,emp=emp,deterministic=deterministic,time_in_state=time_in_state,
                         n_palkka=n_palkka,deltapalkka=deltapalkka,n_elake=n_elake,deltaelake=deltaelake,
-                        min_wage=min_wage,hila_elake0=hila_elake0)
+                        min_wage=min_wage,min_pension=min_pension)
 
     def get_rl_act(self,t,emp=0,time_in_state=0,rlmodel='acktr',load='perus',debug=True,deterministic=True):
         model,env,n_cpu=self.setup_model(rlmodel=rlmodel,load=load,debug=debug)
@@ -1262,6 +1281,7 @@ class Lifecycle():
         # dynaamisen ohjelmoinnin parametrejä
     
         if emp==2:
+            elake=max(780*12,elake)
             state=self.env.state_encode(emp,elake,0,age,time_in_state,0)
         else:
             state=self.env.state_encode(emp,elake,vanhapalkka,age,time_in_state,palkka)
@@ -1273,10 +1293,10 @@ class Lifecycle():
 
     def RL_simulate_V(self,model,env,age,emp=0,time_in_state=0,deterministic=True,
                         n_palkka=80,deltapalkka=1000,n_elake=40,deltaelake=1500,
-                        min_wage=0,hila_elake0=0):
+                        min_wage=0,min_pension=0):
         # dynaamisen ohjelmoinnin parametrejä
-        def map_elake(v):
-            return min_wage+deltaelake*v 
+        def map_elake(v,emp=1):
+            return min_wage+min_pension*v 
 
         def map_palkka(v):
             return min_wage+max(0,deltapalkka*v) 
@@ -1289,6 +1309,7 @@ class Lifecycle():
                 palkka=map_palkka(p)
                 elake=map_elake(el)
                 if emp==2:
+                    elake=max(780*12,elake)
                     state=self.env.state_encode(emp,elake,0,age,time_in_state,0)
                 else:
                     state=self.env.state_encode(emp,elake,palkka,age,time_in_state,palkka)
@@ -1340,4 +1361,3 @@ class Lifecycle():
     def comp_verokiila(self,grouped=True):
         return self.episodestats.comp_verokiila(grouped=grouped)
     
-        

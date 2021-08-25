@@ -19,7 +19,7 @@ from tqdm import tqdm_notebook as tqdm
 from .episodestats import EpisodeStats
     
 class SimStats(EpisodeStats):
-    def run_simstats(self,results,save,n,plot=True,startn=0,max_age=54,singlefile=False):
+    def run_simstats(self,results,save,n,plot=True,startn=0,max_age=54,singlefile=False,grouped=False,group=0):
         '''
         Laskee statistiikat ajoista
         '''
@@ -52,7 +52,11 @@ class SimStats(EpisodeStats):
         else:
             self.load_sim(results+'_'+str(100+startn),print_pop=False)
 
-        base_empstate=self.empstate/self.n_pop
+        if grouped:
+            base_empstate=self.gempstate[:,:,group]/self.n_pop
+        else:
+            base_empstate=self.empstate/self.n_pop
+        
         emps[0,:,:]=base_empstate
         htv_base,tyoll_base,haj_base,tyollaste_base,tyolliset_base=self.comp_tyollisyys_stats(base_empstate,scale_time=True)
         reward=self.get_reward()
@@ -107,7 +111,11 @@ class SimStats(EpisodeStats):
 
             for i in range(startn+1,n): 
                 self.load_sim(results+'_'+str(100+i),print_pop=False)
-                empstate=self.empstate/self.n_pop
+                if grouped:
+                    empstate=self.gempstate[:,:,group]/self.n_pop
+                else:
+                    empstate=self.empstate/self.n_pop
+                
                 emps[i,:,:]=empstate
                 reward=self.get_reward()
                 discounted_reward=self.get_reward(discounted=True)
@@ -176,10 +184,10 @@ class SimStats(EpisodeStats):
                             tyoll_virta,tyot_virta,tyot_virta_ansiosid,tyot_virta_tm,\
                             unemp_dur,unemp_lastdur,agg_netincome,agg_equivalent_netincome)
                     
-        if not singlefile:
-            # save the best
-            self.load_sim(results+'_'+str(100+best_emp))
-            self.save_sim(results+'_best')
+        #if not singlefile:
+        #    # save the best
+        #    self.load_sim(results+'_'+str(100+best_emp))
+        #    self.save_sim(results+'_best')
                     
         print('done')
         print('best_emp',best_emp)

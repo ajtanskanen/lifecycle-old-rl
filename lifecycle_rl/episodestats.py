@@ -2345,7 +2345,7 @@ class EpisodeStats():
         u=np.zeros((self.n_time,self.n_pop))
         for k in range(self.n_pop):
             u[self.n_time-1,k]=self.poprewstate[self.n_time-1,k]
-            for t in range(self.n_time-2,0,-1):
+            for t in range(self.n_time-2,-1,-1):
                 age=t+self.min_age
                 u[t,k]=self.poprewstate[t,k]+self.gamma*u[t+1,k]
          
@@ -3094,7 +3094,7 @@ class EpisodeStats():
         
         return q
 
-    def comp_participants(self,scale=False,include_retwork=True):
+    def comp_participants(self,scale=False,include_retwork=True,grouped=False,g=0):
         '''
         Lukumäärätiedot (EI HTV!)
         '''
@@ -3104,19 +3104,34 @@ class EpisodeStats():
         
         q={}
         if self.version in set([1,2,3,4]):
-            q['yhteensä']=np.sum(np.sum(self.empstate[:,:],1)*scalex)
-            if include_retwork:
-                q['palkansaajia']=np.sum((self.empstate[:,1]+self.empstate[:,10]+self.empstate[:,8]+self.empstate[:,9])*scalex)
-                q['htv']=np.sum((self.empstate[:,1]+0.5*self.empstate[:,10]+0.5*self.empstate[:,8]+self.empstate[:,9])*scalex)
-            else:
-                q['palkansaajia']=np.sum((self.empstate[:,1]+self.empstate[:,10])*scalex)
-                q['htv']=np.sum((self.empstate[:,1]+0.5*self.empstate[:,10])*scalex)
+            if grouped:
+                q['yhteensä']=np.sum(np.sum(self.gempstate[:,:,g],1)*scalex)
+                if include_retwork:
+                    q['palkansaajia']=np.sum((self.gempstate[:,1,g]+self.gempstate[:,10,g]+self.gempstate[:,8,g]+self.gempstate[:,9,g])*scalex)
+                    q['htv']=np.sum((self.gempstate[:,1,g]+0.5*self.gempstate[:,10,g]+0.5*self.gempstate[:,8,g]+self.gempstate[:,9,g])*scalex)
+                else:
+                    q['palkansaajia']=np.sum((self.gempstate[:,1,g]+self.gempstate[:,10,g])*scalex)
+                    q['htv']=np.sum((self.gempstate[:,1,g]+0.5*self.gempstate[:,10,g])*scalex)
             
-            q['ansiosidonnaisella']=np.sum((self.empstate[:,0]+self.empstate[:,4])*scalex)
-            q['tmtuella']=np.sum(self.empstate[:,13]*scalex)
-            q['isyysvapaalla']=np.sum(self.empstate[:,6]*scalex)
-            q['kotihoidontuella']=np.sum(self.empstate[:,7]*scalex)
-            q['vanhempainvapaalla']=np.sum(self.empstate[:,5]*scalex)
+                q['ansiosidonnaisella']=np.sum((self.gempstate[:,0,g]+self.gempstate[:,4,g])*scalex)
+                q['tmtuella']=np.sum(self.gempstate[:,13,g]*scalex)
+                q['isyysvapaalla']=np.sum(self.gempstate[:,6,g]*scalex)
+                q['kotihoidontuella']=np.sum(self.gempstate[:,7,g]*scalex)
+                q['vanhempainvapaalla']=np.sum(self.gempstate[:,5,g]*scalex)
+            else:
+                q['yhteensä']=np.sum(np.sum(self.empstate[:,:],1)*scalex)
+                if include_retwork:
+                    q['palkansaajia']=np.sum((self.empstate[:,1]+self.empstate[:,10]+self.empstate[:,8]+self.empstate[:,9])*scalex)
+                    q['htv']=np.sum((self.empstate[:,1]+0.5*self.empstate[:,10]+0.5*self.empstate[:,8]+self.empstate[:,9])*scalex)
+                else:
+                    q['palkansaajia']=np.sum((self.empstate[:,1]+self.empstate[:,10])*scalex)
+                    q['htv']=np.sum((self.empstate[:,1]+0.5*self.empstate[:,10])*scalex)
+            
+                q['ansiosidonnaisella']=np.sum((self.empstate[:,0]+self.empstate[:,4])*scalex)
+                q['tmtuella']=np.sum(self.empstate[:,13]*scalex)
+                q['isyysvapaalla']=np.sum(self.empstate[:,6]*scalex)
+                q['kotihoidontuella']=np.sum(self.empstate[:,7]*scalex)
+                q['vanhempainvapaalla']=np.sum(self.empstate[:,5]*scalex)
         else:
             q['yhteensä']=np.sum(np.sum(self.empstate[:,:],1)*scalex)
             q['palkansaajia']=np.sum((self.empstate[:,1])*scalex)
@@ -3184,15 +3199,20 @@ class EpisodeStats():
 
         diff_emp=self.empstate/self.n_pop-cc2.empstate/cc2.n_pop
         x=np.linspace(self.min_age,self.max_age,self.n_time)
-        #x=range(self.age_min,self.age_min+self.n_time)
+        real1=self.comp_presentvalue()
+        real2=cc2.comp_presentvalue()
+        mean_real1=np.mean(real1,axis=1)
+        mean_real2=np.mean(real2,axis=1)
+        initial1=np.mean(real1[1,:])
+        initial2=np.mean(real2[1,:])
         
-        rew1=self.comp_total_reward(output=False)
-        rew2=cc2.comp_total_reward(output=False)
+        rew1=self.comp_total_reward(output=False,discounted=True)
+        rew2=cc2.comp_total_reward(output=False,discounted=True)
         net1,eqnet1=self.comp_total_netincome(output=False)
         net2,eqnet2=cc2.comp_total_netincome(output=False)
         
-        print(f'{label1} ave reward {rew1} ave net income {net1} e/y ave eq net income {eqnet1} e/y')
-        print(f'{label2} ave reward {rew2} ave net income {net2} e/y ave eq net income {eqnet2} e/y')
+        print(f'{label1} reward {rew1} netincome {net1:.2f} eq {eqnet1:.3f} initial {initial1}')
+        print(f'{label2} reward {rew2} netincome {net2:.2f} eq {eqnet2:.3f} initial {initial2}')
 
         if self.minimal>0:
             s=20
@@ -3223,6 +3243,13 @@ class EpisodeStats():
         df['ero']=df1[label1]-df2['one']
         
         fig,ax=plt.subplots()
+        ax.plot(x[1:self.n_time],mean_real1[1:self.n_time]-mean_real2[1:self.n_time],label=label1+'-'+label2)
+        ax.legend()
+        ax.set_xlabel('age')
+        ax.set_ylabel('real diff')
+        plt.show()
+        
+        fig,ax=plt.subplots()
         c1=self.comp_cumurewstate()
         c2=cc2.comp_cumurewstate()
         ax.plot(x,c1,label=label1)
@@ -3242,7 +3269,7 @@ class EpisodeStats():
         if self.version in set([1,2,3,4]):
             print('Rahavirrat skaalattuna väestötasolle')
             print(tabulate(df, headers='keys', tablefmt='psql', floatfmt=",.2f"))
-        
+            
         if dash:
             ls='--'
         else:
@@ -3426,9 +3453,13 @@ class EpisodeStats():
         self.plot_compare_virrat(tyot_virta,tyot_virta2,min_time=40,max_time=64,virta_label='tm-Työttömyys',label1=label1,label2=label2)
         self.plot_compare_virrat(tyot_virta,tyot_virta2,min_time=55,max_time=64,virta_label='tm-Työttömyys',label1=label1,label2=label2)
         
-    def comp_employed_by_age(self,emp=None):
+    def comp_employed_by_age(self,emp=None,grouped=False,g=0):
         if emp is None:
-            emp=self.empstate
+            if grouped:
+                emp=self.gempstate[:,:,g]
+            else:
+                emp=self.empstate
+            
         nn=np.sum(emp,1)
         if self.minimal:
             tyoll_osuus=(emp[:,1]+emp[:,3])/nn
@@ -3446,9 +3477,12 @@ class EpisodeStats():
             
         return tyoll_osuus,htv_osuus
 
-    def comp_employed_aggregate(self,emp=None,start=20,end=63.5):
+    def comp_employed_aggregate(self,emp=None,start=20,end=63.5,grouped=False,g=0):
         if emp is None:
-            emp=self.empstate
+            if grouped:
+                emp=self.gempstate[:,:,g]
+            else:
+                emp=self.empstate
             
         nn=np.sum(emp,1)
     
@@ -3466,9 +3500,12 @@ class EpisodeStats():
             
         return tyoll_osuus,htv_osuus
 
-    def comp_unemployed_by_age(self,emp=None):
+    def comp_unemployed_by_age(self,emp=None,grouped=False,g=0):
         if emp is None:
-            emp=self.empstate
+            if grouped:
+                emp=self.gempstate[:,:,g]
+            else:
+                emp=self.empstate
             
         nn=np.sum(emp,1)
         if self.minimal:
@@ -3482,9 +3519,12 @@ class EpisodeStats():
             
         return tyot_osuus
 
-    def comp_unemployed_aggregate(self,emp=None,start=20,end=63.5,scale_time=True):
+    def comp_unemployed_aggregate(self,emp=None,start=20,end=63.5,scale_time=True,grouped=False,g=0):
         if emp is None:
-            emp=self.empstate
+            if grouped:
+                emp=self.gempstate[:,:,g]
+            else:
+                emp=self.empstate
             
         nn=np.sum(emp,1)
     
@@ -3498,13 +3538,16 @@ class EpisodeStats():
             
         return unemp
         
-    def comp_parttime_aggregate(self,emp=None,start=20,end=63.5,scale_time=True):
+    def comp_parttime_aggregate(self,emp=None,start=20,end=63.5,scale_time=True,grouped=False,g=0):
         '''
         Lukumäärätiedot (EI HTV!)
         '''
 
         if emp is None:
-            emp=self.empstate
+            if grouped:
+                emp=self.gempstate[:,:,g]
+            else:
+                emp=self.empstate
 
         nn=np.sum(emp,1)
     
@@ -3555,7 +3598,7 @@ class EpisodeStats():
             
         return ansiosid_osuus,tm_osuus
     
-    def comp_tyollisyys_stats(self,emp,scale_time=True,start=19,end=68,full=False,tyot_stats=False,agg=False,shapes=False):
+    def comp_tyollisyys_stats(self,emp,scale_time=True,start=19,end=68,full=False,tyot_stats=False,agg=False,shapes=False,only_groups=False,g=0):
         demog2=self.empstats.get_demog()
               
         if scale_time:
@@ -3566,7 +3609,10 @@ class EpisodeStats():
         min_cage=self.map_age(start)
         max_cage=self.map_age(end)+1
         
-        tyollosuus,htvosuus,tyot_osuus,kokotyo_osuus,osatyo_osuus=self.comp_employed(emp)
+        if only_groups:
+            tyollosuus,htvosuus,tyot_osuus,kokotyo_osuus,osatyo_osuus=self.comp_employed(emp)
+        else:
+            tyollosuus,htvosuus,tyot_osuus,kokotyo_osuus,osatyo_osuus=self.comp_employed(emp)
         
         d=np.squeeze(demog2[min_cage:max_cage])
         htv=np.round(scale*np.sum(d*np.squeeze(htvosuus[min_cage:max_cage])))

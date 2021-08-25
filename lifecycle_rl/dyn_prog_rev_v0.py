@@ -20,7 +20,6 @@ import h5py
 from tqdm import tqdm_notebook as tqdm
 from lifecycle_rl import Lifecycle
 from scipy.interpolate import interpn,interp1d,interp2d,RectBivariateSpline
-from scipy.integrate import quad,trapz
 
 class DynProgLifecycleRev(Lifecycle):
 
@@ -41,32 +40,23 @@ class DynProgLifecycleRev(Lifecycle):
         '''
         #self.min_salary=1000
         #self.hila_palkka0 = 1000 # = self.min_salary # 0
+        self.hila_elake0 = 0
         self.spline=True
-        self.spline_approx='cubic'
+        #self.spline_approx='cubic'
         #self.spline_approx='quadratic'
-        #self.spline_approx='linear'
-        self.integmethod=0 # compare
+        self.spline_approx='linear'
         
         self.pw_bivariate=False
-        self.pw_maxspline=3 # 1 = linear, 3 = cubic
-        self.epsabs=1e-6
         
         # dynaamisen ohjelmoinnin parametrejä
         self.n_palkka = 20
         self.n_palkka_future = 21
-        self.n_palkka_future_tr = 201
         self.n_elake = 40
-        self.n_oapension = 200
         self.n_tis = 5 # ei vaikutusta palkkaan
-        self.min_wage=1_000
+        self.min_wage=0 #1_000
         self.max_wage=85_000
-        self.min_pension=0
+        self.min_pension=self.hila_elake0
         self.max_pension=50_000
-        
-        self.min_paid_pension=730*12
-        
-        self.min_oapension=500*12
-        self.max_oapension=60_000
         
         if n_palkka is not None:
             self.n_palkka=n_palkka
@@ -82,27 +72,23 @@ class DynProgLifecycleRev(Lifecycle):
             self.min_wage=min_wage
         if max_pension is not None:
             self.max_pension=max_pension
-        
+            
         self.deltapalkka = (self.max_wage-self.min_wage)/(self.n_palkka-1)
         self.deltaelake = (self.max_pension-self.min_pension)/(self.n_elake-1)
-        self.delta_paid_pension = (self.max_pension-self.min_paid_pension)/(self.n_elake-1)
-        self.delta_oapension = (self.max_oapension-self.min_oapension)/(self.n_oapension-1)
         self.deltatis = 1
         
         self.include_pt=False
         
+        #self.deltafuture_old=2.0/self.n_palkka_future
         self.midfuture=int(np.floor(self.n_palkka_future/2))
-        self.deltafuture=8*0.07*0.5/self.midfuture
+        self.deltafuture=16*0.07*0.5/self.midfuture #8*0.07*0.5/self.midfuture
 
         self.min_grid_age=self.min_age
         self.max_grid_age=self.max_age
         
         print('min',self.min_retirementage)
         
-        if False:
-            self.unemp_wageshock=1.0 #0.95
-        else:
-            self.unemp_wageshock=0.95
+        self.unemp_wageshock=0.95
         
         if self.spline:
             self.get_V=self.get_V_spline
@@ -121,37 +107,22 @@ class DynProgLifecycleRev(Lifecycle):
         self.Hila = np.zeros((self.n_time+1,self.n_palkka,self.n_elake,self.n_employment,self.n_tis,self.n_palkka))
         self.actHila = np.zeros((self.n_time+1,self.n_palkka,self.n_elake,self.n_employment,self.n_tis,self.n_palkka,self.n_acts))        
         self.actReward = np.zeros((self.n_time+1,self.n_palkka,self.n_elake,self.n_employment,self.n_tis,self.n_palkka,self.n_acts))        
-        self.oaHila = np.zeros((self.n_time+1,self.n_oapension))
-        self.oaactHila = np.zeros((self.n_time+1,self.n_oapension))        
-        self.oaactReward = np.zeros((self.n_time+1,self.n_oapension))        
 
     def explain(self):
-        print(f'n_palkka {self.n_palkka}\nn_elake {self.n_elake}\nn_palkka_future {self.n_palkka_future}\n')
-        print('min_wage {} min_pension {}'.format(self.min_wage,self.min_pension))
-        print('deltapalkka {} deltaelake {} delta_paid_pension {}'.format(self.deltapalkka,self.deltaelake,self.delta_paid_pension))
+        print('n_palkka {} n_elake {} n_palkka_future {}'.format(self.n_palkka,self.n_elake,self.n_palkka_future))
+        print('min_wage {} hila_elake0 {}'.format(self.min_wage,self.hila_elake0))
+        print('deltapalkka {} deltaelake {}'.format(self.deltapalkka,self.deltaelake))
         print('n_tis {} deltatis {}'.format(self.n_tis,self.deltatis))
         print('gamma {} timestep {}'.format(self.gamma,self.timestep))
         self.env.explain()
 
-    def map_elake(self,v,emp=1):
-        if emp==2:
-            #return self.min_paid_pension+self.delta_paid_pension*v # pitäisikö käyttää exp-hilaa?
-            return self.min_oapension+self.delta_oapension*v # pitäisikö käyttää exp-hilaa?
-        else:
-            return self.min_pension+self.deltaelake*v # pitäisikö käyttää exp-hilaa?
+    def map_elake(self,v):
+        return self.hila_elake0+self.deltaelake*v # pitäisikö käyttää exp-hilaa?
 
-    def inv_elake(self,v,emp=1):
-        if emp==2:
-            #vmin=max(0,min(self.n_elake-2,int(np.floor((v-self.min_paid_pension)/self.delta_paid_pension))))
-            #vmax=vmin+1
-            #w=(v-self.min_paid_pension)/self.delta_paid_pension-vmin # lin.approximaatio
-            vmin=max(0,min(self.n_oapension-2,int(np.floor((v-self.min_oapension)/self.delta_oapension))))
-            vmax=vmin+1
-            w=(v-self.min_oapension)/self.delta_oapension-vmin # lin.approximaatio
-        else:
-            vmin=max(0,min(self.n_elake-2,int(np.floor((v-self.min_pension)/self.deltaelake))))
-            vmax=vmin+1
-            w=(v-self.min_pension)/self.deltaelake-vmin # lin.approximaatio
+    def inv_elake(self,v):
+        vmin=max(0,min(self.n_elake-2,int(np.floor((v-self.hila_elake0)/self.deltaelake))))
+        vmax=vmin+1
+        w=(v-self.hila_elake0)/self.deltaelake-vmin # lin.approximaatio
         
         if w<0:
             print(f'w<0: {w} {v} {vmin}')
@@ -160,25 +131,25 @@ class DynProgLifecycleRev(Lifecycle):
 
         return vmin,vmax,w
 
-#     def map_exp_elake(self,v):
-#         return self.min_pension+self.deltaelake*(np.exp(v*self.expelakescale)-1)
-# 
-#     def inv_exp_elake(self,v):
-#         vmin=max(0,min(self.n_elake-2,int((np.log(v-self.min_pension)+1)/self.deltaelake)))
-#         vmax=vmin+1
-#         vmin_value=self.map_exp_elake(vmin)
-#         vmax_value=self.map_exp_elake(vmax)
-#         w=(v-vmin_value)/(self.vmax_value-vmin_value) # lin.approximaatio
-# 
-#         return vmin,vmax,w
+    def map_exp_elake(self,v):
+        return self.hila_elake0+self.deltaelake*(np.exp(v*self.expelakescale)-1)
+
+    def inv_exp_elake(self,v):
+        vmin=max(0,min(self.n_elake-2,int((np.log(v-self.hila_elake0)+1)/self.deltaelake)))
+        vmax=vmin+1
+        vmin_value=self.map_exp_elake(vmin)
+        vmax_value=self.map_exp_elake(vmax)
+        w=(v-vmin_value)/(self.vmax_value-vmin_value) # lin.approximaatio
+
+        return vmin,vmax,w
 
     def test_map_palkka(self):
         '''
         debug function
         '''
         for k in range(1000,100000,1000):
-            vmin,vmax,w=self.inv_elake(k,emp=2)
-            p2=(1-w)*self.map_elake(vmin,emp=2)+w*self.map_elake(vmax,emp=2)
+            vmin,vmax,w=self.inv_palkka(k)
+            p2=(1-w)*self.map_palkka(vmin)+w*self.map_palkka(vmax)
             print(k,p2,vmin,vmax,w)
             
         for p in range(self.n_palkka): 
@@ -204,6 +175,16 @@ class DynProgLifecycleRev(Lifecycle):
 
         return vmin,vmax,w
 
+#     def map_palkka_future_old(self,palkka,v,state=1,midpoint=False):
+#         if state==0:
+#             kerroin=self.unemp_wageshock
+#         else:
+#             kerroin=1.0
+#         if midpoint:
+#             return kerroin*palkka*np.exp(((v+0.5)-self.midfuture)*self.deltafuture)
+#         else:
+#             return kerroin*palkka*np.exp((v-self.midfuture)*self.deltafuture)
+
     def map_palkka_future(self,palkka,v,med,state=1,midpoint=False):
         #if state==0:
         #    kerroin=self.unemp_wageshock
@@ -225,10 +206,15 @@ class DynProgLifecycleRev(Lifecycle):
         return w
 
     def map_palkka_future_v3(self,palkka,age,state=1,midpoint=False):
-        x=0.0001+np.array([0.9998*v/self.n_palkka_future for v in range(self.n_palkka_future+1)])
+        
+        if midpoint:
+            x=[1.0*(v+1)/(self.n_palkka_future) for v in range(self.n_palkka_future)]
+        else:
+            x=[1.0*(0.5+v)/(self.n_palkka_future) for v in range(self.n_palkka_future)]
 
         w=self.env.wage_process_map(x,palkka,age,state=state)
         return w
+
 
     def test_palkka_future(self):
         for s in range(2):
@@ -269,43 +255,51 @@ class DynProgLifecycleRev(Lifecycle):
         if age>self.max_age:
             return 0.0
 
+        emin,emax,we=self.inv_elake(elake)
+        pmin,pmax,wp=self.inv_palkka(old_wage)
+        #p2min,p2max,wp2=self.inv_palkka_future(old_wage,wage)  
+        p2min,p2max,wp2=self.inv_palkka(wage)        
         tismax=self.inv_tis(time_in_state)
+        emp=int(emp)
         
         if emp==2:
-            tismax=0
-            #x = np.linspace(self.min_paid_pension,self.max_pension, self.n_elake)
-            #y = self.Hila[t,0,:,emp,tismax,0]
-            x = np.linspace(self.min_oapension,self.max_oapension, self.n_oapension)
-            y = self.oaHila[t,:]
-            f = interp1d(x,y,fill_value="extrapolate",kind=self.spline_approx)
-            V1=f(max(self.min_oapension,elake))
+            p2min,p2max,wp2=0,1,0
+            pmin,pmax,wp=0,1,0
+        
+            #V1=(1-we)*(self.Hila[t,pmin,emin,emp,tismax,p2min])+we*(self.Hila[t,pmin,emax,emp,tismax,p2min])
+            x = np.linspace(0, self.max_pension, self.n_elake)
+            y = self.Hila[t,0,:,emp,tismax,0]
+            f = interp1d(x, y,fill_value="extrapolate",kind=self.spline_approx)
+            V1=f(elake)
+            
+            #print(f'V1={V1} elake={elake} x={x} y={y}')
         else:    
-            emin,emax,we=self.inv_elake(elake)
-            pmin,pmax,wp=self.inv_palkka(old_wage)
-            #p2min,p2max,wp2=self.inv_palkka(wage)        
             if self.pw_bivariate:
                 p = np.linspace(0, self.max_pension, self.n_elake)
                 w = np.linspace(self.min_wage, self.max_wage, self.n_palkka)
                 values=(1-wp)*self.Hila[t,pmin,:,emp,tismax,:]+wp*self.Hila[t,pmax,:,emp,tismax,:]
-                g=RectBivariateSpline(p,w, values,kx=self.pw_maxspline,ky=self.pw_maxspline) # default kx=3,ky=3 DOES NOT EXTRAPOLATE!
+                g=RectBivariateSpline(p,w, values) # default kx=3,ky=3
+                #f=RectBivariateSpline(p,w, values,kx=1,ky=1) # lets use linear
                 V1 = np.squeeze(g(elake,wage))
             else:
                 #p = np.linspace(0, self.max_pension, self.n_elake)
                 w = np.linspace(self.min_wage, self.max_wage, self.n_palkka)
                 values=(1-we)*self.Hila[t,:,emin,emp,tismax,:]+we*self.Hila[t,:,emax,emp,tismax,:]
-                g=RectBivariateSpline(w,w, values,kx=self.pw_maxspline,ky=self.pw_maxspline) # default kx=3,ky=3
+                g=RectBivariateSpline(w,w, values) # default kx=3,ky=3
+                #f=RectBivariateSpline(p,w, values,kx=1,ky=1) # lets use linear
                 V1 = np.squeeze(g(old_wage,wage))
 
         if show:      
             print(f'getV({emp},{elake},{old_wage},{wage}): p2min {p2min} p2max {p2max} wp2 {wp2})')
             print(self.Hila[t,pmin,emin,emp,tismax,p2min],self.Hila[t,pmin,emin,emp,tismax,p2max])
             
-        V=np.maximum(0,V1)
+        V=max(0,V1)
 
         return V
         
+
     # lineaarinen approksimaatio
-    def get_V_spline_fast(self,s=None,emp=None,elake=None,old_wage=None,time_in_state=None,wage=None,show=False,age=None):
+    def get_V_nospline(self,s=None,emp=None,elake=None,old_wage=None,time_in_state=None,wage=None,show=False,age=None):
         '''
         hae hilasta tilan s arvo hetkelle t
         '''
@@ -317,53 +311,93 @@ class DynProgLifecycleRev(Lifecycle):
         if age>self.max_age:
             return 0.0
 
+        emin,emax,we=self.inv_elake(elake)
         tismax=self.inv_tis(time_in_state)
+        emp=int(emp)
         
         if emp==2:
-            tismax=0
-            #x = np.linspace(self.min_paid_pension,self.max_pension, self.n_elake)
-            #y = self.Hila[t,0,:,emp,tismax,0]
-            x = np.linspace(self.min_oapension,self.max_oapension, self.n_oapension)
-            y = self.oaHila[t,:]
-            f = interp1d(x,y,fill_value="extrapolate",kind=self.spline_approx)
-            V1=f(np.maximum(self.min_oapension,elake))
+            p2min,p2max,wp2=0,1,0
+            pmin,pmax,wp=0,1,0
+        
+            V1=(1-we)*(self.Hila[t,pmin,emin,emp,tismax,p2min])+we*(self.Hila[t,pmin,emax,emp,tismax,p2min])
         else:    
-            emin,emax,we=self.inv_elake(elake)
             pmin,pmax,wp=self.inv_palkka(old_wage)
-            #p2min,p2max,wp2=self.inv_palkka(wage)        
-            if self.pw_bivariate:
-                V1 = np.squeeze((1-wp)*self.g[pmin,emp,tismax](elake,wage)+wp*self.g[pmax,emp,tismax](elake,wage))
-            else:
-                V1 = np.squeeze((1-wp)*self.g[emin,emp,tismax](old_wage,wage)+wp*self.g[emax,emp,tismax](old_wage,wage))
+            p2min,p2max,wp2=self.inv_palkka(wage)        
+            V1=(1-wp2)*((1-wp)*( (1-we)*(self.Hila[t,pmin,emin,emp,tismax,p2min])\
+                                +we*(self.Hila[t,pmin,emax,emp,tismax,p2min]))+\
+                        wp*(     (1-we)*(self.Hila[t,pmax,emin,emp,tismax,p2min])\
+                                +we*(self.Hila[t,pmax,emax,emp,tismax,p2min])))+\
+               wp2*(     (1-wp)*((1-we)*(self.Hila[t,pmin,emin,emp,tismax,p2max])\
+                                +we*(self.Hila[t,pmin,emax,emp,tismax,p2max]))+\
+                        wp*(     (1-we)*(self.Hila[t,pmax,emin,emp,tismax,p2max])\
+                                +we*(self.Hila[t,pmax,emax,emp,tismax,p2max])))                         
 
         if show:      
             print(f'getV({emp},{elake},{old_wage},{wage}): p2min {p2min} p2max {p2max} wp2 {wp2})')
-            #print(self.Hila[t,pmin,emin,emp,tismax,p2min],self.Hila[t,pmin,emin,emp,tismax,p2max])
+            print(self.Hila[t,pmin,emin,emp,tismax,p2min],self.Hila[t,pmin,emin,emp,tismax,p2max])
             
-        V=np.maximum(0,V1)
+        
+        #if wp2<0 or wp2>1:
+        #    print('emp {} elake {} old_wage {} wage {} tis {}: wp2 {}'.format(emp,elake,old_wage,wage,time_in_state,wp2))
+        #if wp<0 or wp>1:
+        #    print('emp {} elake {} old_wage {} wage {} tis {}: wp {}'.format(emp,elake,old_wage,wage,time_in_state,wp))
+        #if we<0 or we>1:
+        #    print('emp {} elake {} old_wage {} wage {} tis {}: wp {}'.format(emp,elake,old_wage,wage,time_in_state,we))
+
+        V=max(0,V1)
 
         return V        
-        
-    def setup_spline_fast(self,t):
-        if self.pw_bivariate:
-            self.g=np.empty(shape=(self.n_palkka,2,self.n_tis),dtype=object)
-            p = np.linspace(0, self.max_pension, self.n_elake)
-            w = np.linspace(self.min_wage, self.max_wage, self.n_palkka)
+
+    # lineaarinen approksimaatio
+    def get_V_vector_nospline(self,s=None,emp=None,elake=None,old_wage=None,time_in_state=None,wages=None,show=False,age=None):
+        '''
+        hae hilasta tilan s arvo hetkelle t
+        '''
+        #if t>self.n_time:
+        #    return 0
             
-            for pmin in range(0,self.n_palkka):
-                for emp in range(0,2):
-                    for tismax in range(0,self.n_tis):
-                        self.g[pmin,emp,tismax]=RectBivariateSpline(p,w,self.Hila[t,pmin,:,emp,tismax,:],kx=self.pw_maxspline,ky=self.pw_maxspline)
+        Vs=np.zeros(wages.shape)
+        
+        if emp is None:
+            emp,elake,old_wage,age,time_in_state,wage=self.env.state_decode(s)
+            
+        t=self.map_grid_age(age)
+        
+        if emp==2:
+            emin,emax,we=self.inv_elake(elake)
+            pmin,pmax,wp=0,1,0
+            p2min,p2max,wp2=0,1,0
+            tismax=0
+            emp=int(emp)
+            V1=(1-we)*(self.Hila[t,pmin,emin,emp,tismax,p2min])+we*(self.Hila[t,pmin,emax,emp,tismax,p2min])
+
+            Vs[:]=max(0,V1)
         else:
-            self.g=np.empty(shape=(self.n_elake,2,self.n_tis),dtype=object)
+            emin,emax,we=self.inv_elake(elake)
+            pmin,pmax,wp=self.inv_palkka(old_wage)
+            p2min,p2max,wp2=self.inv_palkka(wage)        
+            tismax=self.inv_tis(time_in_state)
+            emp=int(emp)
             p = np.linspace(0, self.max_pension, self.n_elake)
             w = np.linspace(self.min_wage, self.max_wage, self.n_palkka)
-            for emp in range(0,2):
-                for tismax in range(0,self.n_tis):
-                    for emin in range(0,self.n_elake):
-                        f=RectBivariateSpline(w,w,self.Hila[t,:,emin,emp,tismax,:],kx=self.pw_maxspline,ky=self.pw_maxspline)
-                        self.g[emin,emp,tismax]=f
-    
+            for ind,wage in enumerate(wages):
+                p2min,p2max,wp2=self.inv_palkka_future(old_wage,wage)  
+                V1=(1-wp2)*((1-wp)*( (1-we)*(self.Hila[t,pmin,emin,emp,tismax,p2min])\
+                                    +we*(self.Hila[t,pmin,emax,emp,tismax,p2min]))+\
+                            wp*(     (1-we)*(self.Hila[t,pmax,emin,emp,tismax,p2min])\
+                                    +we*(self.Hila[t,pmax,emax,emp,tismax,p2min])))+\
+                   wp2*(     (1-wp)*((1-we)*(self.Hila[t,pmin,emin,emp,tismax,p2max])\
+                                    +we*(self.Hila[t,pmin,emax,emp,tismax,p2max]))+\
+                            wp*(     (1-we)*(self.Hila[t,pmax,emin,emp,tismax,p2max])\
+                                    +we*(self.Hila[t,pmax,emax,emp,tismax,p2max])))                         
+
+                Vs[ind]=max(0,V1)
+
+        if show:      
+            print(f'getV({emp},{elake},{old_wage},{wage}): p2min {p2min} p2max {p2max} wp2 {wp2})')
+            print(self.Hila[t,pmin,emin,emp,tismax,p2min],self.Hila[t,pmin,emin,emp,tismax,p2max])
+
+        return Vs
 
     # lineaarinen approksimaatio
     def get_V_vector_spline(self,s=None,emp=None,elake=None,old_wage=None,time_in_state=None,wages=None,show=False,age=None):
@@ -381,75 +415,37 @@ class DynProgLifecycleRev(Lifecycle):
         t=self.map_grid_age(age)
         
         if emp==2:
+            emin,emax,we=self.inv_elake(elake)
+            pmin,pmax,wp=0,1,0
+            p2min,p2max,wp2=0,1,0
             tismax=0
-            #tismax=self.inv_tis(time_in_state)
-            #x = np.linspace(self.min_paid_pension, self.max_pension, self.n_elake)
-            #y = self.Hila[t,0,:,emp,tismax,0]
-            x = np.linspace(self.min_oapension,self.max_oapension, self.n_oapension)
-            y = self.oaHila[t,:]
+            emp=int(emp)
+            x = np.linspace(0, self.max_pension, self.n_elake)
+            y = self.Hila[t,0,:,emp,tismax,0]
             f = interp1d(x, y,fill_value="extrapolate",kind=self.spline_approx)
             Vs[:]=f(elake)
         else:
             emin,emax,we=self.inv_elake(elake)
             pmin,pmax,wp=self.inv_palkka(old_wage)
+            #p2min,p2max,wp2=self.inv_palkka_future(old_wage,wage)  
+            #p2min,p2max,wp2=self.inv_palkka(wage)        
             tismax=self.inv_tis(time_in_state)
+            emp=int(emp)
             p = np.linspace(0, self.max_pension, self.n_elake)
             w = np.linspace(self.min_wage, self.max_wage, self.n_palkka)
 
             if self.pw_bivariate:
                 values=(1-wp)*self.Hila[t,pmin,:,emp,tismax,:]+wp*self.Hila[t,pmax,:,emp,tismax,:]
-                g=RectBivariateSpline(p,w, values,kx=self.pw_maxspline,ky=self.pw_maxspline)
+                g=RectBivariateSpline(p,w, values)
+                #f=RectBivariateSpline(p,w, values,kx=1,ky=1)
                 for ind,wage in enumerate(wages):
                     V1 = np.squeeze(g(elake,wage))
                     Vs[ind]=max(0,V1)
             else:
                 values=(1-we)*self.Hila[t,:,emin,emp,tismax,:]+we*self.Hila[t,:,emax,emp,tismax,:]
-                g=RectBivariateSpline(w,w,values,kx=self.pw_maxspline,ky=self.pw_maxspline)
+                g=RectBivariateSpline(w,w,values)
                 for ind,wage in enumerate(wages):
                     V1 = np.squeeze(g(old_wage,wage))
-                    Vs[ind]=max(0,V1)
-
-        if show:      
-            print(f'getV({emp},{elake},{old_wage},{wage}): p2min {p2min} p2max {p2max} wp2 {wp2})')
-            print(self.Hila[t,pmin,emin,emp,tismax,p2min],self.Hila[t,pmin,emin,emp,tismax,p2max])
-
-        return Vs
-
-    # lineaarinen approksimaatio
-    def get_V_vector_spline_fast(self,s=None,emp=None,elake=None,old_wage=None,time_in_state=None,wages=None,show=False,age=None):
-        '''
-        hae hilasta tilan s arvo hetkelle t
-        '''
-        #if t>self.n_time:
-        #    return 0
-            
-        Vs=np.zeros(wages.shape)
-        
-        if emp is None:
-            emp,elake,old_wage,age,time_in_state,wage=self.env.state_decode(s)
-            
-        t=self.map_grid_age(age)
-        
-        if emp==2:
-            tismax=0
-            #tismax=self.inv_tis(time_in_state)
-            #x = np.linspace(self.min_paid_pension, self.max_pension, self.n_elake)
-            #y = self.Hila[t,0,:,emp,tismax,0]
-            x = np.linspace(self.min_oapension,self.max_oapension, self.n_oapension)
-            y = self.oaHila[t,:]
-            f = interp1d(x, y,fill_value="extrapolate",kind=self.spline_approx)
-            Vs[:]=f(elake)
-        else:
-            emin,emax,we=self.inv_elake(elake)
-            pmin,pmax,wp=self.inv_palkka(old_wage)
-            tismax=self.inv_tis(time_in_state)
-            if self.pw_bivariate:
-                for ind,wage in enumerate(wages):
-                    V1 = np.squeeze((1-wp)*self.g[pmin,emp,tismax](elake,wage)+wp*self.g[pmax,emp,tismax](elake,wage))
-                    Vs[ind]=max(0,V1)
-            else:
-                for ind,wage in enumerate(wages):
-                    V1 = np.squeeze((1-we)*self.g[emin,emp,tismax](old_wage,wage)+we*self.g[emax,emp,tismax](old_wage,wage))
                     Vs[ind]=max(0,V1)
 
         if show:      
@@ -468,48 +464,24 @@ class DynProgLifecycleRev(Lifecycle):
         t=self.map_grid_age(age)    
         
         fig,ax=plt.subplots()
-        if emp==2:
-            if diff:
-                for l in range(self.n_oapension):
-                    k=0
-                    elake=self.map_elake(l,emp=2)
-                    for palkka in x:
-                        pa=max(self.min_wage,palkka)
-                        q[k]=self.get_V(age=age,emp=emp,elake=elake,old_wage=pa,time_in_state=time_in_state,wage=pa)-self.get_V(age=age,emp=0,elake=elake,old_wage=pa,time_in_state=time_in_state,wage=pa)
-                        k=k+1
+        if diff:
+            for l in range(self.n_elake):
+                k=0
+                elake=self.map_elake(l)
+                for palkka in x:
+                    q[k]=self.get_V(t,emp=1,elake=elake,old_wage=palkka,time_in_state=time_in_state,wage=palkka)-self.get_V(t,emp=0,elake=elake,old_wage=palkka,time_in_state=time_in_state,wage=palkka)
+                    k=k+1
             
-                    plt.plot(x,q,label=elake)
-            else:
-                for l in range(self.n_oapension):
-                    k=0
-                    elake=self.map_elake(l,emp=emp)
-                    for palkka in x:
-                        pa=max(self.min_wage,palkka)
-                        q[k]=self.get_V(age=age,emp=emp,elake=elake,old_wage=pa,time_in_state=time_in_state,wage=pa)
-                        k=k+1
-            
-                    plt.plot(x,q,label=elake)
+                plt.plot(x,q,label=elake)
         else:
-            if diff:
-                for l in range(self.n_elake):
-                    k=0
-                    elake=self.map_elake(l)
-                    for palkka in x:
-                        pa=max(self.min_wage,palkka)
-                        q[k]=self.get_V(age=age,emp=1,elake=elake,old_wage=pa,time_in_state=time_in_state,wage=pa)-self.get_V(age=age,emp=0,elake=elake,old_wage=pa,time_in_state=time_in_state,wage=pa)
-                        k=k+1
+            for l in range(self.n_elake):
+                k=0
+                elake=self.map_elake(l)
+                for palkka in x:
+                    q[k]=self.get_V(t,emp=emp,elake=elake,old_wage=palkka,time_in_state=time_in_state,wage=palkka)
+                    k=k+1
             
-                    plt.plot(x,q,label=elake)
-            else:
-                for l in range(self.n_elake):
-                    k=0
-                    elake=self.map_elake(l,emp=emp)
-                    for palkka in x:
-                        pa=max(self.min_wage,palkka)
-                        q[k]=self.get_V(age=age,emp=emp,elake=elake,old_wage=pa,time_in_state=time_in_state,wage=pa)
-                        k=k+1
-            
-                    plt.plot(x,q,label=elake)
+                plt.plot(x,q,label=elake)
             
         ax.set_xlabel('palkka')
         ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)        
@@ -524,7 +496,7 @@ class DynProgLifecycleRev(Lifecycle):
         if diff:
             for l in range(self.n_elake):
                 k=0
-                elake=self.map_elake(l,emp=emp)
+                elake=self.map_elake(l)
                 for palkka in x:
                     q[k]=self.get_actV(emp=emp,elake=elake,old_wage=palkka,time_in_state=time_in_state,wage=palkka,act=emp2,age=age)-self.get_actV(emp=emp,elake=elake,old_wage=palkka,time_in_state=time_in_state,wage=palkka,act=0,age=age)
                     k=k+1
@@ -533,7 +505,7 @@ class DynProgLifecycleRev(Lifecycle):
         else:
             for l in range(self.n_elake):
                 k=0
-                elake=self.map_elake(l,emp=emp)
+                elake=self.map_elake(l)
                 for palkka in x:
                     q[k]=self.get_actV(emp=emp,elake=elake,old_wage=palkka,time_in_state=time_in_state,wage=palkka,act=act,age=age)
                     k=k+1
@@ -553,15 +525,15 @@ class DynProgLifecycleRev(Lifecycle):
             emp,elake,old_wage,age,time_in_state,wage=self.env.state_decode(s)
         
         t=self.map_grid_age(age)
-        
-        #print(t,emp,elake,old_wage,age,time_in_state,wage)
             
         if emp==2:
+            emin,emax,we=self.inv_elake(elake)
+            pmin,pmax,wp=0,1,0
+            p2min,p2max,wp2=0,1,0
             tismax=0
-            #x = np.linspace(self.min_paid_pension, self.max_pension, self.n_elake)
-            #y = self.actHila[t,0,:,emp,tismax,0,act]
-            x = np.linspace(self.min_oapension,self.max_oapension, self.n_oapension)
-            y = self.oaactHila[t,:]
+            emp=int(emp)
+            x = np.linspace(0, self.max_pension, self.n_elake)
+            y=self.actHila[t,0,:,emp,tismax,0,act]
             f = interp1d(x, y,fill_value="extrapolate",kind=self.spline_approx)
             apx1=f(elake)
         else:
@@ -569,18 +541,21 @@ class DynProgLifecycleRev(Lifecycle):
             pmin,pmax,wp=self.inv_palkka(old_wage)
             p2min,p2max,wp2=self.inv_palkka(wage)        
             tismax=self.inv_tis(time_in_state)
+            emp=int(emp)
 
             if self.pw_bivariate:
                 p = np.linspace(0, self.max_pension, self.n_elake)
                 w = np.linspace(self.min_wage, self.max_wage, self.n_palkka)
                 values=(1-wp)*self.actHila[t,pmin,:,emp,tismax,:,act]+wp*self.actHila[t,pmax,:,emp,tismax,:,act]
-                f=RectBivariateSpline(p,w, values,kx=self.pw_maxspline,ky=self.pw_maxspline)
+                f=RectBivariateSpline(p,w, values)
+                #f=RectBivariateSpline(p,w, values,kx=1,ky=1)
                 apx1 = np.squeeze(f(elake,wage))
             else:
                 #p = np.linspace(0, self.max_pension, self.n_elake)
                 w = np.linspace(self.min_wage, self.max_wage, self.n_palkka)
                 values=(1-we)*self.actHila[t,:,emin,emp,tismax,:,act]+we*self.actHila[t,:,emax,emp,tismax,:,act]
-                f=RectBivariateSpline(w,w, values,kx=self.pw_maxspline,ky=self.pw_maxspline)
+                f=RectBivariateSpline(w,w, values)
+                #f=RectBivariateSpline(p,w, values,kx=1,ky=1)
                 apx1 = np.squeeze(f(old_wage,wage))
 
         if debug:
@@ -612,12 +587,14 @@ class DynProgLifecycleRev(Lifecycle):
             return 0.0
 
         if emp==2:
+            emin,emax,we=self.inv_elake(elake)
+            pmin,pmax,wp=0,1,0
+            p2min,p2max,wp2=0,1,0
             tismax=0
-            #tismax=self.inv_tis(time_in_state)
-            #x = np.linspace(self.min_paid_pension, self.max_pension, self.n_elake)
-            #y = self.actReward[t,0,:,emp,tismax,0,act]
-            x = np.linspace(self.min_oapension,self.max_oapension, self.n_oapension)
-            y = self.oaactReward[t,:]
+            emp=int(emp)
+
+            x = np.linspace(0, self.max_pension, self.n_elake)
+            y = self.actReward[t,0,:,emp,tismax,0,act]
             f = interp1d(x, y,fill_value="extrapolate",kind=self.spline_approx)
             R = np.squeeze(f(elake))
         else:
@@ -625,22 +602,65 @@ class DynProgLifecycleRev(Lifecycle):
             pmin,pmax,wp=self.inv_palkka(old_wage)
             #p2min,p2max,wp2=self.inv_palkka(wage)        
             tismax=self.inv_tis(time_in_state)
+            emp=int(emp)
 
             if self.pw_bivariate:
                 p = np.linspace(0, self.max_pension, self.n_elake)
                 w = np.linspace(self.min_wage, self.max_wage, self.n_palkka)
                 values=(1-wp)*self.actReward[t,pmin,:,emp,tismax,:,act]+wp*self.actReward[t,pmax,:,emp,tismax,:,act]
-                f=RectBivariateSpline(p,w, values,kx=self.pw_maxspline,ky=self.pw_maxspline)
+                f=RectBivariateSpline(p,w, values)
+                #f=RectBivariateSpline(p,w, values,kx=1,ky=1)
                 R = np.squeeze(f(elake,wage))
             else:
                 p = np.linspace(0, self.max_pension, self.n_elake)
                 w = np.linspace(self.min_wage, self.max_wage, self.n_palkka)
                 values=(1-we)*self.actReward[t,:,emin,emp,tismax,:,act]+we*self.actReward[t,:,emax,emp,tismax,:,act]
-                f=RectBivariateSpline(w,w, values,kx=self.pw_maxspline,ky=self.pw_maxspline)
+                f=RectBivariateSpline(w,w, values)
+                #f=RectBivariateSpline(p,w, values,kx=1,ky=1)
                 R = np.squeeze(f(old_wage,wage))
                     
         return R
     
+        
+        
+    # lineaarinen approksimaatio dynaamisessa ohjelmoinnissa
+    def get_actReward_nospline(self,s=None,emp=None,elake=None,old_wage=None,time_in_state=None,wage=None,act=None,age=None,debug=False):
+        '''
+        hae hilasta tilan s arvo hetkelle t
+        '''
+        if s is not None:
+            emp,elake,old_wage,age,time_in_state,wage=self.env.state_decode(s)
+            
+        t=self.map_grid_age(age)
+    
+        if emp==2 and not debug:
+            emin,emax,we=self.inv_elake(elake)
+            pmin,pmax,wp=0,1,0
+            p2min,p2max,wp2=0,1,0
+            tismax=0
+            emp=int(emp)
+            x = np.linspace(0, self.max_pension, self.n_elake)
+            y = self.actReward[t,0,:,emp,tismax,0,act]
+            f = interp1d(x, y,fill_value="extrapolate",kind=self.spline_approx)
+            R = f(elake)
+        else:
+            emin,emax,we=self.inv_elake(elake)
+            pmin,pmax,wp=self.inv_palkka(old_wage)
+            p2min,p2max,wp2=self.inv_palkka(wage)        
+            tismax=self.inv_tis(time_in_state)
+            emp=int(emp)
+            
+            R=(1-wp2)*((1-wp)*((1-we)*(self.actReward[t,pmin,emin,emp,tismax,p2min,act])
+                                 +we*(self.actReward[t,pmin,emax,emp,tismax,p2min,act]))+\
+                           wp*((1-we)*(self.actReward[t,pmax,emin,emp,tismax,p2min,act])
+                                 +we*(self.actReward[t,pmax,emax,emp,tismax,p2min,act])))+\
+                   wp2*((1-wp)*((1-we)*(self.actReward[t,pmin,emin,emp,tismax,p2max,act])
+                                   +we*(self.actReward[t,pmin,emax,emp,tismax,p2max,act]))+\
+                           wp*((1-we)*(self.actReward[t,pmax,emin,emp,tismax,p2max,act])
+                                   +we*(self.actReward[t,pmax,emax,emp,tismax,p2max,act])))
+        
+        return R
+
     # lineaarinen approksimaatio dynaamisessa ohjelmoinnissa
     def get_act_spline(self,s,full=False,debug=False):
         '''
@@ -650,19 +670,17 @@ class DynProgLifecycleRev(Lifecycle):
         emp,elake,old_wage,age,time_in_state,wage=self.env.state_decode(s)
         
         if emp==2:
-            emin,emax,we=self.inv_elake(elake,emp=2)
+            emin,emax,we=self.inv_elake(elake)
             pmin,pmax,wp=0,1,0
             p2min,p2max,wp2=0,1,0
             tismax=0
-            #tismax=self.inv_tis(time_in_state)
+            emp=int(emp)
         else:
             emin,emax,we=self.inv_elake(elake)
             pmin,pmax,wp=self.inv_palkka(old_wage)
             p2min,p2max,wp2=self.inv_palkka(wage)
             tismax=self.inv_tis(time_in_state)
-            
-            if wage>self.max_wage:
-                print(f'wage {wage}')
+            emp=int(emp)
                 
         t=self.map_grid_age(age)
         
@@ -686,11 +704,8 @@ class DynProgLifecycleRev(Lifecycle):
             act_set=set([0])
             
         if emp == 2:
-            #tismax=0
-            #x = np.linspace(self.min_paid_pension, self.max_pension, self.n_elake)
-            #y = self.actHila[t,0,:,emp,tismax,0,0]
-            x = np.linspace(self.min_oapension,self.max_oapension, self.n_oapension)
-            y = self.oaactHila[t,:]
+            x = np.linspace(0, self.max_pension, self.n_elake)
+            y = self.actHila[t,0,:,emp,tismax,0,0]
             f = interp1d(x, y,fill_value="extrapolate",kind=self.spline_approx)
             V[0] = f(elake)
         else:
@@ -699,14 +714,16 @@ class DynProgLifecycleRev(Lifecycle):
                 w = np.linspace(self.min_wage, self.max_wage, self.n_palkka)
                 for k in act_set:
                     values=(1-wp)*self.actHila[t,pmin,:,emp,tismax,:,k]+wp*self.actHila[t,pmax,:,emp,tismax,:,k]
-                    f=RectBivariateSpline(p,w, values,kx=self.pw_maxspline,ky=self.pw_maxspline)
+                    f=RectBivariateSpline(p,w, values)
+                    #f=RectBivariateSpline(p,w, values,kx=1,ky=1)
                     V[k] = np.squeeze(f(elake,wage))
             else:
                 #p = np.linspace(0, self.max_pension, self.n_elake)
                 w = np.linspace(self.min_wage, self.max_wage, self.n_palkka)
                 for k in act_set:
                     values=(1-we)*self.actHila[t,:,emin,emp,tismax,:,k]+we*self.actHila[t,:,emax,emp,tismax,:,k]
-                    f=RectBivariateSpline(w,w,values,kx=self.pw_maxspline,ky=self.pw_maxspline)
+                    f=RectBivariateSpline(w,w,values)
+                    #f=RectBivariateSpline(p,w, values,kx=1,ky=1)
                     V[k] = np.squeeze(f(old_wage,wage))
 
             
@@ -722,6 +739,75 @@ class DynProgLifecycleRev(Lifecycle):
             return act,maxV,reward
             
     # lineaarinen approksimaatio dynaamisessa ohjelmoinnissa
+    def get_act_nospline(self,s,full=False,debug=False):
+        '''
+        hae hilasta tilan s arvo hetkelle t
+        '''
+
+        emp,elake,old_wage,age,time_in_state,wage=self.env.state_decode(s)
+        
+        if emp==2:
+            emin,emax,we=self.inv_elake(elake)
+            pmin,pmax,wp=0,1,0
+            p2min,p2max,wp2=0,1,0
+            tismax=0
+            emp=int(emp)
+        else:
+            emin,emax,we=self.inv_elake(elake)
+            pmin,pmax,wp=self.inv_palkka(old_wage)
+            p2min,p2max,wp2=self.inv_palkka(wage)
+            tismax=self.inv_tis(time_in_state)
+            emp=int(emp)
+                
+        t=self.map_grid_age(age)
+        
+        n_emp=self.n_acts
+        
+        V=np.zeros(n_emp)
+        #emp_set=set([0,1,3])
+        emp_set=set([0,1])
+        if emp in emp_set:
+            if age<self.min_retirementage:
+                n_emp=3
+                act_set=set([0,1])
+                #n_emp=4
+                #act_set=set([0,1,3])
+            else:
+                act_set=set([0,1,2])
+                n_emp=3
+                #act_set=set([0,1,2,3])
+                #n_emp=4
+        else:
+            act_set=set([0])
+            
+        if emp == 2:
+            for k in act_set:
+                apx1=(1-we)*(self.actHila[t,0,emin,emp,tismax,0,k])+we*(self.actHila[t,0,emax,emp,tismax,0,k])
+                V[k]=max(0,apx1)
+        else:
+            for k in act_set:
+                apx1=(1-wp2)*((1-wp)*((1-we)*(self.actHila[t,pmin,emin,emp,tismax,p2min,k])
+                                      +we*(self.actHila[t,pmin,emax,emp,tismax,p2min,k]))+\
+                                wp*((1-we)*(self.actHila[t,pmax,emin,emp,tismax,p2min,k])
+                                      +we*(self.actHila[t,pmax,emax,emp,tismax,p2min,k])))+\
+                        wp2*((1-wp)*((1-we)*(self.actHila[t,pmin,emin,emp,tismax,p2max,k])
+                                        +we*(self.actHila[t,pmin,emax,emp,tismax,p2max,k]))+\
+                                wp*((1-we)*(self.actHila[t,pmax,emin,emp,tismax,p2max,k])
+                                        +we*(self.actHila[t,pmax,emax,emp,tismax,p2max,k])))
+                V[k]=max(0,apx1)
+            
+        act=int(np.argmax(V))
+        maxV=np.max(V)
+        
+        reward=self.get_actReward(s=s,act=act)
+        
+        if full:
+            rs=[self.get_actReward(s=s,act=a) for a in act_set]
+            return act,maxV,V,reward,rs
+        else:
+            return act,maxV,reward            
+            
+    # lineaarinen approksimaatio dynaamisessa ohjelmoinnissa
     def get_random_act(self,s,full=False):
         '''
         hae hilasta tilan s arvo hetkelle t
@@ -731,6 +817,8 @@ class DynProgLifecycleRev(Lifecycle):
         pmin,pmax,wp=self.inv_palkka(old_wage)
         p2min,p2max,wp2=self.inv_palkka(wage)
         tismax=self.inv_tis(time_in_state)
+        emp=int(emp)
+        tismax=int(tismax)
         
         t=self.map_grid_age(age)
         
@@ -901,15 +989,22 @@ class DynProgLifecycleRev(Lifecycle):
         rewards=[]
         sps=[]
         
-        start_state=self.env.state_encode(*s)
-        #self.env.render(state=start_state)
-        for a in actions:
-            self.env.state=start_state
-            newstate,reward,dones,info = self.env.step(a,dynprog=True)
-            #if dones:
-            #    self.reset()
-            sps.append(np.array(newstate))
-            rewards.append(reward)
+        if debug:
+            emp2,elake2,ow,ika2,tis2,w=self.env.state_decode(Sps[ind])
+            s2=self.state_encode(emp2,elake2,ow,ika2-1.0,tis2,w)
+            for a in actions:
+                sps.append(np.array(s2))
+                rewards.append(1.0)
+        else:
+            start_state=self.env.state_encode(*s)
+            #self.env.render(state=start_state)
+            for a in actions:
+                self.env.state=start_state
+                newstate,reward,dones,info = self.env.step(a,dynprog=True)
+                #if dones:
+                #    self.reset()
+                sps.append(np.array(newstate))
+                rewards.append(reward)
             
         return rewards,sps
         
@@ -936,29 +1031,6 @@ class DynProgLifecycleRev(Lifecycle):
         '''
         t=self.map_grid_age(age)
         
-        if t==0:
-            t0=0
-        else:  
-            t0=1
-        
-        #self.setup_spline_fast(t)
-        
-        def func0(x,emp2,elake2,palkka,tis2,ika2):
-            a=self.get_V(emp=emp2,elake=elake2,old_wage=palkka,time_in_state=tis2,age=ika2,wage=x)
-            #a=self.get_V_spline_fast(emp=emp2,elake=elake2,old_wage=palkka,time_in_state=tis2,age=ika2,wage=x)
-            #a=palkka
-            b=self.env.wage_process_pdf(x,palkka,ika2,state=emp2)
-            return a*b
-
-        def func1(x,emp2,elake2,palkka,tis2,ika2):
-            a=self.get_V(emp=emp2,elake=elake2,old_wage=palkka,time_in_state=tis2,age=ika2,wage=x)
-            #a=self.get_V_spline_fast(emp=emp2,elake=elake2,old_wage=palkka,time_in_state=tis2,age=ika2,wage=x)
-            #a=palkka
-            b=self.env.wage_process_pdf(x,palkka,ika2,state=emp2)
-            c=a*b
-            print(f'func1({x})={c}')
-            return a*b
-        
         # actions when active
         if age<self.min_retirementage:
             if self.include_pt:
@@ -980,11 +1052,13 @@ class DynProgLifecycleRev(Lifecycle):
             tulosta=True
         else:
             tulosta=False
+
+        #if age==64:
+        #    tulosta=True
             
         pn_weight=np.zeros((self.n_palkka,self.n_palkka_future,self.n_employment))
         wagetable=np.zeros(self.n_palkka)
         wagetable_future=np.zeros((self.n_palkka,self.n_palkka_future,self.n_employment))
-        tr_wagetable_future=np.zeros((self.n_palkka,self.n_palkka_future+1,self.n_employment))
         ika2=age+1
         #print('age',age)
         for p in range(self.n_palkka): 
@@ -997,25 +1071,19 @@ class DynProgLifecycleRev(Lifecycle):
             palkka_next_mid1_v=self.map_palkka_future_v2(palkka,ika2,state=1,midpoint=True)
             wagetable_future[p,:,0]=self.map_palkka_future_v2(palkka,ika2,state=0,midpoint=False)
             wagetable_future[p,:,[1,3]]=self.map_palkka_future_v2(palkka,ika2,state=1,midpoint=False)
-
-            #tr_wagetable_future[p,:,0]=self.map_palkka_future_v3(palkka,ika2,state=0,midpoint=False)
-            #tr_wagetable_future[p,:,[1,3]]=self.map_palkka_future_v3(palkka,ika2,state=1,midpoint=False)
-            
-            # bugi kun age=69
-            wns0=self.env.wage_process_cumulative(palkka_next_mid0_v,palkka,ika2,state=0) # tila ei saa vaikuttaa tässä kuin palkka_next_mid0:n kautta
-            wns1=self.env.wage_process_cumulative(palkka_next_mid1_v,palkka,ika2,state=1) # tila ei saa vaikuttaa tässä kuin palkka_next_mid0:n kautta
             for pnext in range(self.n_palkka_future-1): 
                 palkka_next_mid0=palkka_next_mid0_v[pnext]
-                weight_new_s0=wns0[pnext] #self.env.wage_process_cumulative(palkka_next_mid0,palkka,ika2,state=0) # tila ei saa vaikuttaa tässä kuin palkka_next_mid0:n kautta
+                weight_new_s0=self.env.wage_process_cumulative(palkka_next_mid0,palkka,ika2,state=0) # tila ei saa vaikuttaa tässä kuin palkka_next_mid0:n kautta
                 pn_weight[p,pnext,0]=weight_new_s0-weight_old_s0
                 weight_old_s0=weight_new_s0
                 palkka_next_mid1=palkka_next_mid1_v[pnext]
-                weight_new_s1=wns0[pnext] #self.env.wage_process_cumulative(palkka_next_mid1,palkka,ika2,state=1) # tila ei saa vaikuttaa tässä kuin palkka_next_mid1:n kautta
+                weight_new_s1=self.env.wage_process_cumulative(palkka_next_mid1,palkka,ika2,state=1) # tila ei saa vaikuttaa tässä kuin palkka_next_mid1:n kautta
                 pn_weight[p,pnext,[1,3]]=weight_new_s1-weight_old_s1
                 weight_old_s1=weight_new_s1
         
             pn_weight[p,self.n_palkka_future-1,0]=1.0-weight_old_s0
             pn_weight[p,self.n_palkka_future-1,[1,3]]=1.0-weight_old_s1
+
             
             #print(wagetable_future[p,:,0])
             #print(wagetable_future[p,:,1])
@@ -1027,32 +1095,26 @@ class DynProgLifecycleRev(Lifecycle):
         for emp in range(self.n_employment):
             if emp==2:
                 if age<self.min_retirementage:
-                    #self.Hila[t,:,:,emp,:,:]=0
-                    #self.actHila[t,:,:,emp,:,:]=0
-                    #self.actReward[t,:,:,emp,:,:]=0
-                    self.oaHila[t,:]=0
-                    self.oaactHila[t,:]=0
-                    self.oaactReward[t,:]=0
+                    self.Hila[t,:,:,emp,:,:]=0
+                    self.actHila[t,:,:,emp,:,:]=0
+                    self.actReward[t,:,:,emp,:,:]=0
                 else:
                     time_in_state=self.map_tis(0)
-                    for el in range(self.n_oapension):
-                        elake=self.map_elake(el,emp=2)
+                    for el in range(self.n_elake):
+                        elake=self.map_elake(el)
 
                         # hetken t tila (emp,prev,elake,palkka). Lasketaan palkkio+gamma*U, jos ei vaihda tilaa
                         rts,Sps=self.get_rewards_continuous((emp,elake,0,age,time_in_state,0),ret_set)
                         
                         for ind,a in enumerate(ret_set):
                             emp2,elake2,_,ika2,_,_=self.env.state_decode(Sps[ind])
-                            #self.actHila[t,:,el,emp,:,:,a]=rts[ind]+self.gamma*self.get_V(emp=emp2,elake=elake2,old_wage=self.min_wage,wage=self.min_wage,time_in_state=0,age=ika2)
-                            #self.actReward[t,:,el,emp,:,:,a]=rts[ind]
-                            self.oaactHila[t,el]=rts[ind]+self.gamma*self.get_V(emp=emp2,elake=elake2,old_wage=self.min_wage,wage=self.min_wage,time_in_state=0,age=ika2)
-                            #self.oaactHila[t,el]=rts[ind]+self.gamma*self.get_V_spline_fast(emp=emp2,elake=elake2,old_wage=self.min_wage,wage=self.min_wage,time_in_state=0,age=ika2)
-                            self.oaactReward[t,el]=rts[ind]
+                            #gw=self.get_V(t+1,emp=emp2,elake=elake2,old_wage=0,wage=0,time_in_state=0)
+                            self.actHila[t,:,el,emp,:,:,a]=rts[ind]+self.gamma*self.get_V(emp=emp2,elake=elake2,old_wage=self.min_wage,wage=self.min_wage,time_in_state=0,age=ika2)
+                            self.actReward[t,:,el,emp,:,:,a]=rts[ind]
                             #print('getV(emp{} e{} p{}): {}'.format(emp2,elake2,palkka,gw))
                             #print(f'rts[{ind}] {rts[ind]}')
                             
-                        #self.Hila[t,:,el,emp,:,:]=self.actHila[t,0,el,emp,0,0,0]
-                        self.oaHila[t,el]=self.oaactHila[t,el]
+                        self.Hila[t,:,el,emp,:,:]=self.actHila[t,0,el,emp,0,0,0]
             elif emp==1:
                 time_in_state=self.map_tis(0)
                 for el in range(self.n_elake):
@@ -1066,45 +1128,9 @@ class DynProgLifecycleRev(Lifecycle):
                 
                             for ind,a in enumerate(act_set):
                                 emp2,elake2,_,ika2,tis2,_=self.env.state_decode(Sps[ind])
-                                if emp2==2:
-                                    q=self.get_V(emp=emp2,elake=elake2,old_wage=0,time_in_state=0,age=ika2,wage=0)
-                                    #w1=self.get_V_spline_fast(emp=emp2,elake=elake2,old_wage=0,time_in_state=0,age=ika2,wage=0)
-                                else:
-                                    if self.integmethod==0:
-                                        gw=self.get_V_vector(emp=emp2,elake=elake2,old_wage=palkka,time_in_state=tis2,age=ika2,wages=wagetable_future[p,:,emp2])
-                                        #gw=self.get_V_vector_spline_fast(emp=emp2,elake=elake2,old_wage=palkka,time_in_state=tis2,age=ika2,wages=wagetable_future[p,:,emp2])
-                                        w=pn_weight[p,:,emp2]
-                                        d=np.sum(gw*w)
-                                    elif self.integmethod==1:
-                                        d,_=quad(func0, 1000.0, 130_000.0,epsabs=self.epsabs,args=(emp2,elake2,palkka,tis2,ika2))
-                                    elif self.integmethod==2:
-                                        gw2=self.get_V_vector(emp=emp2,elake=elake2,old_wage=palkka,time_in_state=tis2,age=ika2,wages=tr_wagetable_future[p,:,emp2])
-                                        #gw2=self.get_V_vector_spline_fast(emp=emp2,elake=elake2,old_wage=palkka,time_in_state=tis2,age=ika2,wages=tr_wagetable_future[p,:,emp2])
-                                        b=self.env.wage_process_pdf(tr_wagetable_future[p,:,emp2],palkka,ika2,state=emp2)
-                                        d=trapz(gw2*b,x=tr_wagetable_future[p,:,emp2])
-                                    else: # compare
-                                        d1,_=quad(func0, 1000.0, 130_000.0,epsabs=self.epsabs,args=(emp2,elake2,palkka,tis2,ika2))
-                                        gw=self.get_V_vector(emp=emp2,elake=elake2,old_wage=palkka,time_in_state=tis2,age=ika2,wages=wagetable_future[p,:,emp2])
-                                        #gw=self.get_V_vector_spline_fast(emp=emp2,elake=elake2,old_wage=palkka,time_in_state=tis2,age=ika2,wages=wagetable_future[p,:,emp2])
-                                        w=pn_weight[p,:,emp2]
-                                        d2=np.sum(gw*w) 
-                                        delta=d2-d1
-                                        d=d1
-                                        #if age==69 and palkka==1000.0:
-                                        #    print(wagetable_future[p,:,emp])
-                                            
-                                        if np.abs(delta)>0.0001:
-                                            print(f'em1={emp},emp={emp2},elake={elake2:.2f},old_wage={palkka},time_in_state={tis2},age={ika2},{d2:.5f} vs {d1:.5f} {delta}')
-                                            d1,_=quad(func1, 1000.0, 130_000.0,epsabs=self.epsabs,args=(emp2,elake2,palkka,tis2,ika2))
-
-                                    q=rts[ind]+self.gamma*d
-                                    
-                                    #delta=w1-d
-                                    #print(f'emp={emp2},elake={elake2:.2f},old_wage={palkka},time_in_state={tis2},age={ika2},{w1:.5f} vs {d:.5f} {delta}')
-                                    
-                                    #if np.abs(delta)>0.01:
-                                    #    plt.plot(tr_wagetable_future[p,:,emp2],b)
-                                    #    exit()
+                                gw=self.get_V_vector(emp=emp2,elake=elake2,old_wage=palkka,time_in_state=tis2,age=ika2,wages=wagetable_future[p,:,emp2])
+                                w=pn_weight[p,:,emp2]
+                                q=rts[ind]+self.gamma*np.sum(gw*w)
                                 
                                 self.actHila[t,p_old,el,emp,:,p,a]=q
                                 self.actReward[t,p_old,el,emp,:,p,a]=rts[ind]
@@ -1126,19 +1152,9 @@ class DynProgLifecycleRev(Lifecycle):
                                 emp2,elake2,_,ika2,tis2,_=self.env.state_decode(Sps[ind])
                                 #print('emp2:{} e2:{} ika2:{} r{}'.format(emp2,elake2,ika2,rts[ind]))
                                 #q=rts[ind]
-                                #gw=self.get_V_vector(emp=emp2,elake=elake2,old_wage=palkka,time_in_state=tis2,age=ika2,wages=wagetable_future[p,:,emp2])
-                                #w=pn_weight[p,:,emp2]
-                                #q=rts[ind]+self.gamma*np.sum(gw*w)
-                                
-                                s=0.07
-                                def func3(x):
-                                    a=self.get_V(emp=emp2,elake=elake2,old_wage=palkka,time_in_state=tis2,age=ika2,wage=x)
-                                    b=self.env.wage_process_pdf(x,palkka,ika2,state=emp2)
-                                    return a*b
-                                
-                                w0,_=quad(func3, 0.0, 100_000.0)
-                                q=rts[ind]+self.gamma*w0
-                                
+                                gw=self.get_V_vector(emp=emp2,elake=elake2,old_wage=palkka,time_in_state=tis2,age=ika2,wages=wagetable_future[p,:,emp2])
+                                w=pn_weight[p,:,emp2]
+                                q=rts[ind]+self.gamma*np.sum(gw*w)
                                 
                                 #if tulosta:
                                 #    print('s{}: getV(emp{} oe{:.1f} e{:.1f} ow{:.1f} p{:.1f}): {} (R={})'.format(emp,emp2,elake,elake2,palkka_vanha,palkka,q,rts[ind]))
@@ -1147,11 +1163,11 @@ class DynProgLifecycleRev(Lifecycle):
                                 
                             self.Hila[t,p_old,el,emp,:,p]=np.max(self.actHila[t,p_old,el,emp,0,p,:])
             elif emp==0:
-                for p_old in range(self.n_palkka):
+                for p_old in range(self.n_palkka): 
                     palkka_vanha=wagetable[p_old]
                     for el in range(self.n_elake):
                         elake=self.map_elake(el)
-                        for tis in range(t0,self.n_tis):
+                        for tis in range(self.n_tis):
                             time_in_state=self.map_tis(tis)
                             for p in range(self.n_palkka): 
                                 palkka=wagetable[p]
@@ -1160,39 +1176,11 @@ class DynProgLifecycleRev(Lifecycle):
                     
                                 for ind,a in enumerate(act_set):
                                     emp2,elake2,_,ika2,tis2,_=self.env.state_decode(Sps[ind])
-                                    if emp2==2:
-                                        q=self.get_V(emp=emp2,elake=elake2,old_wage=0,time_in_state=0,age=ika2,wage=0)
-                                    else:
-                                        if self.integmethod==0:
-                                            gw=self.get_V_vector(emp=emp2,elake=elake2,old_wage=palkka,time_in_state=tis2,age=ika2,wages=wagetable_future[p,:,emp2])
-                                            #gw=self.get_V_vector_spline_fast(emp=emp2,elake=elake2,old_wage=palkka,time_in_state=tis2,age=ika2,wages=wagetable_future[p,:,emp2])
-                                            #gw=palkka+wagetable_future[p,:,emp2]*0
-                                            w=pn_weight[p,:,emp2]
-                                            d=np.sum(gw*w) 
-                                        elif self.integmethod==1:
-                                            d,_=quad(func0, 1000.0, 130_000.0,epsabs=self.epsabs,args=(emp2,elake2,palkka,tis2,ika2))
-                                        elif self.integmethod==2:
-                                            #gw2=self.get_V_vector_spline_fast(emp=emp2,elake=elake2,old_wage=palkka,time_in_state=tis2,age=ika2,wages=tr_wagetable_future[p,:,emp2])
-                                            gw2=self.get_V_vector(emp=emp2,elake=elake2,old_wage=palkka,time_in_state=tis2,age=ika2,wages=tr_wagetable_future[p,:,emp2])
-                                            b=self.env.wage_process_pdf(tr_wagetable_future[p,:,emp2],palkka,ika2,state=emp2)
-                                            d=trapz(gw2*b,x=tr_wagetable_future[p,:,emp2])
-                                        else: # compare
-                                            d1,_=quad(func0, 1000.0, min(10*palkka,130_000.0),epsabs=self.epsabs,args=(emp2,elake2,palkka,tis2,ika2))
-                                            gw=self.get_V_vector(emp=emp2,elake=elake2,old_wage=palkka,time_in_state=tis2,age=ika2,wages=wagetable_future[p,:,emp2])
-                                            #gw=self.get_V_vector_spline_fast(emp=emp2,elake=elake2,old_wage=palkka,time_in_state=tis2,age=ika2,wages=wagetable_future[p,:,emp2])
-                                            #gw=palkka+wagetable_future[p,:,emp2]*0
-                                            w=pn_weight[p,:,emp2]
-                                            d2=np.sum(gw*w)
-                                            delta=d2-d1
-                                            d=d1
-                                            if np.abs(delta)>0.0001:
-                                                print(f'em1={emp},emp={emp2},elake={elake2:.2f},old_wage={palkka},time_in_state={tis2},age={ika2},{d2:.5f} vs {d1:.5f} {delta}')
-                                                d1,_=quad(func1, 1000.0,min(10*palkka,130_000.0),epsabs=self.epsabs,args=(emp2,elake2,palkka,tis2,ika2))
-
-                                        q=rts[ind]+self.gamma*d
-                                        
-                                        #delta=w1-d
-                                        #print(f'emp={emp2},elake={elake2:.2f},old_wage={palkka},time_in_state={tis2},age={ika2},{w1:.5f} vs {d:.5f} {delta}')
+                                    gw=self.get_V_vector(emp=emp2,elake=elake2,old_wage=palkka,time_in_state=tis2,age=ika2,wages=wagetable_future[p,:,emp2])
+                                    w=pn_weight[p,:,emp2]
+                                    q=rts[ind]+self.gamma*np.sum(gw*w) 
+                                    #if tulosta:
+                                    #    print('s{}: getV(emp{} oe{:.1f} e{:.1f} ow{:.1f} p{:.1f}): {} (R={})'.format(emp,emp2,elake,elake2,palkka_vanha,palkka,q,rts[ind]))
 
                                     self.actHila[t,p_old,el,emp,tis,p,a]=q
                                     self.actReward[t,p_old,el,emp,tis,p,a]=rts[ind]
@@ -1255,14 +1243,14 @@ class DynProgLifecycleRev(Lifecycle):
                     else:
                         act,maxV,rewards_pred[n,t]=self.get_act(state)
 
-                #if debug:
-                #    self.env.render(state=state,pred_r=rewards_pred[n,t])
-                    #print(v,rs)
+                if debug:
+                    self.env.render(state=state,pred_r=rewards_pred[n,t])
+                    print(v,rs)
                     
                 newstate,r,done,info=self.env.step(act,dynprog=False)
 
                 if debug:
-                    self.env.render(state=newstate,reward=r,pred_r=rewards_pred[n,t])
+                    self.env.render(state=state,reward=r,pred_r=rewards_pred[n,t])
                 
                 rewards[n,t]=r
                  
@@ -1292,61 +1280,61 @@ class DynProgLifecycleRev(Lifecycle):
         if save is not None:
             self.episodestats.save_sim(save)
           
-#     def simulate_det(self,debug=False,pop=1_000,save=None,load=None,ini_pension=None,ini_wage=None,ini_age=None,ini_old_wage=None):
-#         '''
-#         Lasketaan työllisyysasteet ikäluokittain
-#         '''
-#         if pop is not None:
-#             self.n_pop=pop
-# 
-#         self.episodestats.reset(self.timestep,self.n_time,self.n_employment,self.n_pop,
-#                                 self.env,self.minimal,self.min_age,self.max_age,self.min_retirementage,self.year)
-#         if load is not None:
-#             self.load_V(load)        
-# 
-#         tqdm_e = tqdm(range(int(pop)), desc='Population', leave=True, unit=" p")
-#         
-#         rewards_pred=np.zeros((pop,self.n_time))
-#         rewards=np.zeros((pop,self.n_time))
-# 
-#         for n in range(pop):
-#             state=self.env.reset(pension=ini_pension,ini_wage=ini_wage,ini_age=ini_age,ini_old_wage=ini_old_wage)
-#             
-#             for t in range(self.n_time):
-#                 if debug:
-#                     act,maxV,v,rewards_pred[n,t]=self.get_act(state,full=True)
-#                 else:
-#                     act,maxV,rewards_pred[n,t]=self.get_act(state)
-#                 
-#                 newstate,r,done,info=self.env.step(act,dynprog=False)
-# 
-#                 if debug:
-#                     self.env.render(state=state,reward=r,pred_r=rewards_pred[n,t])
-#                     print(v)                    
-# 
-#                 rewards[n,t]=r
-#                  
-#                 if done: 
-#                     self.episodestats.add(n,act,r,state,newstate,info,debug=debug,aveV=maxV)
-#                     tqdm_e.update(1)
-#                     tqdm_e.set_description("Pop " + str(n))
-#                     break
-#                 else:
-#                     self.episodestats.add(n,act,r,state,newstate,info,debug=debug,aveV=maxV)
-#                     
-#                 state=newstate
-#         
-#         coef=1-np.var(rewards-rewards_pred)/np.var(rewards)
-#         print('Explained variance ',coef)
-#         print('Pred variance {} variance {} diff variance {}'.format(np.var(rewards_pred),np.var(rewards),np.var(rewards-rewards_pred)))
-#         
-#         #for n in range(pop):
-#         #    coef=(1-np.var(rewards[n,:-2]-rewards_pred[n,:-2]))/np.var(rewards[n,:-2])
-#         #    print(F'{n}: {coef}')
-# 
-#         
-#         if save is not None:
-#             self.episodestats.save_sim(save)
+    def simulate_det(self,debug=False,pop=1_000,save=None,load=None,ini_pension=None,ini_wage=None,ini_age=None,ini_old_wage=None):
+        '''
+        Lasketaan työllisyysasteet ikäluokittain
+        '''
+        if pop is not None:
+            self.n_pop=pop
+
+        self.episodestats.reset(self.timestep,self.n_time,self.n_employment,self.n_pop,
+                                self.env,self.minimal,self.min_age,self.max_age,self.min_retirementage,self.year)
+        if load is not None:
+            self.load_V(load)        
+
+        tqdm_e = tqdm(range(int(pop)), desc='Population', leave=True, unit=" p")
+        
+        rewards_pred=np.zeros((pop,self.n_time))
+        rewards=np.zeros((pop,self.n_time))
+
+        for n in range(pop):
+            state=self.env.reset(pension=ini_pension,ini_wage=ini_wage,ini_age=ini_age,ini_old_wage=ini_old_wage)
+            
+            for t in range(self.n_time):
+                if debug:
+                    act,maxV,v,rewards_pred[n,t]=self.get_act(state,full=True)
+                else:
+                    act,maxV,rewards_pred[n,t]=self.get_act(state)
+                
+                newstate,r,done,info=self.env.step(act,dynprog=False)
+
+                if debug:
+                    self.env.render(state=state,reward=r,pred_r=rewards_pred[n,t])
+                    print(v)                    
+
+                rewards[n,t]=r
+                 
+                if done: 
+                    self.episodestats.add(n,act,r,state,newstate,info,debug=debug,aveV=maxV)
+                    tqdm_e.update(1)
+                    tqdm_e.set_description("Pop " + str(n))
+                    break
+                else:
+                    self.episodestats.add(n,act,r,state,newstate,info,debug=debug,aveV=maxV)
+                    
+                state=newstate
+        
+        coef=1-np.var(rewards-rewards_pred)/np.var(rewards)
+        print('Explained variance ',coef)
+        print('Pred variance {} variance {} diff variance {}'.format(np.var(rewards_pred),np.var(rewards),np.var(rewards-rewards_pred)))
+        
+        #for n in range(pop):
+        #    coef=(1-np.var(rewards[n,:-2]-rewards_pred[n,:-2]))/np.var(rewards[n,:-2])
+        #    print(F'{n}: {coef}')
+
+        
+        if save is not None:
+            self.episodestats.save_sim(save)
           
     def plot_statsV(self,aveV):
         x=np.linspace(self.min_age,self.max_age,self.n_time)
@@ -1372,25 +1360,16 @@ class DynProgLifecycleRev(Lifecycle):
         f.create_dataset("max_wage", data=self.max_wage, dtype=ft)
         f.create_dataset("min_wage", data=self.min_wage, dtype=ft)
         f.create_dataset("max_pension", data=self.max_pension, dtype=ft)
-        f.create_dataset("min_paid_pension", data=self.min_paid_pension, dtype=ft)
         f.create_dataset("actHila", data=self.actHila, dtype=ft)
         f.create_dataset("actReward", data=self.actReward, dtype=ft)
         #f.create_dataset("hila_palkka0", data=self.hila_palkka0, dtype=ft)
+        f.create_dataset("hila_elake0", data=self.hila_elake0, dtype=ft)
         f.create_dataset("n_palkka", data=self.n_palkka, dtype='i4')
         f.create_dataset("deltapalkka", data=self.deltapalkka, dtype=ft)
         f.create_dataset("n_elake", data=self.n_elake, dtype='i4')
-        f.create_dataset("n_oapension", data=self.n_oapension, dtype='i4')
         f.create_dataset("deltaelake", data=self.deltaelake, dtype=ft)
-        f.create_dataset("delta_paid_pension", data=self.delta_paid_pension, dtype=ft)
-        f.create_dataset("delta_oapension", data=self.delta_oapension, dtype=ft)
         f.create_dataset("n_tis", data=self.n_tis, dtype='i4')
         f.create_dataset("deltatis", data=self.deltatis, dtype=ft)
-        f.create_dataset("oaHila", data=self.oaHila, dtype=ft)
-        f.create_dataset("oaactHila", data=self.oaactHila, dtype=ft)
-        f.create_dataset("oaactReward", data=self.oaactReward, dtype=ft)
-        f.create_dataset("min_oapension", data=self.min_oapension, dtype=ft)
-        f.create_dataset("max_oapension", data=self.max_oapension, dtype=ft)
-        
         f.close()
         
     def load_V(self,filename):
@@ -1400,6 +1379,7 @@ class DynProgLifecycleRev(Lifecycle):
         self.max_grid_age = f['max_grid_age'][()]
         self.actReward = f['actReward'][()]
         self.actHila = f['actHila'][()]
+        self.hila_elake0 = f['hila_elake0'][()]
         self.n_palkka = f['n_palkka'][()]
         self.deltapalkka = f['deltapalkka'][()]
         self.n_elake = f['n_elake'][()]
@@ -1416,19 +1396,6 @@ class DynProgLifecycleRev(Lifecycle):
         else:
             if 'hila_palkka0' in f.keys():
                 self.min_wage=f['hila_palkka0'][()]
-
-        if 'min_paid_pension' in f.keys():
-            self.delta_paid_pension = f['delta_paid_pension'][()]
-            self.min_paid_pension = f['min_paid_pension'][()]
-
-        if 'n_oapension' in f.keys():
-            self.n_oapension = f['n_oapension'][()]
-            self.oaHila = f['oaHila'][()]
-            self.oaactHila = f['oaactHila'][()]
-            self.oaactReward = f['oaactReward'][()]
-            self.delta_oapension = f['delta_oapension'][()]
-            self.min_oapension = f['min_oapension'][()]
-            self.max_oapension = f['max_oapension'][()]
             
         f.close()
         
@@ -1472,6 +1439,7 @@ class DynProgLifecycleRev(Lifecycle):
         h=np.zeros((sh[1],sh[2]))
         for k in range(sh[1]):
             for l in range(sh[2]):
+                # self.actHila = np.zeros((self.n_time+2,self.n_palkka,self.n_elake,self.n_employment,self.n_tis,self.n_palkka,self.n_acts))  
                 h[k,l]=self.actHila[t,k,l,emp,time_in_state,k,act]
                 
         return h
@@ -1527,7 +1495,7 @@ class DynProgLifecycleRev(Lifecycle):
         for p in range(self.n_palkka): 
             for el in range(self.n_elake):
                 palkka=self.map_palkka(p)
-                elake=self.map_elake(el,emp=emp)
+                elake=self.map_elake(el)
 
                 q[p,el]=int(np.argmax(self.actHila[t,p,el,emp,time_in_state,p,:]))
                 if debug:
@@ -1543,17 +1511,17 @@ class DynProgLifecycleRev(Lifecycle):
         q2=cc.get_RL_act(age,emp=0,time_in_state=time_in_state,rlmodel=rlmodel,
             load=load,deterministic=deterministic,
             n_palkka=self.n_palkka,deltapalkka=self.deltapalkka,n_elake=self.n_elake,deltaelake=self.deltaelake,
-            min_wage=self.min_wage,min_pension=self.min_pension)
+            min_wage=self.min_wage,hila_elake0=self.hila_elake0)
         q3=self.get_act_q(age,emp=1,time_in_state=time_in_state)
         q4=cc.get_RL_act(age,emp=1,time_in_state=time_in_state,rlmodel=rlmodel,
             load=load,deterministic=deterministic,
             n_palkka=self.n_palkka,deltapalkka=self.deltapalkka,n_elake=self.n_elake,deltaelake=self.deltaelake,
-            min_wage=self.min_wage,min_pension=self.min_pension)
+            min_wage=self.min_wage,hila_elake0=self.hila_elake0)
         q5=self.get_act_q(age,emp=3,time_in_state=time_in_state)
         q6=cc.get_RL_act(age,emp=3,time_in_state=time_in_state,rlmodel=rlmodel,
             load=load,deterministic=deterministic,
             n_palkka=self.n_palkka,deltapalkka=self.deltapalkka,n_elake=self.n_elake,deltaelake=self.deltaelake,
-            min_wage=self.min_wage,min_pension=self.min_pension)
+            min_wage=self.min_wage,hila_elake0=self.hila_elake0)
         
         self.plot_twoimg(q3,q4,title1='Employed DP {}'.format(age),title2='Employed RL {}'.format(age),vmin=0,vmax=2,figname=dire+'/emp_'+str(age))
         self.plot_twoimg(q1,q2,title1='Unemployed DP {}'.format(age),title2='Unemployed RL {}'.format(age),vmin=0,vmax=2,figname=dire+'/unemp_'+str(age))
@@ -1569,10 +1537,10 @@ class DynProgLifecycleRev(Lifecycle):
         self.load_sim(results)
         q1=cc.get_RL_act(age,emp=emp1,time_in_state=time_in_state,rlmodel=rlmodel,
            load=load,deterministic=deterministic,n_palkka=self.n_palkka,deltapalkka=self.deltapalkka,n_elake=self.n_elake,deltaelake=self.deltaelake,
-           min_wage=self.min_wage,min_pension=self.min_pension)
+           min_wage=self.min_wage,hila_elake0=self.hila_elake0)
         q2=cc.get_RL_act(age,emp=emp2,time_in_state=time_in_state,rlmodel=rlmodel,
            load=load,deterministic=deterministic,n_palkka=self.n_palkka,deltapalkka=self.deltapalkka,n_elake=self.n_elake,deltaelake=self.deltaelake,
-           min_wage=self.min_wage,min_pension=self.min_pension)
+           min_wage=self.min_wage,hila_elake0=self.hila_elake0)
         fig,axs=self.plot_twoimg(q1,q2,title1='Unemployed RL {}'.format(age),title2='Employed RL {}'.format(age),vmin=0,vmax=2,
            show_results=False,alpha=0.5)
         print('scatter...')
@@ -1614,106 +1582,3 @@ class DynProgLifecycleRev(Lifecycle):
 
         fig.show()
                      
-    def comp_pave(self):
-    
-        self.ave=np.zeros(self.n_time)
-        self.sted=np.zeros(self.n_time)
-        self.real=self.episodestats.comp_presentvalue()
-        for t in range(1,self.n_time):
-            self.ave[t]=np.mean(self.episodestats.aveV[t,:]-self.real[t,:])
-            self.sted[t]=np.std(self.episodestats.aveV[t,:]-self.real[t,:])
-            
-        self.pave=np.zeros((self.n_time,3))
-        self.nave=np.zeros((self.n_time,3))
-        for k in range(self.n_pop):
-            for t in range(1,self.n_time):
-                s=int(self.episodestats.popempstate[t,k])
-                self.pave[t,s]+=self.episodestats.aveV[t,k]-self.real[t,k]
-                self.nave[t,s]+=1            
-
-        self.tave=np.zeros((self.n_time,10))
-        self.ntave=np.zeros((self.n_time,10))
-        self.pvave=np.zeros((self.n_time,5))
-        self.npvave=np.zeros((self.n_time,5))
-        for k in range(self.n_pop):
-            for t in range(1,self.n_time):
-                wa=int(np.floor(self.episodestats.infostats_pop_wage[t,k]/10000))
-                self.tave[t,wa]+=self.episodestats.aveV[t,k]-self.real[t,k]
-                self.ntave[t,wa]+=1
-                pa=int(np.floor(self.episodestats.infostats_pop_pension[t,k]/10000))
-                self.pvave[t,pa]+=self.episodestats.aveV[t,k]-self.real[t,k]
-                self.npvave[t,pa]+=1
-        
-        self.pave=self.pave/np.maximum(1.0,self.nave)
-        self.pvave=self.pvave/np.maximum(1.0,self.npvave)
-        self.tave=self.tave/np.maximum(1.0,self.ntave)
-
-        self.oavave=np.zeros((self.n_time,5))
-        self.n_oavave=np.zeros((self.n_time,5))
-        for k in range(self.n_pop):
-            for t in range(1,self.n_time):
-                if int(self.episodestats.popempstate[t,k])==2:
-                    wa=int(np.floor(self.episodestats.infostats_pop_pension[t,k]/10000))
-                    self.oavave[t,wa]+=self.episodestats.aveV[t,k]-self.real[t,k]
-                    self.n_oavave[t,wa]+=1
-        self.oavave=self.oavave/np.maximum(1.0,self.n_oavave)
-
-    def plot_pave(self):
-        plt.plot(self.ave[1:])
-        plt.show()
-        
-        plt.plot(self.pave[:,0],'r',label='unemp')
-        plt.plot(self.pave[:,1],'k',label='emp')
-        plt.legend()
-        plt.title('emp/unemp aveV error')
-        plt.show()
-        
-        plt.plot(self.pave[:,2],'k',label='ret')     
-        plt.title('ret aveV error')
-        plt.show()
-        
-        for k in range(5):
-            plt.plot(self.tave[:,k],label=str(k))
-        plt.legend()
-        plt.title('aveV error by wage level')
-        plt.show()        
-        for k in range(5,10):
-            plt.plot(self.tave[:,k],label=str(k))
-        plt.legend()
-        plt.title('aveV error by wage level')
-        plt.show()        
-        for k in range(10):
-            plt.plot(self.ntave[:,k],label=str(k))
-        plt.legend()
-        plt.title('number of agents by wage level')
-        plt.show()        
-
-        for k in range(5):
-            plt.plot(self.oavave[45:,k],label=str(k))
-        plt.legend()
-        plt.title('error by retirees by wage level')
-        plt.show()        
-        for k in range(5):
-            plt.plot(self.n_oavave[45:,k],label=str(k))
-        plt.legend()
-        plt.title('number of retirees by wage level')
-        plt.show()
-        
-        for k in range(5):
-            plt.plot(self.pvave[:,k],label=str(k))
-        plt.legend()
-        plt.title('aveV error by pension level')
-        plt.show()        
-        for k in range(5):
-            plt.plot(self.npvave[:,k],label=str(k))
-        plt.legend()
-        plt.title('number of agents by pension level')
-        plt.show()        
-
-    def plot_p_aveV(self,num=500,start=1):
-        plt.plot(self.episodestats.aveV[start:,num],'r')
-        plt.plot(self.real[start:,num])
-        plt.show()
-        plt.plot(self.episodestats.aveV[start:,num]-self.real[start:,num])
-        plt.show()
-        plt.plot(self.episodestats.popempstate[start:,num])                                
