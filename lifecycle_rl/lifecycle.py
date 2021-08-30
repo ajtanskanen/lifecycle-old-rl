@@ -864,9 +864,9 @@ class Lifecycle():
    
     def render(self,load=None,figname=None,grayscale=False):
         if load is not None:
-            self.episodestats.render(load=load,figname=figname,grayscale=False)
+            self.episodestats.render(load=load,figname=figname,grayscale=grayscale)
         else:
-            self.episodestats.render(figname=figname,grayscale=False)
+            self.episodestats.render(figname=figname,grayscale=grayscale)
    
     def render_reward(self,load=None,figname=None):
         if load is not None:
@@ -887,10 +887,23 @@ class Lifecycle():
         else:
             tyotulosumma=q['tyotulosumma_eielakkeella']
         
-        q2=self.episodestats.comp_participants(scale=True,include_retwork=include_retwork,grouped=grouped,g=g)
-        kokotyossa,osatyossa=self.episodestats.comp_parttime_aggregate(grouped=grouped,g=g)
-        htv=q2['htv']
-        palkansaajia=q2['palkansaajia']
+        if grouped:
+            q2=self.episodestats.comp_participants(include_retwork=include_retwork,grouped=True,g=g)
+            #kokotyossa,osatyossa=self.episodestats.comp_parttime_aggregate(grouped=grouped,g=g)
+            htv=q2['htv']
+            kokotyossa,osatyossa,tyot=self.episodestats.comp_employment_groupstats(g=g,include_retwork=include_retwork,grouped=True)
+            palkansaajia=kokotyossa+osatyossa
+            kokotyossa=kokotyossa/palkansaajia
+            osatyossa=osatyossa/palkansaajia
+        else:
+            q2=self.episodestats.comp_participants(include_retwork=include_retwork,grouped=False)
+            #kokotyossa,osatyossa=self.episodestats.comp_parttime_aggregate(grouped=False)
+            htv=q2['htv']
+            kokotyossa,osatyossa,tyot=self.episodestats.comp_employment_groupstats(grouped=False,include_retwork=include_retwork)
+            palkansaajia=kokotyossa+osatyossa
+            kokotyossa=kokotyossa/palkansaajia
+            osatyossa=osatyossa/palkansaajia
+        
         muut_tulot=q['muut tulot']
         tC=0.2*max(0,q['tyotulosumma']-q['verot+maksut'])
         if grouped:
@@ -908,7 +921,7 @@ class Lifecycle():
         menot['kokoelake']=q['kokoelake']
         menot['asumistuki']=q['asumistuki']
         menot['toimeentulotuki']=q['toimeentulotuki']
-        menot['muutmenot']=q['opintotuki']+q['isyyspaivaraha']+q['aitiyspaivaraha']+q['sairauspaivaraha']++q['perustulo']+q['kotihoidontuki']
+        menot['muutmenot']=q['opintotuki']+q['isyyspaivaraha']+q['aitiyspaivaraha']+q['sairauspaivaraha']+q['perustulo']+q['kotihoidontuki']
         
         #print(tyollaste,tyotaste)
         #tyollaste,tyotaste=0,0

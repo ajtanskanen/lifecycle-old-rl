@@ -278,7 +278,9 @@ class DynProgLifecycleRev(Lifecycle):
             x = np.linspace(self.min_oapension,self.max_oapension, self.n_oapension)
             y = self.oaHila[t,:]
             f = interp1d(x,y,fill_value="extrapolate",kind=self.spline_approx)
-            V1=f(max(self.min_oapension,elake))
+            V1=max(y[0],f(max(self.min_oapension,elake))) # max tarkoittaa käytännössä takuueläkettä
+            #print(x,y)
+            #print(elake,V1)
         else:    
             emin,emax,we=self.inv_elake(elake)
             pmin,pmax,wp=self.inv_palkka(old_wage)
@@ -294,7 +296,10 @@ class DynProgLifecycleRev(Lifecycle):
                 w = np.linspace(self.min_wage, self.max_wage, self.n_palkka)
                 values=(1-we)*self.Hila[t,:,emin,emp,tismax,:]+we*self.Hila[t,:,emax,emp,tismax,:]
                 g=RectBivariateSpline(w,w, values,kx=self.pw_maxspline,ky=self.pw_maxspline) # default kx=3,ky=3
-                V1 = np.squeeze(g(old_wage,wage))
+                V1 = max(values[0,0],np.squeeze(g(old_wage,wage)))
+                #print(w)
+                #print(values)
+                #print(old_wage,wage,V1)
 
         if show:      
             print(f'getV({emp},{elake},{old_wage},{wage}): p2min {p2min} p2max {p2max} wp2 {wp2})')
@@ -388,7 +393,7 @@ class DynProgLifecycleRev(Lifecycle):
             x = np.linspace(self.min_oapension,self.max_oapension, self.n_oapension)
             y = self.oaHila[t,:]
             f = interp1d(x, y,fill_value="extrapolate",kind=self.spline_approx)
-            Vs[:]=f(elake)
+            Vs[:]=np.maximum(y[0],f(elake))
         else:
             emin,emax,we=self.inv_elake(elake)
             pmin,pmax,wp=self.inv_palkka(old_wage)
@@ -407,7 +412,7 @@ class DynProgLifecycleRev(Lifecycle):
                 g=RectBivariateSpline(w,w,values,kx=self.pw_maxspline,ky=self.pw_maxspline)
                 for ind,wage in enumerate(wages):
                     V1 = np.squeeze(g(old_wage,wage))
-                    Vs[ind]=max(0,V1)
+                    Vs[ind]=max(values[0,0],V1)
 
         if show:      
             print(f'getV({emp},{elake},{old_wage},{wage}): p2min {p2min} p2max {p2max} wp2 {wp2})')
@@ -563,7 +568,7 @@ class DynProgLifecycleRev(Lifecycle):
             x = np.linspace(self.min_oapension,self.max_oapension, self.n_oapension)
             y = self.oaactHila[t,:]
             f = interp1d(x, y,fill_value="extrapolate",kind=self.spline_approx)
-            apx1=f(elake)
+            apx1=max(y[0],f(elake))
         else:
             emin,emax,we=self.inv_elake(elake)
             pmin,pmax,wp=self.inv_palkka(old_wage)
@@ -581,7 +586,7 @@ class DynProgLifecycleRev(Lifecycle):
                 w = np.linspace(self.min_wage, self.max_wage, self.n_palkka)
                 values=(1-we)*self.actHila[t,:,emin,emp,tismax,:,act]+we*self.actHila[t,:,emax,emp,tismax,:,act]
                 f=RectBivariateSpline(w,w, values,kx=self.pw_maxspline,ky=self.pw_maxspline)
-                apx1 = np.squeeze(f(old_wage,wage))
+                apx1 = np.squeeze(np.maximum(values[0,0],f(old_wage,wage)))
 
         if debug:
             if wp2<0 or wp2>1:
