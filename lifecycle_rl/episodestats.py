@@ -291,7 +291,7 @@ class EpisodeStats():
             ove=0
             jasen=0
     
-        t=int(np.round((a2-self.min_age)*self.inv_timestep))#-1
+        t=int(np.round((a2-self.min_age)*self.inv_timestep))-1
         if a2>a and newemp>=0: # new state is not reset (age2>age)
             if a2>self.min_retirementage and newemp==3 and self.version in set([1,2,3,4]):
                 newemp=2
@@ -1464,7 +1464,10 @@ class EpisodeStats():
                 tyottomyysaste=100*(unemployed+piped+tyomarkkinatuki)/alive[:,0]
                 ka_tyottomyysaste=100*np.sum(unemployed+tyomarkkinatuki+piped)/np.sum(alive[:,0])
         elif self.version in set([0,101]):
-            osatyo=emp[:,3]
+            if False:
+                osatyo=emp[:,3]
+            else:
+                osatyo=0
             tyollisyysaste=100*(employed+osatyo)/alive[:,0]
             #osatyoaste=np.zeros(employed.shape)
             osatyoaste=100*(osatyo)/(employed+osatyo)
@@ -2564,7 +2567,7 @@ class EpisodeStats():
             ura_tyomarkkinatuki=statistic[:,13]
             ura_army=statistic[:,14]
         else:
-            ura_osatyo=statistic[:,3]
+            ura_osatyo=0 #statistic[:,3]
 
         if no_ve:
             ura_ret[-2:-1]=None
@@ -2609,8 +2612,10 @@ class EpisodeStats():
                         labels=('työssä','osatyö','ve+työ','ve+osatyö','työtön','tm-tuki','työttömyysputki','vanhuuseläke','tk-eläke','äitiysvapaa','isyysvapaa','kh-tuki','opiskelija','työvoiman ulkop.','armeijassa'), 
                         colors=pal)
                 else:
-                    ax.stackplot(x,ura_emp,ura_osatyo,ura_unemp,ura_ret,
-                        labels=('työssä','osa-aikatyö','työtön','vanhuuseläke'), colors=pal)
+                    #ax.stackplot(x,ura_emp,ura_osatyo,ura_unemp,ura_ret,
+                    #    labels=('työssä','osa-aikatyö','työtön','vanhuuseläke'), colors=pal)
+                    ax.stackplot(x,ura_emp,ura_unemp,ura_ret,
+                        labels=('työssä','työtön','vanhuuseläke'), colors=pal)
             if start_from is None:
                 ax.set_xlim(self.min_age,self.max_age)
             else:
@@ -2649,8 +2654,8 @@ class EpisodeStats():
                 ax.plot(x,ura_unemp,label='tyött')
                 ax.plot(x,ura_ret,label='eläke')
                 ax.plot(x,ura_emp,label='työ')
-                ax.plot(x,ura_osatyo,label='osatyö')
                 if self.version in set([1,2,3,4]):
+                    ax.plot(x,ura_osatyo,label='osatyö')
                     ax.plot(x,ura_disab,label='tk')
                     ax.plot(x,ura_pipe,label='putki')
                     ax.plot(x,ura_tyomarkkinatuki,label='tm-tuki')
@@ -2801,7 +2806,7 @@ class EpisodeStats():
                 employment_state=self.popempstate[t,k]
                 v,_=self.env.log_utility((1+x)*income,employment_state,age)
                 if np.isnan(v):
-                    print(v,income,employment_state,age)
+                    print('NaN',v,income,employment_state,age)
                 u[t]+=v
                 #print(age,v)
                 
@@ -2813,13 +2818,13 @@ class EpisodeStats():
             factor=self.poprewstate[t,k]/v0 # life expectancy
             v,_=self.env.log_utility((1+x)*income,employment_state,age)
             if np.isnan(v):
-                print(v,income,employment_state,age)
+                print('NaN',v,income,employment_state,age)
             if np.isnan(factor):
-                print(factor,v0)
+                print('NaN',factor,v0)
             #print(age,v*factor,factor)
             u[t]+=v*factor
             if np.isnan(u[t]):
-                print(age,v,v*factor,factor,u[t],income,employment_state)
+                print('NaN',age,v,v*factor,factor,u[t],income,employment_state)
                 
         u=u/self.n_pop 
         w=np.zeros(self.n_time)
