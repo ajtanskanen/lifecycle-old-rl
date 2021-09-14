@@ -94,16 +94,43 @@ class BalanceLifeCycle():
             
         return ave
 
-    def optimize(self,reset=False,min_ppr=-0.3,max_ppr=0.3):
+    def test_black_box_function(self,**x):
+        """
+        Function with unknown internals we wish to maximize.
+        """
+        print(x)
+        initargs2=self.initargs
+        initargs2['extra_ppr']=x['extra_ppr']
+        initargs2['additional_income_tax']=self.additional_income_tax
+        repeats=1
+        err=np.empty(repeats)
+        for r in range(repeats):
+            e=np.random.normal(0,0.05)
+            err[r]=-(x['extra_ppr']+e-0.1)**2
+            
+        ave=np.nanmean(err)
+        print(f'ave {ave}')
+            
+        return ave
+
+    def optimize(self,reset=False,min_ppr=-0.3,max_ppr=0.3,debug=False):
         # Bounded region of parameter space
         pbounds = {'extra_ppr': (min_ppr, max_ppr)} #, 'women_mu_scale': (0.01,0.3), 'women_mu_age': (57,62)}
 
-        optimizer = BayesianOptimization(
-            f=self.black_box_function,
-            pbounds=pbounds,
-            verbose=2, # verbose = 1 prints only when a maximum is observed, verbose = 0 is silent
-            #random_state=1,
-        )
+        if debug:
+            optimizer = BayesianOptimization(
+                f=self.test_black_box_function,
+                pbounds=pbounds,
+                verbose=2, # verbose = 1 prints only when a maximum is observed, verbose = 0 is silent
+                #random_state=1,
+            )
+        else:
+            optimizer = BayesianOptimization(
+                f=self.black_box_function,
+                pbounds=pbounds,
+                verbose=2, # verbose = 1 prints only when a maximum is observed, verbose = 0 is silent
+                #random_state=1,
+            )
         
         LOG_DIR = Path().absolute() / 'bayes_opt_logs'
         LOG_DIR.mkdir(exist_ok=True)
@@ -119,7 +146,7 @@ class BalanceLifeCycle():
 
         optimizer.maximize(
             init_points=2,
-            n_iter=6,
+            n_iter=60,
         )
         
         print('The best parameters found {}'.format(optimizer.max))

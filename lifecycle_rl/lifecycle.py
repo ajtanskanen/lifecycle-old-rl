@@ -70,7 +70,7 @@ class Lifecycle():
                     year=2018,scale_tyel_accrual=None,preferencenoise_level=None,
                     scale_additional_tyel_accrual=None,valtionverotaso=None,perustulo_asetettava=None,
                     porrasta_toe=None,include_halftoe=None,include_ove=None,min_retirementage=None,
-                    max_retirementage=None,unemp_limit_reemp=None,lang=None):
+                    max_retirementage=None,unemp_limit_reemp=None,lang=None,startage=None):
         '''
         Alusta muuttujat
         '''
@@ -136,6 +136,7 @@ class Lifecycle():
         self.include_ove=False
         self.unemp_limit_reemp=False
         self.extra_ppr=0
+        self.startage=self.min_age
 
         if callback_minsteps is not None:
             self.callback_minsteps=callback_minsteps
@@ -259,7 +260,8 @@ class Lifecycle():
             self.include_ove=include_ove
         if unemp_limit_reemp is not None:
             self.unemp_limit_reemp = unemp_limit_reemp
-
+        if startage is not None:
+            self.startage=startage
             
         # alustetaan gym-environment
         if minimal:
@@ -284,6 +286,7 @@ class Lifecycle():
                 'perustulo': perustulo,
                 'osittainen_perustulo': self.osittainen_perustulo, 
                 'perustulo_korvaa_toimeentulotuen': self.perustulo_korvaa_toimeentulotuen,
+                'startage': self.startage,
                 'year': self.year}
         else:
             #if EK:
@@ -333,6 +336,7 @@ class Lifecycle():
                 'include_ove': self.include_ove,
                 'unemp_limit_reemp': self.unemp_limit_reemp,
                 'extra_ppr': self.extra_ppr,
+                'startage': self.startage,
                 'year': self.year}
                 
         # Create log dir & results dirs
@@ -368,6 +372,12 @@ class Lifecycle():
             return int((age)*self.inv_timestep)
         else:
             return int((age-self.min_age)*self.inv_timestep)            
+
+    def map_t(self,t,start_zero=False):
+        return self.min_age+t*self.timestep
+
+    def get_initial_reward(self,startage=None):
+        return self.episodestats.get_initial_reward(startage=startage)
 
     def get_multiprocess_env(self,rlmodel,debug=False,arch=None,predict=False):
 
@@ -821,7 +831,7 @@ class Lifecycle():
 
         return model,env,n_cpu
 
-    def simulate(self,debug=False,rlmodel='acktr',plot=True,load=None,pop=None,
+    def simulate(self,debug=False,rlmodel='acktr',plot=True,load=None,pop=None,startage=None,
                  deterministic=False,save='results/testsimulate',arch=None):
 
         model,env,n_cpu=self.setup_model(debug=debug,rlmodel=rlmodel,plot=plot,load=load,pop=pop,
@@ -831,6 +841,10 @@ class Lifecycle():
         n=n_cpu-1
         pop_num=np.array([k for k in range(n_cpu)])
         tqdm_e = tqdm(range(int(self.n_pop)), desc='Population', leave=True, unit=" p")
+        self.episodestats.init_variables()
+        
+        if startage is not None:
+            self.env.set_startage(startage)
 
         print('predict')
         while np.any(pop_num<self.n_pop):
@@ -1044,7 +1058,8 @@ class Lifecycle():
                stats='results/simut_stats',deterministic=True,train=True,predict=True,
                batch1=1,batch2=100,cont=False,start_from=None,callback_minsteps=None,
                verbose=1,max_grad_norm=None,learning_rate=0.25,log_interval=10,
-               learning_schedule='linear',vf=None,arch=None,gae_lambda=None,plot=None):
+               learning_schedule='linear',vf=None,arch=None,gae_lambda=None,plot=None,
+               startage=None):
    
         '''
         run_results
@@ -1076,7 +1091,7 @@ class Lifecycle():
                                  learning_schedule=learning_schedule,vf=vf,arch=arch,gae_lambda=gae_lambda)
         if predict:
             #print('predict...')
-            self.predict_protocol(pop=pop,rlmodel=rlmodel,load=save,
+            self.predict_protocol(pop=pop,rlmodel=rlmodel,load=save,startage=startage,
                           debug=debug,deterministic=deterministic,results=results,arch=arch)
           
     def run_protocol(self,steps1=2_000_000,steps2=1_000_000,rlmodel='acktr',
@@ -1116,7 +1131,7 @@ class Lifecycle():
                        max_grad_norm=max_grad_norm,learning_rate=learning_rate,learning_schedule=learning_schedule)
 
     def predict_protocol(self,pop=1_00,rlmodel='acktr',results='results/simut_res',arch=None,
-                         load='saved/malli',debug=False,deterministic=False):
+                         load='saved/malli',debug=False,deterministic=False,startage=None):
         '''
         predict_protocol
 
@@ -1125,7 +1140,7 @@ class Lifecycle():
  
         # simulate the saved best
         self.simulate(pop=pop,rlmodel=rlmodel,plot=False,debug=debug,arch=arch,
-                      load=load,save=results,deterministic=deterministic)
+                      load=load,save=results,deterministic=deterministic,startage=startage)
 
     def run_distrib(self,n=5,steps1=100,steps2=100,pop=1_000,rlmodel='acktr',
                save='saved/distrib_base_',debug=False,simut='simut',results='results/distrib_',

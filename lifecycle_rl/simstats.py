@@ -507,6 +507,7 @@ class SimStats(EpisodeStats):
         ax.legend()
         if figname is not None:
             plt.savefig(figname+'tyottomyydet.eps', format='eps')
+            plt.savefig(figname+'tyottomyydet.png', format='png',dpi=300)
         plt.show()
 
         fig,ax=plt.subplots()
@@ -518,6 +519,18 @@ class SimStats(EpisodeStats):
         ax.legend()
         if figname is not None:
             plt.savefig(figname+'tyottomyydet2.eps', format='eps')
+        plt.show()
+
+        fig,ax=plt.subplots()
+        ax.set_xlabel(self.labels['age'])
+        ax.set_ylabel(self.labels['tyottomien osuus'])
+        x=np.linspace(self.min_age,self.max_age,self.n_time)
+        ax.plot(x[1:],100*(u_tmtuki1[1:]+u_ansiosid1[1:]),ls='--',label=label1)
+        ax.plot(x[1:],100*(u_tmtuki2[1:]+u_ansiosid2[1:]),label=label2)
+        ax.legend()
+        if figname is not None:
+            plt.savefig(figname+'tyottomyydet3.eps', format='eps')
+            plt.savefig(figname+'tyottomyydet3.png', format='png',dpi=300)
         plt.show()
 
         fig,ax=plt.subplots()
@@ -564,7 +577,7 @@ class SimStats(EpisodeStats):
         m_best1,m_median1,s_emp1,median_htv1,u_tmtuki1,u_ansiosid1,h_median1,mn_median1=self.get_simstats(filename1)
         _,m_mean1,s_emp1,mean_htv1,u_tmtuki1,u_ansiosid1,h_mean1,mn_mean1=self.get_simstats(filename1,use_mean=True)
 
-        tyoll_osuus2,htv_osuus2,tyot_osuus2,kokotyo_osuus2,osatyo_osuus2=self.comp_employed(cc2.empstate)
+        tyoll_osuus2,htv_osuus2,tyot_osuus2,kokotyo_osuus2,osatyo_osuus2=self.comp_employed_ratio(cc2.empstate)
         htv2,tyoll2,haj2,tyollaste2,tyolliset2,osatyolliset2,kokotyolliset2,osata2,kokota2=self.comp_tyollisyys_stats(cc2.empstate/cc2.n_pop,scale_time=True,start=s,end=e,full=True)
         ansiosid_osuus2,tm_osuus2=self.comp_employed_detailed(cc2.empstate)
         
