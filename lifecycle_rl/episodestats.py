@@ -2953,7 +2953,7 @@ class EpisodeStats():
     def get_reward(self,discounted=False):
         return self.comp_total_reward(output=False,discounted=discounted) #np.sum(self.rewstate)/self.n_pop
 
-    def comp_total_reward(self,output=True,discounted=False,discountfactor=None): 
+    def comp_total_reward(self,output=False,discounted=False,discountfactor=None): 
         if not discounted:
             total_reward=np.sum(self.rewstate)
             rr=total_reward/self.n_pop
