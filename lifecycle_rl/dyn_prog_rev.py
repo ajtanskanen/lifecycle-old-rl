@@ -1222,7 +1222,7 @@ class DynProgLifecycleRev(Lifecycle):
         if t==0:
             t0=0
         else:  
-            t0=1
+            t0=0
         
         def func0(x,emp2,elake2,palkka,tis2,ika2):
             a=self.get_V(emp=emp2,elake=elake2,old_wage=palkka,time_in_state=tis2,age=ika2,wage=x)
@@ -1492,7 +1492,7 @@ class DynProgLifecycleRev(Lifecycle):
                                     self.unempActReward[t,p_old,el,tis,p,a]=rts[ind]
                                     
                                 #self.Hila[t,p_old,el,emp,tis,p]=np.max(self.actHila[t,p_old,el,emp,tis,p,:])
-                                self.unempHila[t,p_old,el,p]=np.max(self.unempActHila[t,p_old,el,p,:])
+                                self.unempHila[t,p_old,el,tis,p]=np.max(self.unempActHila[t,p_old,el,tis,p,:])
                 #toc=time.perf_counter()
                 #print('time state 0',toc-tic)
             else:
@@ -1680,7 +1680,6 @@ class DynProgLifecycleRev(Lifecycle):
         self.empHila = f['empHila'][()]
         self.unempActHila = f['unempActHila'][()]
         self.unempActReward = f['unempActReward'][()]
-        self.unempHila = f['unempHila'][()]
         self.n_palkka = f['n_palkka'][()]
         self.n_palkka_old = f['n_palkka_old'][()]
         self.n_elake = f['n_elake'][()]
