@@ -20,6 +20,7 @@ import pandas as pd
 import scipy.optimize
 from tqdm import tqdm_notebook as tqdm
 from . empstats import Empstats
+from scipy.stats import gaussian_kde
 
 #locale.setlocale(locale.LC_ALL, 'fi_FI')
 
@@ -213,7 +214,7 @@ class EpisodeStats():
         self.rewstate=np.zeros((self.n_time,n_emps))
         self.poprewstate=np.zeros((self.n_time,self.n_pop))
         self.salaries_emp=np.zeros((self.n_time,n_emps))
-        self.salaries=np.zeros((self.n_time,self.n_pop))
+        #self.salaries=np.zeros((self.n_time,self.n_pop))
         self.actions=np.zeros((self.n_time,self.n_pop))
         self.popempstate=np.zeros((self.n_time,self.n_pop))
         self.popunemprightleft=np.zeros((self.n_time,self.n_pop))
@@ -293,12 +294,13 @@ class EpisodeStats():
         self.infostats_equivalent_income=np.zeros(self.n_time)
         self.infostats_alv=np.zeros(self.n_time)
         self.infostats_puoliso=np.zeros(self.n_time)
+        self.pop_predrew=np.zeros((self.n_time,self.n_pop))
         if self.version==101:
             self.infostats_savings=np.zeros((self.n_time,self.n_pop))
             self.sav_actions=np.zeros((self.n_time,self.n_pop))
         
 
-    def add(self,n,act,r,state,newstate,q=None,debug=False,plot=False,aveV=None): 
+    def add(self,n,act,r,state,newstate,q=None,debug=False,plot=False,aveV=None,pred_r=None): 
         
         if self.version==0:
             emp,_,_,a,_,_=self.env.state_decode(state) # current employment state
@@ -352,7 +354,7 @@ class EpisodeStats():
                 self.poprewstate[t,n]=r
                 self.actions[t,n]=act
                 self.popempstate[t,n]=newemp
-                self.salaries[t,n]=newsal
+                #self.salaries[t,n]=newsal
                 self.salaries_emp[t,newemp]+=newsal
                 self.time_in_state[t,newemp]+=tis
                 if tis<=0.25 and newemp==5:
@@ -430,12 +432,14 @@ class EpisodeStats():
                 
                 self.poprewstate[t,n]=r
                 self.popempstate[t,n]=newemp
-                self.salaries[t,n]=newsal
+                #self.salaries[t,n]=newsal
                 self.salaries_emp[t,newemp]+=newsal
                 self.time_in_state[t,newemp]+=tis
                 self.infostats_equivalent_income[t]+=q['eq']
                 self.infostats_pop_wage[t,n]=newsal   
                 self.infostats_pop_pension[t,n]=newpen
+                if self.dynprog and pred_r is not None:
+                    self.pop_predrew[t,n]=pred_r
                 
                 if self.version==101:
                     self.infostats_savings[t,n]=savings
@@ -1537,13 +1541,13 @@ class EpisodeStats():
         fig,ax=plt.subplots()
         ax.set_xlabel('palkat')
         ax.set_ylabel('freq')
-        ax.hist(self.salaries[t,:])
+        ax.hist(self.infostats_pop_wage[t,:])
         plt.show()
         fig,ax=plt.subplots()
         ax.set_xlabel('aika')
         ax.set_ylabel('palkat')
-        meansal=np.mean(self.salaries,axis=1)
-        stdsal=np.std(self.salaries,axis=1)
+        meansal=np.mean(self.infostats_pop_wage,axis=1)
+        stdsal=np.std(self.infostats_pop_wage,axis=1)
         ax.plot(x,meansal)
         ax.plot(x,meansal+stdsal)
         ax.plot(x,meansal-stdsal)
@@ -1747,20 +1751,20 @@ class EpisodeStats():
         if all:
             fig,ax=plt.subplots()
             for t in range(1,self.n_time-1,5):
-                scaled,x=np.histogram(self.salaries[t,:],bins=bins)
+                scaled,x=np.histogram(self.infostats_pop_wage[t,:],bins=bins)
                 x2=0.5*(x[1:]+x[0:-1])
                 ax.plot(x2,scaled,label=t)
             plt.legend()
             plt.show()
         else:
             if sum:
-                scaled,x=np.histogram(np.sum(self.salaries,axis=0),bins=bins)
+                scaled,x=np.histogram(np.sum(self.infostats_pop_wage,axis=0),bins=bins)
                 x2=0.5*(x[1:]+x[0:-1])
                 plt.plot(x2,scaled)
             else:
                 fig,ax=plt.subplots()
                 for t1 in range(t,t+n,1):
-                    scaled,x=np.histogram(self.salaries[t1,:],bins=bins)
+                    scaled,x=np.histogram(self.infostats_pop_wage[t1,:],bins=bins)
                     x2=0.5*(x[1:]+x[0:-1])
                     ax.plot(x2,scaled,label=t1)
                 plt.legend()
@@ -1803,38 +1807,38 @@ class EpisodeStats():
         for k in range(self.n_pop):
             for t in range(self.n_time-2):
                 if self.popempstate[t,k] in set([1,10,8,9]):
-                    salx[t]=salx[t]+self.salaries[t,k]
+                    salx[t]=salx[t]+self.infostats_pop_wage[t,k]
                     saln[t]=saln[t]+1
                     if self.infostats_group[k]>2:
-                        salx_f[t]=salx_f[t]+self.salaries[t,k]
+                        salx_f[t]=salx_f[t]+self.infostats_pop_wage[t,k]
                         saln_f[t]=saln_f[t]+1
                     else:
-                        salx_m[t]=salx_m[t]+self.salaries[t,k]
+                        salx_m[t]=salx_m[t]+self.infostats_pop_wage[t,k]
                         saln_m[t]=saln_m[t]+1
             if self.popempstate[self.map_age(20),k] in set([1,10]):
-                sal20[m20]=self.salaries[self.map_age(20),k]
+                sal20[m20]=self.infostats_pop_wage[self.map_age(20),k]
                 m20=m20+1
             if self.popempstate[self.map_age(25),k] in set([1,10]):
-                sal25[m25]=self.salaries[self.map_age(25),k]
+                sal25[m25]=self.infostats_pop_wage[self.map_age(25),k]
                 m25=m25+1
             if self.popempstate[self.map_age(30),k] in set([1,10]):
-                sal30[m30]=self.salaries[self.map_age(30),k]
+                sal30[m30]=self.infostats_pop_wage[self.map_age(30),k]
                 m30=m30+1
             if self.popempstate[self.map_age(40),k] in set([1,10]):
-                sal40[m40]=self.salaries[self.map_age(40),k]
+                sal40[m40]=self.infostats_pop_wage[self.map_age(40),k]
                 m40=m40+1
             if self.popempstate[self.map_age(50),k] in set([1,10]):
-                sal50[m50]=self.salaries[self.map_age(50),k]
+                sal50[m50]=self.infostats_pop_wage[self.map_age(50),k]
                 m50=m50+1
             if self.popempstate[self.map_age(60),k] in set([1,10]):
-                sal60[m60]=self.salaries[self.map_age(60),k]
+                sal60[m60]=self.infostats_pop_wage[self.map_age(60),k]
                 m60=m60+1
                 
                 
         salx=salx/np.maximum(1,saln)
         salx_f=salx_f/np.maximum(1,saln_f)
         salx_m=salx_m/np.maximum(1,saln_m)
-        #print(sal25,self.salaries)
+        #print(sal25,self.infostats_pop_wage)
                 
         def kuva(sal,ika,m,p,palkka):
             plt.hist(sal[:m],bins=50,density=True)
@@ -1858,7 +1862,7 @@ class EpisodeStats():
         kuva2(sal60,60,m60)
 
         data_range=np.arange(21,72)
-        plt.plot(data_range,np.mean(self.salaries[::4],axis=1),label='malli kaikki')
+        plt.plot(data_range,np.mean(self.infostats_pop_wage[::4],axis=1),label='malli kaikki')
         plt.plot(data_range,salx[::4],label='malli töissä')
         data_range=np.arange(20,72)
         plt.plot(data_range,0.5*palkat_ika_miehet+0.5*palkat_ika_naiset,label='data')
@@ -2923,9 +2927,9 @@ class EpisodeStats():
         averaged determines whether the value is averaged over time or not
         '''    
         u=np.zeros((self.n_time,self.n_pop))
-        u[self.n_time-1,:]=self.poprewstate[self.n_time-1,:]
+        #u[self.n_time-1,:]=self.poprewstate[self.n_time-1,:]
         for t in range(self.n_time-2,-1,-1):
-            u[t,:]=self.poprewstate[t,:]+self.gamma*u[t+1,:]
+            u[t,:]=self.poprewstate[t+1,:]+self.gamma*u[t+1,:]
          
         return u
         
@@ -3269,9 +3273,10 @@ class EpisodeStats():
         _ = f.create_dataset('siirtyneet', data=self.siirtyneet, dtype=int,compression="gzip", compression_opts=9)
         _ = f.create_dataset('siirtyneet_det', data=self.siirtyneet_det, dtype=int,compression="gzip", compression_opts=9)
         _ = f.create_dataset('pysyneet', data=self.pysyneet, dtype=int,compression="gzip", compression_opts=9)
-        _ = f.create_dataset('salaries', data=self.salaries, dtype=ftype,compression="gzip", compression_opts=9)
         if self.dynprog:
             _ = f.create_dataset('aveV', data=self.aveV, dtype=ftype,compression="gzip", compression_opts=9)
+            _ = f.create_dataset('pop_predrew', data=self.pop_predrew, dtype=ftype,compression="gzip", compression_opts=9)
+            
         _ = f.create_dataset('time_in_state', data=self.time_in_state, dtype=ftype,compression="gzip", compression_opts=9)
         _ = f.create_dataset('stat_tyoura', data=self.stat_tyoura, dtype=ftype,compression="gzip", compression_opts=9)
         _ = f.create_dataset('stat_toe', data=self.stat_toe, dtype=int,compression="gzip", compression_opts=9)
@@ -3368,6 +3373,9 @@ class EpisodeStats():
         self.rewstate=f['rewstate'][()]
         if 'poprewstate' in f.keys():
             self.poprewstate=f['poprewstate'][()]
+            
+        if 'pop_predrew' in f.keys():
+            self.pop_predrew=f['pop_predrew'][()]
         
         self.salaries_emp=f['salaries_emp'][()]
         self.actions=f['actions'][()]
@@ -3375,7 +3383,6 @@ class EpisodeStats():
         self.galive=f['galive'][()]
         self.siirtyneet=f['siirtyneet'][()]
         self.pysyneet=f['pysyneet'][()]
-        self.salaries=f['salaries'][()]
         if 'aveV' in f.keys():
             self.aveV=f['aveV'][()]
         self.time_in_state=f['time_in_state'][()]
@@ -3516,6 +3523,113 @@ class EpisodeStats():
             print('n_pop {}'.format(self.n_pop))
             
         f.close()
+        
+    def scatter_density(self,x,y,label1='',label2=''):
+        # Calculate the point density
+        xy = np.vstack([x,y])
+        z = gaussian_kde(xy)(xy)
+
+        # Sort the points by density, so that the densest points are plotted last
+        #idx = z.argsort()
+        #x, y, z = x[idx], y[idx], z[idx]
+        fig,ax=plt.subplots()
+        ax.scatter(x,y,c=z)
+        ax.set_xlabel(label1)
+        ax.set_ylabel(label2)
+        #plt.legend()
+#        plt.title('number of agents by pension level')
+        plt.show()        
+        
+    def plot_Vk(self,k,getV=None):
+        obsV=np.zeros((self.n_time))
+        
+        #obsV[-1]=self.poprewstate[-1,k]
+        for t in range(self.n_time-2,-1,-1):
+            obsV[t]=self.poprewstate[t+1,k]+self.gamma*obsV[t+1]
+            rewerr=self.poprewstate[t+1,k]-self.pop_predrew[t+1,k]
+            delta=obsV[t]-self.aveV[t+1,k]
+            wage=self.infostats_pop_wage[t,k]
+            pen=self.infostats_pop_pension[t,k]
+            print(f't {t}: {obsV[t]:.4f} vs {self.aveV[t+1,k]:.4f} d {delta:.4f} re {rewerr:.6f} in state {self.popempstate[t,k]} ({k},{wage:.2f},{pen:.2f}) ({self.poprewstate[t+1,k]:.5f},{self.pop_predrew[t+1,k]:.5f})')
+            
+
+        err=obsV-self.aveV[t,k]
+        obsV_error=np.abs(obsV-self.aveV[t,k])
+        
+        
+    def plot_Vstats(self):
+        obsV=np.zeros((self.n_time,self.n_pop))
+        obsVemp=np.zeros((self.n_time,3))
+        obsVemp_error=np.zeros((self.n_time,3))
+        obsVemp_abserror=np.zeros((self.n_time,3))
+
+        obsV[-1,:]=self.poprewstate[-1,:]
+        for t in range(self.n_time-2,0,-1):
+            obsV[t,:]=self.poprewstate[t,:]+self.gamma*obsV[t+1,:]
+            for k in range(self.n_pop):
+                delta=obsV[t,k]-self.aveV[t,k]
+                if np.abs(delta)>0.2:
+                    wage=self.infostats_pop_wage[t,k]
+                    pen=self.infostats_pop_pension[t,k]
+                    print(f't {t}: {obsV[t,k]} vs {self.aveV[t,k]} d {delta} in state {self.popempstate[t,k]} ({k},{wage:.2f},{pen:.2f})')
+                    
+            for state in range(2):
+                s=np.asarray(self.popempstate[t,:]==state).nonzero()
+                obsVemp[t,state]=np.mean(obsV[t,s])
+                obsVemp_error[t,state]=np.mean(obsV[t,s]-self.aveV[t,s])
+                obsVemp_abserror[t,state]=np.mean(np.abs(obsV[t,s]-self.aveV[t,s]))
+
+        err=obsV-self.aveV
+        obsV_error=np.abs(obsV-self.aveV)
+        
+        mean_obsV=np.mean(obsV,axis=1)
+        mean_predV=np.mean(self.aveV,axis=1)
+        mean_abs_errorV=np.mean(np.abs(err),axis=1)
+        mean_errorV=np.mean(err,axis=1)
+        fig,ax=plt.subplots()
+        ax.plot(mean_abs_errorV[1:],label='abs. error')
+        ax.plot(mean_errorV[1:],label='error')
+        ax.plot(np.max(err,axis=1),label='max')
+        ax.plot(np.min(err,axis=1),label='min')
+        ax.set_xlabel('time')
+        ax.set_ylabel('error (pred-obs)')
+        plt.legend()
+        plt.show()
+
+        fig,ax=plt.subplots()
+        ax.plot(mean_obsV[1:],label='observed')
+        ax.plot(mean_predV[1:],label='predicted')
+        ax.set_xlabel('time')
+        ax.set_ylabel('V')
+        plt.legend()
+        plt.show()
+
+        fig,ax=plt.subplots()
+        ax.plot(obsVemp[1:,0],label='state 0')
+        ax.plot(obsVemp[1:,1],label='state 1')
+        ax.set_xlabel('time')
+        ax.set_ylabel('V')
+        plt.legend()
+        plt.show()
+
+        fig,ax=plt.subplots()
+        ax.plot(obsVemp_error[1:,0],label='state 0')
+        ax.plot(obsVemp_error[1:,1],label='state 1')
+        ax.set_xlabel('time')
+        ax.set_ylabel('error')
+        plt.legend()
+        plt.show()
+
+        fig,ax=plt.subplots()
+        ax.plot(obsVemp_abserror[1:,0],label='state 0')
+        ax.plot(obsVemp_abserror[1:,1],label='state 1')
+        ax.set_xlabel('time')
+        ax.set_ylabel('error')
+        plt.legend()
+        plt.show()
+
+        #self.scatter_density(self.infostats_pop_wage,obsV_error,label1='t',label2='emp obsV error')
+
         
     def render(self,load=None,figname=None,grayscale=False):
         if load is not None:
