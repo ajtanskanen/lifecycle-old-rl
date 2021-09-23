@@ -49,7 +49,7 @@ class DynProgLifecycleRev(Lifecycle):
         self.spline=True
         self.extrapolate=True
         self.pw_bivariate=True
-        if False:
+        if True:
             self.spline_approx='cubic' #'cubic'
             self.pw_maxspline=3 # 1 = linear, 3 = cubic
         else:
@@ -58,7 +58,7 @@ class DynProgLifecycleRev(Lifecycle):
             
         self.minspline=True # rajoita splineille alarajaa
         self.minbispline=True # rajoita splineille alarajaa
-        self.monotone_spline=True
+        self.monotone_spline=False #True
         self.oamonotone_spline=False
         #self.spline_approx='quadratic'
         #self.spline_approx='linear'
@@ -88,6 +88,7 @@ class DynProgLifecycleRev(Lifecycle):
         self.max_pension=50_000 # for active
         self.min_oapension=500*12 # for retired
         self.max_oapension=80_000 # for retired
+        #self.factor_future_wage=8
         
         if n_palkka is not None:
             self.n_palkka=n_palkka
@@ -115,6 +116,8 @@ class DynProgLifecycleRev(Lifecycle):
             self.min_wage=min_wage
         if max_pension is not None:
             self.max_pension=max_pension
+        #if factor_future_wage is not None:
+        #    self.factor_future_wage=factor_future_wage
         
         self.deltapalkka = (self.max_wage-self.min_wage)/(self.n_palkka-1)
         self.deltapalkka_old = (self.max_wage_old-self.min_wage)/(self.n_palkka_old-1)
@@ -126,8 +129,8 @@ class DynProgLifecycleRev(Lifecycle):
         
         self.include_pt=False
         
-        self.midfuture=int(np.floor(self.n_palkka_future/2))
-        self.deltafuture=8*0.07*0.5/self.midfuture
+        #self.midfuture=int(np.floor(self.n_palkka_future/2))
+        #self.deltafuture=self.factor_future_wage*0.07*0.5/self.midfuture
 
         self.min_grid_age=self.min_age
         self.max_grid_age=self.max_age
@@ -379,7 +382,7 @@ class DynProgLifecycleRev(Lifecycle):
             else:
                 V1=max(0,f(max(self.min_oapension,elake))) # max tarkoittaa käytännössä takuueläkettä
         else:    
-            emin,emax,we=self.inv_elake(elake)
+            emin,emax,we=self.inv_elake(elake,emp=emp)
             pmin,pmax,wp=self.inv_palkka_old(old_wage,emp)
 
             if self.pw_bivariate:
@@ -432,7 +435,7 @@ class DynProgLifecycleRev(Lifecycle):
             else:
                 Vs[:]=np.maximum(0,f(elake))
         else:
-            emin,emax,we=self.inv_elake(elake)
+            emin,emax,we=self.inv_elake(elake,emp=emp)
             pmin,pmax,wp=self.inv_palkka_old(old_wage,emp)
             tismax=self.inv_tis(time_in_state)
             p = np.linspace(0, self.max_pension, self.n_elake)
@@ -757,7 +760,7 @@ class DynProgLifecycleRev(Lifecycle):
             else:
                 V1=max(0,f(elake))
         else:
-            emin,emax,we=self.inv_elake(elake)
+            emin,emax,we=self.inv_elake(elake,emp=emp)
             pmin,pmax,wp=self.inv_palkka_old(old_wage,emp)
             p2min,p2max,wp2=self.inv_palkka(wage,emp)        
             tismax=self.inv_tis(time_in_state)
@@ -814,7 +817,7 @@ class DynProgLifecycleRev(Lifecycle):
             #f = interp1d(x, y,fill_value="extrapolate",kind=self.spline_approx)
             R = np.squeeze(f(elake))
         else:
-            emin,emax,we=self.inv_elake(elake)
+            emin,emax,we=self.inv_elake(elake,emp=emp)
             pmin,pmax,wp=self.inv_palkka_old(old_wage,emp)
             #p2min,p2max,wp2=self.inv_palkka(wage)        
             tismax=self.inv_tis(time_in_state)
@@ -881,7 +884,7 @@ class DynProgLifecycleRev(Lifecycle):
             else:
                 V[0] = f(elake)
         else:
-            emin,emax,we=self.inv_elake(elake)
+            emin,emax,we=self.inv_elake(elake,emp=emp)
             pmin,pmax,wp=self.inv_palkka_old(old_wage,emp)
             p2min,p2max,wp2=self.inv_palkka(wage,emp)
             tismax=self.inv_tis(time_in_state)
@@ -922,7 +925,7 @@ class DynProgLifecycleRev(Lifecycle):
         hae hilasta tilan s arvo hetkelle t
         '''
         emp,elake,old_wage,age,time_in_state,wage=self.env.state_decode(s)
-        emin,emax,we=self.inv_elake(elake)
+        emin,emax,we=self.inv_elake(elake,emp=emp)
         pmin,pmax,wp=self.inv_palkka(old_wage,emp)
         p2min,p2max,wp2=self.inv_palkka(wage,emp)
         tismax=self.inv_tis(time_in_state)
@@ -1465,8 +1468,8 @@ class DynProgLifecycleRev(Lifecycle):
                 #    rw=rewards_pred[n,t]
                 #    print(f'act {act} rws {rw} v {v}')
 
-                if True:
-                    self.env.render(state=state,pred_r=rewards_pred[n,t],pred_V=maxV)
+                #if True:
+                #    self.env.render(state=state,pred_r=rewards_pred[n,t],pred_V=maxV)
                     
                 newstate,r,done,info=self.env.step(act,dynprog=False)
                 
@@ -1787,8 +1790,8 @@ class DynProgLifecycleRev(Lifecycle):
         xb=[]
         yb=[]
         for k in range(self.episodestats.n_pop):
-            x0,x1,dx=self.inv_elake(self.episodestats.infostats_pop_pension[t,k])
-            y0,y1,dy=self.inv_palkka(self.episodestats.infostats_pop_wage[t,k])
+            x0,x1,dx=self.inv_elake(self.episodestats.infostats_pop_pension[t,k],emp=emp)
+            y0,y1,dy=self.inv_palkka(self.episodestats.infostats_pop_wage[t,k],emp)
 
             y2=min(self.n_palkka,y0+dy)
 
@@ -2066,3 +2069,92 @@ class DynProgLifecycleRev(Lifecycle):
                 print(f'elakeella Hila t={t} el={el}: {diff}')
                 print(self.oaHila[t,el+1],self.oaHila[t,el])
         
+        
+    def test_real_Hila(self,age,emp=1,elake=0,ow=15_000,tis=0):
+        act=0
+        actions=[act]
+        ww=np.arange(self.min_wage,self.max_wage,1_00)
+        obsr0=np.zeros_like(ww)
+        predrew0=np.zeros_like(ww)
+        obsr1=np.zeros_like(ww)
+        predrew1=np.zeros_like(ww)
+        for k,w in enumerate(ww):
+            predrew0[k]=self.get_actReward_spline(emp=0,elake=elake,old_wage=ow,time_in_state=tis,wage=w,act=act,age=age)
+            r,sps=self.get_rewards_continuous((0,elake,ow,age,tis,w),actions,debug=False)
+            obsr0[k]=r[0]
+            predrew1[k]=self.get_actReward_spline(emp=1,elake=elake,old_wage=ow,time_in_state=tis,wage=w,act=act,age=age)
+            r,sps=self.get_rewards_continuous((1,elake,ow,age,tis,w),actions,debug=False)
+            obsr1[k]=r[0]
+            
+        fig,ax=plt.subplots()
+        plt.title('emp 0')
+        ax.plot(ww,predrew0)
+        ax.plot(ww,obsr0)
+        ax.set_xlabel('wage')
+        plt.show()
+
+        fig,ax=plt.subplots()
+        plt.title('emp 1')
+        ax.plot(ww,predrew1)
+        ax.plot(ww,obsr1)
+        ax.set_xlabel('wage')
+        plt.show()
+
+        fig,ax=plt.subplots()
+        ax.plot(ww,predrew1,label='pred emp 1')
+        ax.plot(ww,obsr1,label='obs emp 1')
+        ax.plot(ww,predrew0,label='pred emp 0')
+        ax.plot(ww,obsr0,label='obs emp 0')
+        ax.set_xlabel('wage')
+        plt.show()
+
+        fig,ax=plt.subplots()
+        plt.title('diff')
+        ax.plot(ww,predrew0-obsr0,label='emp 0')
+        ax.plot(ww,predrew1-obsr1,label='emp 1')
+        ax.set_xlabel('old wage')
+        plt.show()
+
+        act=0
+        actions=[act]
+        ww=np.arange(self.min_wage,self.max_wage,1_00)
+        obsr0=np.zeros_like(ww)
+        predrew0=np.zeros_like(ww)
+        obsr1=np.zeros_like(ww)
+        predrew1=np.zeros_like(ww)
+        for k,w in enumerate(ww):
+            predrew0[k]=self.get_actReward_spline(emp=0,elake=elake,old_wage=w,time_in_state=tis,wage=w,act=act,age=age)
+            r,sps=self.get_rewards_continuous((0,elake,w,age,tis,w),actions,debug=False)
+            obsr0[k]=r[0]
+            predrew1[k]=self.get_actReward_spline(emp=1,elake=elake,old_wage=w,time_in_state=tis,wage=w,act=act,age=age)
+            r,sps=self.get_rewards_continuous((1,elake,w,age,tis,w),actions,debug=False)
+            obsr1[k]=r[0]
+            
+        fig,ax=plt.subplots()
+        plt.title('emp 0')
+        ax.plot(ww,predrew0)
+        ax.plot(ww,obsr0)
+        ax.set_xlabel('old wage')
+        plt.show()
+
+        fig,ax=plt.subplots()
+        plt.title('emp 1')
+        ax.set_xlabel('old wage')
+        ax.plot(ww,predrew1)
+        ax.plot(ww,obsr1)
+        plt.show()
+        
+        fig,ax=plt.subplots()
+        ax.plot(ww,predrew1,label='pred emp 1')
+        ax.plot(ww,obsr1,label='obs emp 1')
+        ax.plot(ww,predrew0,label='pred emp 0')
+        ax.plot(ww,obsr0,label='obs emp 0')
+        ax.set_xlabel('wage')
+        plt.show()
+
+        fig,ax=plt.subplots()
+        plt.title('diff')
+        ax.plot(ww,predrew0-obsr0,label='emp 0')
+        ax.plot(ww,predrew1-obsr1,label='emp 1')
+        ax.set_xlabel('old wage')
+        plt.show()

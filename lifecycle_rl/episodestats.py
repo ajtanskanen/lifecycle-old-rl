@@ -2927,9 +2927,9 @@ class EpisodeStats():
         averaged determines whether the value is averaged over time or not
         '''    
         u=np.zeros((self.n_time,self.n_pop))
-        #u[self.n_time-1,:]=self.poprewstate[self.n_time-1,:]
+        u[self.n_time-1,:]=self.poprewstate[self.n_time-1,:]
         for t in range(self.n_time-2,-1,-1):
-            u[t,:]=self.poprewstate[t+1,:]+self.gamma*u[t+1,:]
+            u[t,:]=self.poprewstate[t,:]+self.gamma*u[t+1,:]
          
         return u
         
@@ -3563,15 +3563,15 @@ class EpisodeStats():
         obsVemp_error=np.zeros((self.n_time,3))
         obsVemp_abserror=np.zeros((self.n_time,3))
 
-        obsV[-1,:]=self.poprewstate[-1,:]
+        obsV[self.n_time-1,:]=self.poprewstate[self.n_time-1,:]
         for t in range(self.n_time-2,0,-1):
             obsV[t,:]=self.poprewstate[t,:]+self.gamma*obsV[t+1,:]
+            delta=obsV[t,:]-self.aveV[t,:]
             for k in range(self.n_pop):
-                delta=obsV[t,k]-self.aveV[t,k]
-                if np.abs(delta)>0.2:
+                if np.abs(delta[k])>0.2:
                     wage=self.infostats_pop_wage[t,k]
                     pen=self.infostats_pop_pension[t,k]
-                    print(f't {t}: {obsV[t,k]} vs {self.aveV[t,k]} d {delta} in state {self.popempstate[t,k]} ({k},{wage:.2f},{pen:.2f})')
+                    #print(f't {t}: {obsV[t,k]} vs {self.aveV[t+1,k]} d {delta} in state {self.popempstate[t,k]} ({k},{wage:.2f},{pen:.2f})')
                     
             for state in range(2):
                 s=np.asarray(self.popempstate[t,:]==state).nonzero()
@@ -3579,8 +3579,8 @@ class EpisodeStats():
                 obsVemp_error[t,state]=np.mean(obsV[t,s]-self.aveV[t,s])
                 obsVemp_abserror[t,state]=np.mean(np.abs(obsV[t,s]-self.aveV[t,s]))
 
-        err=obsV-self.aveV
-        obsV_error=np.abs(obsV-self.aveV)
+        err=obsV[:self.n_time]-self.aveV
+        obsV_error=np.abs(err)
         
         mean_obsV=np.mean(obsV,axis=1)
         mean_predV=np.mean(self.aveV,axis=1)
