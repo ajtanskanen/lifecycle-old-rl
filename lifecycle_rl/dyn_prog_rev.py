@@ -324,11 +324,37 @@ class DynProgLifecycleRev(Lifecycle):
 #         else:
 #             return med*(1+(v-self.midfuture)*self.deltafuture)
 
+    def map_palkka_future_v4(self,palkka,age,state=1,midpoints=None):
+        midp=[1.0*(v+1)/self.n_palkka_future for v in range(self.n_palkka_future)]
+        midp_w=self.env.wage_process_map(midp,palkka,age,state=state)
+        rho=1.0/self.n_palkka_future
+        
+        #print(midp_w,rho)
+        
+        w=np.zeros(self.n_palkka_future)
+        for pnext in range(self.n_palkka_future-1): 
+            w[pnext]=self.env.wage_process_expect(midp_w[pnext],midp_w[pnext+1],palkka,age,state=state)/rho
+
+        w[self.n_palkka_future-1]=self.env.wage_process_expect(midp_w[self.n_palkka_future-1],1e6,palkka,age,state=state)/rho
+            
+        #w=self.env.wage_process_map(x,palkka,age,state=state)
+        return midp_w,w
+
     def map_palkka_future_v2(self,palkka,age,state=1,midpoint=False):
+        def f(x):
+            if x>self.n_palkka_future/2:
+                return (0.49+x)/self.n_palkka_future
+            else:
+                return (0.51+x)/self.n_palkka_future
+        
         if midpoint:
-            x=[1.0*(v+1)/(self.n_palkka_future) for v in range(self.n_palkka_future)]
+            x=[1.0*(v+1)/self.n_palkka_future for v in range(self.n_palkka_future)]
         else:
-            x=[1.0*(0.5+v)/(self.n_palkka_future) for v in range(self.n_palkka_future)]
+            if state==1: # in the large limit, it does not really matter which addition here is as long as x\in (0,1)
+                x=[f(v) for v in range(self.n_palkka_future)]
+            else:
+                #x=[1.0*(0.50+v)/self.n_palkka_future for v in range(self.n_palkka_future)]
+                x=[f(v) for v in range(self.n_palkka_future)]
 
         w=self.env.wage_process_map(x,palkka,age,state=state)
         return w
@@ -514,7 +540,7 @@ class DynProgLifecycleRev(Lifecycle):
                     if old_wage>max_wage_old and self.extrapolate:
                         if wage>max_wage:
                             num=num+1
-                            print(num)
+                            #print(num)
                             vh=np.zeros(n_palkka)
                             for k,wg in enumerate(w):
                                 gw=interp1d(w_old,values[:,k],fill_value="extrapolate",kind='linear') #self.spline_approx)
@@ -925,12 +951,12 @@ class DynProgLifecycleRev(Lifecycle):
         hae hilasta tilan s arvo hetkelle t
         '''
         emp,elake,old_wage,age,time_in_state,wage=self.env.state_decode(s)
-        emin,emax,we=self.inv_elake(elake,emp=emp)
-        pmin,pmax,wp=self.inv_palkka(old_wage,emp)
-        p2min,p2max,wp2=self.inv_palkka(wage,emp)
-        tismax=self.inv_tis(time_in_state)
+        #emin,emax,we=self.inv_elake(elake,emp=emp)
+        #pmin,pmax,wp=self.inv_palkka(old_wage,emp)
+        #p2min,p2max,wp2=self.inv_palkka(wage,emp)
+        #tismax=self.inv_tis(time_in_state)
         
-        t=self.map_grid_age(age)
+        #t=self.map_grid_age(age)
         
         n_emp=self.n_acts
         
@@ -991,6 +1017,9 @@ class DynProgLifecycleRev(Lifecycle):
         
         fig, ax = plt.subplots(figsize=(8, 4))
         n_bins=200
+        
+        ave=np.mean(w)
+        
 
         # plot the cumulative histogram
         n, bins, patches = ax.hist(w, n_bins, density=True, histtype='step',
@@ -1013,6 +1042,8 @@ class DynProgLifecycleRev(Lifecycle):
 
         med=self.env.wage_process_mean(wage,age,state=next_state)
         ax.axvline(med,color='b')
+
+        #print(f'mean predicted {med} obserrved {ave}')
 
         # tidy up the figure
         ax.grid(True)
@@ -1164,38 +1195,48 @@ class DynProgLifecycleRev(Lifecycle):
             wagetable[p]=palkka
             weight_old_s0=0
             weight_old_s1=0
-        
-            palkka_next_mid0_v=self.map_palkka_future_v2(palkka,ika2,state=0,midpoint=True)
-            palkka_next_mid1_v=self.map_palkka_future_v2(palkka,ika2,state=1,midpoint=True)
-            wagetable_future[p,:,0]=self.map_palkka_future_v2(palkka,ika2,state=0,midpoint=False)
-            #wagetable_future[p,:,[1,3]]=self.map_palkka_future_v2(palkka,ika2,state=1,midpoint=False)
-            wagetable_future[p,:,1]=self.map_palkka_future_v2(palkka,ika2,state=1,midpoint=False)
 
-            #tr_wagetable_future[p,:,0]=self.map_palkka_future_v3(palkka,ika2,state=0,midpoint=False)
-            #tr_wagetable_future[p,:,[1,3]]=self.map_palkka_future_v3(palkka,ika2,state=1,midpoint=False)
-        
-            # bugi kun age=69
-            wns0=self.env.wage_process_cumulative(palkka_next_mid0_v,palkka,ika2,state=0) # tila ei saa vaikuttaa tässä kuin palkka_next_mid0:n kautta
-            wns1=self.env.wage_process_cumulative(palkka_next_mid1_v,palkka,ika2,state=1) # tila ei saa vaikuttaa tässä kuin palkka_next_mid0:n kautta
+            if True:        
+                palkka_next_mid0_v=self.map_palkka_future_v2(palkka,ika2,state=0,midpoint=True)
+                palkka_next_mid1_v=self.map_palkka_future_v2(palkka,ika2,state=1,midpoint=True)
+                wagetable_future[p,:,0]=self.map_palkka_future_v2(palkka,ika2,state=0,midpoint=False)
+                wagetable_future[p,:,1]=self.map_palkka_future_v2(palkka,ika2,state=1,midpoint=False)
+            else:
+                palkka_next_mid0_v,wagetable_future[p,:,0]=self.map_palkka_future_v4(palkka,ika2,state=0)
+                palkka_next_mid1_v,wagetable_future[p,:,1]=self.map_palkka_future_v4(palkka,ika2,state=1)
+                vrt=self.map_palkka_future_v2(palkka,ika2,state=1,midpoint=False)
+                #print(wagetable_future[p,:,1])
+                #print(vrt)
+
+            #print(wagetable_future.shape,palkka_next_mid0_v.shape)
+
+
+            wns0=self.env.wage_process_cumulative(palkka_next_mid0_v,palkka,ika2,state=0)
+            wns1=self.env.wage_process_cumulative(palkka_next_mid1_v,palkka,ika2,state=1)
+            pred_sal0=0
             for pnext in range(self.n_palkka_future-1): 
                 palkka_next_mid0=palkka_next_mid0_v[pnext]
-                weight_new_s0=wns0[pnext] #self.env.wage_process_cumulative(palkka_next_mid0,palkka,ika2,state=0) # tila ei saa vaikuttaa tässä kuin palkka_next_mid0:n kautta
+                weight_new_s0=wns0[pnext]
                 pn_weight[p,pnext,0]=weight_new_s0-weight_old_s0
                 weight_old_s0=weight_new_s0
+                #print(f'p {p} pnext {pnext} mid {palkka_next_mid0} w {pn_weight[p,pnext,0]}')
+                #print(f'wage {wagetable_future[p,pnext,0]} vs {palkka_next_mid0_v[pnext]}')
+                #print(self.env.wage_process_expect(pred_sal0,palkka_next_mid0_v[pnext],palkka,ika2,state=0))
+                pred_sal0=palkka_next_mid0
+                
                 palkka_next_mid1=palkka_next_mid1_v[pnext]
-                weight_new_s1=wns0[pnext] #self.env.wage_process_cumulative(palkka_next_mid1,palkka,ika2,state=1) # tila ei saa vaikuttaa tässä kuin palkka_next_mid1:n kautta
-                #pn_weight[p,pnext,[1,3]]=weight_new_s1-weight_old_s1
+                weight_new_s1=wns0[pnext]
                 pn_weight[p,pnext,1]=weight_new_s1-weight_old_s1
                 weight_old_s1=weight_new_s1
     
             pn_weight[p,self.n_palkka_future-1,0]=1.0-weight_old_s0
-            #pn_weight[p,self.n_palkka_future-1,[1,3]]=1.0-weight_old_s1
             pn_weight[p,self.n_palkka_future-1,1]=1.0-weight_old_s1
-        
-            #print(wagetable_future[p,:,0])
-            #print(wagetable_future[p,:,1])
-            #print(pn_weight[p,:,0],1.0-np.sum(pn_weight[p,:,0]))
-            #print(pn_weight[p,:,1],1.0-np.sum(pn_weight[p,:,1]))
+
+            ave=self.env.wage_process_mean(palkka,ika2,state=0)
+            ave2=np.sum(wagetable_future[p,:,0]*pn_weight[p,:,0])
+            #print(f'p {p} pnext {self.n_palkka_future-1} mid {palkka_next_mid0_v[self.n_palkka_future-1]} w {pn_weight[p,self.n_palkka_future-1,0]}')
+            #print(f'wage {wagetable_future[p,-1,0]}')
+            #print(f'mean {ave} obs {ave2}')
 
         pn_weight[:,0,2]=1.0
     #toc=time.perf_counter()
@@ -1302,6 +1343,12 @@ class DynProgLifecycleRev(Lifecycle):
                                             wages=emp_wagetable_future[p,:,emp2])
                                     w=emp_pn_weight[p,:,emp2]
                                     d=np.sum(gw*w)
+                                    if True:
+                                        mean_sal=np.sum(w*emp_wagetable_future[p,:,emp2])
+                                        mean_predsal=self.env.wage_process_mean(palkka,ika2,state=emp2)
+                                        delta=mean_sal-mean_predsal
+                                        #print('emp 1:',mean_sal,mean_predsal,delta,delta/mean_sal)
+                                        
                                         #if p==self.n_palkka-1:
                                         #    gw=self.get_V_vector(emp=emp2,elake=elake2,old_wage=palkka,time_in_state=tis2,age=ika2,wages=wagetable_future[p,:,emp2],debug=True)
                                         #    print(f'({p} {el}): d={d}\ngw={gw}\nw={w}\n')
@@ -1364,6 +1411,13 @@ class DynProgLifecycleRev(Lifecycle):
                                                             wages=unemp_wagetable_future[p,:,emp2])
                                         w=unemp_pn_weight[p,:,emp2]
                                         d=np.sum(gw*w) 
+                                        
+                                        if True:
+                                            mean_sal=np.sum(w*unemp_wagetable_future[p,:,emp2])
+                                            mean_predsal=self.env.wage_process_mean(palkka,ika2,state=emp2)
+                                            delta=mean_sal-mean_predsal
+                                            #print('emp 0:',mean_sal,mean_predsal,delta,delta/mean_sal)
+                                        
                                         #elif self.integmethod==1:
                                         #    d,_=quad(func0, 1000.0, 130_000.0,epsabs=self.epsabs,args=(emp2,elake2,palkka,tis2,ika2))
                                         #elif self.integmethod==2:
@@ -1438,6 +1492,7 @@ class DynProgLifecycleRev(Lifecycle):
             self.load_V(load)        
             
         print('simulate debug',debug)
+        print('simulate random_act',random_act)
 
         tqdm_e = tqdm(range(int(pop)), desc='Population', leave=True, unit=" p")
         
@@ -1473,7 +1528,7 @@ class DynProgLifecycleRev(Lifecycle):
                     
                 newstate,r,done,info=self.env.step(act,dynprog=False)
                 
-                if rewards_pred[n,t+1]<0.001:
+                if rewards_pred[n,t+1]<0.001 and not random_act:
                     print('***',self.env.state_decode(state),'\n',self.env.state_decode(newstate))
                     act,maxV,v,pr,rs=self.get_act(state,full=True,use_softmax=softmax,T=T,debug=True)
                     print(rs,maxV)

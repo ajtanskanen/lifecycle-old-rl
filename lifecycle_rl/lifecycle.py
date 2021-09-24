@@ -1366,13 +1366,13 @@ class Lifecycle():
         
         return L2
         
-    def optimize_scale(self,target):
+    def optimize_scale(self,target,averaged=False):
         '''
         Optimoi utiliteetin skaalaus
         Vertailupaperia varten
         '''
         
-        res=self.episodestats.optimize_scale(target)
+        res=self.episodestats.optimize_scale(target,averaged=averaged)
         
         print(res)
         

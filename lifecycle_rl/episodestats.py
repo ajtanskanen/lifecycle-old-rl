@@ -471,7 +471,7 @@ class EpisodeStats():
         elif newemp<0:
             self.deceiced[t]+=1
 
-    def scale_error(self,x,target=None,averaged=True):
+    def scale_error(self,x,target=None,averaged=False):
         return (target-self.comp_scaled_consumption(x,averaged=averaged))
 
         
@@ -1020,7 +1020,7 @@ class EpisodeStats():
 
         return L2
         
-    def optimize_scale(self,target,averaged=True):
+    def optimize_scale(self,target,averaged=scale_error):
         opt=scipy.optimize.least_squares(self.scale_error,0.20,bounds=(-1,1),kwargs={'target':target,'averaged':averaged})
         
         #print(opt)
@@ -2844,7 +2844,7 @@ class EpisodeStats():
     def vector_to_array(self,x):
         return x[:,None]
 
-    def comp_scaled_consumption(self,x0,averaged=True,t0=1):
+    def comp_scaled_consumption(self,x0,averaged=False,t0=1):
         '''
         Computes discounted actual reward at each time point
         with a given scaling x
@@ -3549,8 +3549,14 @@ class EpisodeStats():
             rewerr=self.poprewstate[t+1,k]-self.pop_predrew[t+1,k]
             delta=obsV[t]-self.aveV[t+1,k]
             wage=self.infostats_pop_wage[t,k]
+            old_wage=self.infostats_pop_wage[max(0,t-1),k]
+            age=self.map_t_to_age(t)
+            old_age=int(self.map_t_to_age(max(0,t-1)))
+            emp=self.popempstate[t,k]
+            predemp=self.popempstate[max(0,t-1),k]
             pen=self.infostats_pop_pension[t,k]
-            print(f't {t}: {obsV[t]:.4f} vs {self.aveV[t+1,k]:.4f} d {delta:.4f} re {rewerr:.6f} in state {self.popempstate[t,k]} ({k},{wage:.2f},{pen:.2f}) ({self.poprewstate[t+1,k]:.5f},{self.pop_predrew[t+1,k]:.5f})')
+            predwage=self.env.wage_process_mean(old_wage,old_age,state=predemp)
+            print(f'{age}: {obsV[t]:.4f} vs {self.aveV[t+1,k]:.4f} d {delta:.4f} re {rewerr:.6f} in state {emp} ({k},{wage:.2f},{pen:.2f}) ({predwage:.2f}) ({self.poprewstate[t+1,k]:.5f},{self.pop_predrew[t+1,k]:.5f})')
             
 
         err=obsV-self.aveV[t,k]
