@@ -192,7 +192,7 @@ class SimStats(EpisodeStats):
         print('done')
         print('best_emp',best_emp)
         
-    def run_optimize_x(self,target,results,n,startn=0,averaged=True):
+    def run_optimize_x(self,target,results,n,startn=0,averaged=False):
         '''
         Laskee statistiikat ajoista
         '''
@@ -463,7 +463,7 @@ class SimStats(EpisodeStats):
         #ax.plot(x,emp_statsratio,label='havainto')
         ax.legend()
         if figname is not None:
-            plt.savefig(figname+'emp.eps', format='eps')
+            plt.savefig(figname+'emp.pdf', format='pdf')
         plt.show()
 
         fig,ax=plt.subplots()

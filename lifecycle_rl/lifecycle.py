@@ -16,6 +16,7 @@ from gym.utils import seeding
 import numpy as np
 #from fin_benefits import Benefits
 import matplotlib.pyplot as plt
+from matplotlib import ticker
 import gym_unemployment
 import h5py
 import tensorflow as tf
@@ -78,6 +79,7 @@ class Lifecycle():
         self.inv_timestep=int(np.round(1/self.timestep)) # pitäisi olla kokonaisluku
         self.min_age = 18
         self.max_age = 70
+        self.figformat='pdf'
         
         self.lang='Finnish'
         
@@ -751,7 +753,7 @@ class Lifecycle():
         model=self.setup_rlmodel(self.rlmodel,start_from,env,batch,policy_kwargs,learning_rate,
                                 cont,max_grad_norm=max_grad_norm,verbose=verbose,n_cpu=n_cpu,
                                 learning_schedule=learning_schedule,vf=vf,gae_lambda=gae_lambda)
-        print('training...')
+        print('training..')
 
         if use_callback: # tässä ongelma, vecmonitor toimii => kuitenkin monta callbackia
             model.learn(total_timesteps=steps, callback=self.callback,log_interval=log_interval)
@@ -839,23 +841,29 @@ class Lifecycle():
 
         states = env.reset()
         n=n_cpu-1
-        pop_num=np.array([k for k in range(n_cpu)])
-        tqdm_e = tqdm(range(int(self.n_pop)), desc='Population', leave=True, unit=" p")
+        if self.version==4:  # increase by 2
+            pop_num=np.array([k for k in range(0,2*n_cpu,2)])
+            n_add=2
+        else:  # increase by 1
+            pop_num=np.array([k for k in range(0,n_cpu,1)])
+            n_add=1
+        
+        tqdm_e = tqdm(range(int(self.n_pop/n_add)), desc='Population', leave=True, unit=" p")
         self.episodestats.init_variables()
         
         if startage is not None:
             self.env.set_startage(startage)
 
         print('predict')
-        while np.any(pop_num<self.n_pop):
+        while np.any(pop_num+(n_add-1)<self.n_pop):
             act, predstate = model.predict(states,deterministic=deterministic)
             newstate, rewards, dones, infos = env.step(act)
             for k in range(n_cpu):
-                if pop_num[k]<self.n_pop: # do not save extras
+                if pop_num[k]+(n_add-1)<self.n_pop: # do not save extras
                     if dones[k]:
                         self.episodestats.add(pop_num[k],act[k],rewards[k],states[k],infos[k]['terminal_observation'],infos[k],debug=debug)
                         tqdm_e.update(1)
-                        n+=1
+                        n+=n_add
                         tqdm_e.set_description("Pop " + str(n))
                         pop_num[k]=n
                     else:
@@ -1201,24 +1209,27 @@ class Lifecycle():
         self.episodestats.plot_saldist(t=t,sum=sum,all=all,n=n)
 
     def plot_RL_act(self,t,rlmodel='acktr',load='perus',debug=True,deterministic=True,
-                        n_palkka=80,deltapalkka=1000,n_elake=40,deltaelake=1500,
-                        hila_palkka0=0,min_pension=0):
+                        n_palkka=80,n_emppalkka=80,deltapalkka=1000,deltaemppalkka=1000,n_elake=40,deltaelake=1500,
+                        hila_palkka0=0,min_pension=0,deltapalkka_old=None,deltaemppalkka_old=None):
         model,env,n_cpu=self.setup_model(rlmodel=rlmodel,load=load,debug=debug)
-        RL_unemp=self.RL_simulate_V(model,env,t,emp=0,deterministic=deterministic,n_palkka=n_palkka,deltapalkka=deltapalkka,n_elake=n_elake,deltaelake=deltaelake,
-                        min_wage=min_wage,min_pension=min_pension)
-        RL_emp=self.RL_simulate_V(model,env,t,emp=1,deterministic=deterministic,n_palkka=n_palkka,deltapalkka=deltapalkka,n_elake=n_elake,deltaelake=deltaelake,
-                        min_wage=min_wage,min_pension=min_pension)
+        RL_unemp=self.RL_simulate_V(model,env,t,emp=0,deterministic=deterministic,n_palkka=n_palkka,n_emppalkka=n_emppalkka,
+                        deltapalkka=deltapalkka,deltaemppalkka=deltaemppalkka,n_elake=n_elake,deltaelake=deltaelake,
+                        min_wage=min_wage,min_pension=min_pension,deltapalkka_old=deltapalkka_old,deltaemppalkka_old=deltaemppalkka_old)
+        RL_emp=self.RL_simulate_V(model,env,t,emp=1,deterministic=deterministic,n_palkka=n_palkka,n_emppalkka=n_emppalkka,
+                        deltapalkka=deltapalkka,deltaemppalkka=deltaemppalkka,n_elake=n_elake,deltaelake=deltaelake,
+                        min_wage=min_wage,min_pension=min_pension,deltapalkka_old=deltapalkka_old,deltaemppalkka_old=deltaemppalkka_old)
         self.plot_img(RL_emp,xlabel="Pension",ylabel="Wage",title='Töissä')
         self.plot_img(RL_unemp,xlabel="Pension",ylabel="Wage",title='Työttömänä')
         self.plot_img(RL_emp-RL_unemp,xlabel="Pension",ylabel="Wage",title='Työssä-Työtön')
 
     def get_RL_act(self,t,emp=0,time_in_state=0,rlmodel='acktr',load='perus',debug=True,deterministic=True,
-                        n_palkka=80,deltapalkka=1000,n_elake=40,deltaelake=1500,
-                        min_wage=1000,min_pension=0):
+                        n_palkka=80,n_emppalkka=80,deltapalkka=1000,deltaemppalkka=1000,n_elake=40,deltaelake=1500,
+                        min_wage=1000,min_pension=0,deltapalkka_old=None,deltaemppalkka_old=None):
         model,env,n_cpu=self.setup_model(rlmodel=rlmodel,load=load,debug=debug)
         return self.RL_simulate_V(model,env,t,emp=emp,deterministic=deterministic,time_in_state=time_in_state,
-                        n_palkka=n_palkka,deltapalkka=deltapalkka,n_elake=n_elake,deltaelake=deltaelake,
-                        min_wage=min_wage,min_pension=min_pension)
+                        n_palkka=n_palkka,n_emppalkka=n_emppalkka,deltapalkka=deltapalkka,deltaemppalkka=deltaemppalkka,
+                        n_elake=n_elake,deltaelake=deltaelake,min_wage=min_wage,min_pension=min_pension,
+                        deltapalkka_old=deltapalkka_old,deltaemppalkka_old=deltaemppalkka_old)
 
     def get_rl_act(self,t,emp=0,time_in_state=0,rlmodel='acktr',load='perus',debug=True,deterministic=True):
         model,env,n_cpu=self.setup_model(rlmodel=rlmodel,load=load,debug=debug)
@@ -1249,7 +1260,7 @@ class Lifecycle():
         plt.title(title)
         plt.show()
         
-    def plot_twoimg(self,img1,img2,xlabel="Pension",ylabel="Wage",title1="Employed",title2="Employed",
+    def plot_twoimg(self,img1,img2,xlabel="Pension",ylabel1="Wage",ylabel2="",title1="Employed",title2="Employed",
                     vmin=None,vmax=None,figname=None,show_results=True,alpha=None):
         fig, axs = plt.subplots(ncols=2)
         if alpha is None:
@@ -1264,13 +1275,18 @@ class Lifecycle():
         #else:
         #    im0 = axs[0].imshow(img1)
         #heatmap = plt.pcolor(img1) 
-        kwargs = {'format': '%.1f'}
+        #kwargs = {'format': '%.1f'}
+        kwargs = {'format': '%.0f'}
         divider0 = make_axes_locatable(axs[0])
         cax0 = divider0.append_axes("right", size="20%", pad=0.05)
         cbar0 = plt.colorbar(im0, cax=cax0, **kwargs)
         axs[0].set_xlabel(xlabel)
-        axs[0].set_ylabel(ylabel)
+        axs[0].set_ylabel(ylabel1)
         axs[0].set_title(title1)
+        #axs[0].xaxis.set_major_locator(MaxNLocator(integer=True))
+        tick_locator = ticker.MaxNLocator(nbins=3,integer=True)
+        cbar0.locator = tick_locator
+        cbar0.update_ticks()        
         if vmin is not None:
             im1 = axs[1].pcolor(img2,vmin=vmin,vmax=vmax,cmap='gray',alpha=alpha,linewidth=0,rasterized=True)
         else:
@@ -1285,12 +1301,16 @@ class Lifecycle():
         cbar1 = plt.colorbar(im1, cax=cax1,  **kwargs)
         #heatmap = plt.pcolor(img2) 
         axs[1].set_xlabel(xlabel)
-        axs[1].set_ylabel(ylabel)
+        axs[1].set_ylabel(ylabel2)
         axs[1].set_title(title2)
+        #axs[1].xaxis.set_major_locator(ticker.MaxNLocator(integer=True))
+        tick_locator = ticker.MaxNLocator(nbins=3,integer=True)
+        cbar1.locator = tick_locator
+        cbar1.update_ticks()        
         #plt.colorbar(heatmap)        
         plt.subplots_adjust(wspace=0.3)
         if figname is not None:
-            plt.savefig(figname+'.eps', format='eps')
+            plt.savefig(figname+'.'+self.figformat, format=self.figformat)
 
         if show_results:
             plt.show()
@@ -1320,31 +1340,59 @@ class Lifecycle():
         return act
 
     def RL_simulate_V(self,model,env,age,emp=0,time_in_state=0,deterministic=True,
-                        n_palkka=80,deltapalkka=1000,n_elake=40,deltaelake=1500,
-                        min_wage=0,min_pension=0):
+                        n_palkka=80,n_emppalkka=80,deltapalkka=1000,deltaemppalkka=1000,n_elake=40,deltaelake=1500,
+                        min_wage=0,min_pension=0,deltapalkka_old=None,deltaemppalkka_old=None):
         # dynaamisen ohjelmoinnin parametrejä
         def map_elake(v,emp=1):
-            return min_wage+min_pension*v 
+            return min_pension+deltaelake*v 
 
-        def map_palkka(v):
-            return min_wage+max(0,deltapalkka*v) 
+        def map_palkka_old(v,emp):
+            if emp==0:
+                return min_wage+max(0,deltapalkka_old*v)
+            elif emp==1:
+                return min_wage+max(0,deltaemppalkka_old*v) 
+
+        def map_palkka(v,emp=1):
+            if emp==0:
+                return min_wage+max(0,deltapalkka*v) 
+            elif emp==1:
+                return min_wage+max(0,deltaemppalkka*v) 
     
         prev=0
         toe=0
-        fake_act=np.zeros((n_palkka,n_elake))
-        for el in range(n_elake):
-            for p in range(n_palkka): 
-                palkka=map_palkka(p)
-                elake=map_elake(el)
-                if emp==2:
-                    elake=max(780*12,elake)
-                    state=self.env.state_encode(emp,elake,0,age,time_in_state,0)
-                else:
-                    state=self.env.state_encode(emp,elake,palkka,age,time_in_state,palkka)
+        if emp==0:
+            fake_act=np.zeros((n_palkka,n_elake))
+            for el in range(n_elake):
+                for p in range(n_palkka): 
+                    palkka=map_palkka(p,emp=emp)
+                    old_palkka=map_palkka_old(p,emp=emp)
+                    elake=map_elake(el)
+                    #if emp==2:
+                    #    elake=max(780*12,elake)
+                    #    state=self.env.state_encode(emp,elake,0,age,time_in_state,0)
+                    #else:
+                    state=self.env.state_encode(emp,elake,old_palkka,age,time_in_state,palkka)
 
-                act, predstate = model.predict(state,deterministic=deterministic)
-                act=self.filter_act(act,state)
-                fake_act[p,el]=act
+                    act, predstate = model.predict(state,deterministic=deterministic)
+                    act=self.filter_act(act,state)
+                    fake_act[p,el]=act
+        else: # emp = 1
+            fake_act=np.zeros((n_emppalkka,n_elake))
+            for el in range(n_elake):
+                for p in range(n_emppalkka): 
+                    palkka=map_palkka(p,emp=emp)
+                    elake=map_elake(el)
+                    old_palkka=map_palkka_old(p,emp=emp)
+                    if emp==2:
+                        elake=max(780*12,elake)
+                        state=self.env.state_encode(emp,elake,0,age,time_in_state,0)
+                    else:
+                        state=self.env.state_encode(emp,elake,old_palkka,age,time_in_state,palkka)
+
+                    act, predstate = model.predict(state,deterministic=deterministic)
+                    act=self.filter_act(act,state)
+                    fake_act[p,el]=act
+        
                  
         return fake_act
         
