@@ -207,6 +207,8 @@ class EpisodeStats():
         self.stat_pension=np.zeros((self.n_time,n_emps))
         self.infostats_pop_pension=np.zeros((self.n_time,self.n_pop))
         self.infostats_paid_tyel_pension=np.zeros((self.n_time,self.n_pop))
+        self.infostats_pop_tyoelake=np.zeros((self.n_time,self.n_pop))
+        self.infostats_pop_kansanelake=np.zeros((self.n_time,self.n_pop))
         self.infostats_sairausvakuutus=np.zeros((self.n_time,1))
         self.infostats_pvhoitomaksu=np.zeros((self.n_time,self.n_pop))
         self.infostats_ylevero=np.zeros((self.n_time,1))
@@ -214,6 +216,7 @@ class EpisodeStats():
         self.infostats_irr=np.zeros((self.n_pop,1))
         self.infostats_npv0=np.zeros((self.n_pop,1))
         self.infostats_mother_in_workforce=np.zeros((self.n_time,1))
+        #self.infostats_father_in_workforce=np.zeros((self.n_time,1))
         self.infostats_children_under3=np.zeros((self.n_time,self.n_pop))
         self.infostats_children_under7=np.zeros((self.n_time,self.n_pop))
         self.infostats_children_under18=np.zeros((self.n_time,self.n_pop))
@@ -277,6 +280,8 @@ class EpisodeStats():
             self.infostats_poptulot_netto[t,n]=q[person+'netto']*scale
             self.infostats_tyoelake[t]+=q[person+'tyoelake']*scale
             self.infostats_kansanelake[t]+=q[person+'kansanelake']*scale
+            self.infostats_pop_tyoelake[t,n]=q[person+'tyoelake']*scale
+            self.infostats_pop_kansanelake[t,n]=q[person+'kansanelake']*scale
             #self.infostats_takuuelake[t]+=q[person+'takuuelake']*scale
         else:
             self.infostats_tulot_netto[t]+=q['kateen']*scale # legacy for v1-3
@@ -290,7 +295,7 @@ class EpisodeStats():
         self.infostats_ylevero[t]+=q[person+'ylevero']*scale
         self.infostats_ylevero_distrib[t,newemp]=q[person+'ylevero']*scale
         self.infostats_npv0[n]=q[person+'multiplier']
-        self.infostats_equivalent_income[t]+=q[person+'eq']*scale
+        self.infostats_equivalent_income[t]+=q[person+'eq']*self.timestep # already at annual level
         if 'alv' in q:
             self.infostats_alv[t]+=q[person+'alv']*scale
             
@@ -360,6 +365,8 @@ class EpisodeStats():
                 self.time_in_state[t,newemp]+=tis
                 if tis<=0.25 and newemp==5:
                     self.infostats_mother_in_workforce[t]+=1
+                #if tis<=0.25 and newemp==6:
+                #    self.infostats_father_in_workforce[t]+=1
                 self.infostats_pinkslip[t,newemp]+=pink
                 self.infostats_pop_pinkslip[t,n]=pink
                 self.gempstate[t,newemp,g]+=1
@@ -422,6 +429,8 @@ class EpisodeStats():
             self.time_in_state[t,newemp]+=tis
             if tis<=0.25 and newemp==5:
                 self.infostats_mother_in_workforce[t]+=1
+            #if tis<=0.25 and newemp==6:
+            #    self.infostats_father_in_workforce[t]+=1
             self.infostats_pinkslip[t,newemp]+=pink
             self.infostats_pop_pinkslip[t,n]=pink
             self.gempstate[t,newemp,g]+=1
@@ -485,6 +494,8 @@ class EpisodeStats():
             self.time_in_state[t,newemp]+=tis
             if tis<=0.25 and newemp==5:
                 self.infostats_mother_in_workforce[t]+=1
+            #if tis<=0.25 and newemp==6:
+            #    self.infostats_father_in_workforce[t]+=1
             self.infostats_pinkslip[t,newemp]+=pink
             self.infostats_pop_pinkslip[t,n]=pink
             self.gempstate[t,newemp,g]+=1
@@ -546,7 +557,12 @@ class EpisodeStats():
                     
             self.empstate[t,newemp]+=1
             self.empstate[t,p_tila]+=1
-            self.alive[t]+=2
+            if newemp<14:
+                self.alive[t]+=1
+                self.galive[t,g]+=1
+            if p_tila<14:
+                self.alive[t]+=1
+                self.galive[t,p_g]+=1
             self.rewstate[t,newemp]+=r
             self.poprewstate[t,n]=r
             self.poprewstate[t,n+1]=r
@@ -567,6 +583,10 @@ class EpisodeStats():
                 self.infostats_mother_in_workforce[t]+=1
             if p_tis<=0.25 and p_tila==5:
                 self.infostats_mother_in_workforce[t]+=1
+            #if tis<=0.25 and newemp==6:
+            #    self.infostats_father_in_workforce[t]+=1
+            #if p_tis<=0.25 and newemp==6:
+            #    self.infostats_mother_in_workforce[t]+=1
             self.infostats_pinkslip[t,newemp]+=pink
             self.infostats_pinkslip[t,p_tila]+=p_pink
             self.infostats_pop_pinkslip[t,n]=pink
@@ -577,8 +597,6 @@ class EpisodeStats():
             self.stat_wage_reduction[t,p_tila]+=p_wr
             self.stat_wage_reduction_g[t,newemp,g]+=wr
             self.stat_wage_reduction_g[t,p_tila,p_g]+=p_wr
-            self.galive[t,g]+=1
-            self.galive[t,p_g]+=1
             self.stat_tyoura[t,newemp]+=ura
             self.stat_tyoura[t,p_tila]+=p_ura
             self.stat_toe[t,newemp]+=toe
@@ -684,11 +702,465 @@ class EpisodeStats():
             else:
                 self.pysyneet[t,emp]+=1
         elif newemp<0:
-            self.deceiced[t]+=1                                                            
+            self.deceiced[t]+=1        
+            
 
+    def save_sim(self,filename):
+        f = h5py.File(filename, 'w')
+        ftype='float64'
+        _ = f.create_dataset('version', data=self.version, dtype=ftype)
+        _ = f.create_dataset('n_pop', data=self.n_pop, dtype=int)
+        _ = f.create_dataset('empstate', data=self.empstate, dtype=int,compression="gzip", compression_opts=9)
+        _ = f.create_dataset('gempstate', data=self.gempstate, dtype=int,compression="gzip", compression_opts=9)
+        _ = f.create_dataset('deceiced', data=self.deceiced, dtype=int,compression="gzip", compression_opts=9)
+        _ = f.create_dataset('rewstate', data=self.rewstate, dtype=ftype,compression="gzip", compression_opts=9)
+        _ = f.create_dataset('salaries_emp', data=self.salaries_emp, dtype=ftype,compression="gzip", compression_opts=9)
+        _ = f.create_dataset('actions', data=self.actions, dtype=int,compression="gzip", compression_opts=9)
+        _ = f.create_dataset('alive', data=self.alive, dtype=int,compression="gzip", compression_opts=9)
+        _ = f.create_dataset('galive', data=self.galive, dtype=int,compression="gzip", compression_opts=9)
+        _ = f.create_dataset('siirtyneet', data=self.siirtyneet, dtype=int,compression="gzip", compression_opts=9)
+        _ = f.create_dataset('siirtyneet_det', data=self.siirtyneet_det, dtype=int,compression="gzip", compression_opts=9)
+        _ = f.create_dataset('pysyneet', data=self.pysyneet, dtype=int,compression="gzip", compression_opts=9)
+        if self.dynprog:
+            _ = f.create_dataset('aveV', data=self.aveV, dtype=ftype,compression="gzip", compression_opts=9)
+            _ = f.create_dataset('pop_predrew', data=self.pop_predrew, dtype=ftype,compression="gzip", compression_opts=9)
+
+        _ = f.create_dataset('time_in_state', data=self.time_in_state, dtype=ftype,compression="gzip", compression_opts=9)
+        _ = f.create_dataset('stat_tyoura', data=self.stat_tyoura, dtype=ftype,compression="gzip", compression_opts=9)
+        _ = f.create_dataset('stat_toe', data=self.stat_toe, dtype=int,compression="gzip", compression_opts=9)
+        _ = f.create_dataset('stat_pension', data=self.stat_pension, dtype=ftype,compression="gzip", compression_opts=9)
+        _ = f.create_dataset('stat_paidpension', data=self.stat_paidpension, dtype=ftype,compression="gzip", compression_opts=9)
+        _ = f.create_dataset('stat_pop_paidpension', data=self.stat_pop_paidpension, dtype=ftype,compression="gzip", compression_opts=9)
+        _ = f.create_dataset('stat_unemp_len', data=self.stat_unemp_len, dtype=ftype,compression="gzip", compression_opts=9)
+        _ = f.create_dataset('popempstate', data=self.popempstate, dtype=int,compression="gzip", compression_opts=9)
+        _ = f.create_dataset('stat_wage_reduction', data=self.stat_wage_reduction, dtype=ftype,compression="gzip", compression_opts=9)
+        _ = f.create_dataset('stat_wage_reduction_g', data=self.stat_wage_reduction_g, dtype=ftype,compression="gzip", compression_opts=9)
+        _ = f.create_dataset('popunemprightleft', data=self.popunemprightleft, dtype=ftype,compression="gzip", compression_opts=9)
+        _ = f.create_dataset('popunemprightused', data=self.popunemprightused, dtype=ftype,compression="gzip", compression_opts=9)
+        _ = f.create_dataset('infostats_taxes', data=self.infostats_taxes, dtype=ftype,compression="gzip", compression_opts=9)
+        _ = f.create_dataset('infostats_wagetaxes', data=self.infostats_wagetaxes, dtype=ftype,compression="gzip", compression_opts=9)
+        _ = f.create_dataset('infostats_taxes_distrib', data=self.infostats_taxes_distrib, dtype=ftype,compression="gzip", compression_opts=9)
+        _ = f.create_dataset('infostats_etuustulo', data=self.infostats_etuustulo, dtype=ftype,compression="gzip", compression_opts=9)
+        _ = f.create_dataset('infostats_etuustulo_group', data=self.infostats_etuustulo_group, dtype=ftype,compression="gzip", compression_opts=9)
+        _ = f.create_dataset('infostats_perustulo', data=self.infostats_perustulo, dtype=ftype,compression="gzip", compression_opts=9)
+        _ = f.create_dataset('infostats_palkkatulo', data=self.infostats_palkkatulo, dtype=ftype,compression="gzip", compression_opts=9)
+        _ = f.create_dataset('infostats_palkkatulo_eielakkeella', data=self.infostats_palkkatulo_eielakkeella, dtype=ftype,compression="gzip", compression_opts=9)
+        _ = f.create_dataset('infostats_ansiopvraha', data=self.infostats_ansiopvraha, dtype=ftype,compression="gzip", compression_opts=9)
+        _ = f.create_dataset('infostats_asumistuki', data=self.infostats_asumistuki, dtype=ftype,compression="gzip", compression_opts=9)
+        _ = f.create_dataset('infostats_valtionvero', data=self.infostats_valtionvero, dtype=ftype,compression="gzip", compression_opts=9)
+        _ = f.create_dataset('infostats_kunnallisvero', data=self.infostats_kunnallisvero, dtype=ftype,compression="gzip", compression_opts=9)
+        _ = f.create_dataset('infostats_valtionvero_distrib', data=self.infostats_valtionvero_distrib, dtype=ftype,compression="gzip", compression_opts=9)
+        _ = f.create_dataset('infostats_kunnallisvero_distrib', data=self.infostats_kunnallisvero_distrib, dtype=ftype)
+        _ = f.create_dataset('infostats_ptel', data=self.infostats_ptel, dtype=ftype,compression="gzip", compression_opts=9)
+        _ = f.create_dataset('infostats_tyotvakmaksu', data=self.infostats_tyotvakmaksu, dtype=ftype,compression="gzip", compression_opts=9)
+        _ = f.create_dataset('infostats_tyoelake', data=self.infostats_tyoelake, dtype=ftype,compression="gzip", compression_opts=9)
+        _ = f.create_dataset('infostats_kansanelake', data=self.infostats_kansanelake, dtype=ftype,compression="gzip", compression_opts=9)
+        _ = f.create_dataset('infostats_kokoelake', data=self.infostats_kokoelake, dtype=ftype,compression="gzip", compression_opts=9)
+        #_ = f.create_dataset('infostats_takuuelake', data=self.infostats_takuuelake, dtype=ftype,compression="gzip", compression_opts=9)
+        _ = f.create_dataset('infostats_elatustuki', data=self.infostats_elatustuki, dtype=ftype,compression="gzip", compression_opts=9)
+        _ = f.create_dataset('infostats_lapsilisa', data=self.infostats_lapsilisa, dtype=ftype,compression="gzip", compression_opts=9)
+        _ = f.create_dataset('infostats_opintotuki', data=self.infostats_opintotuki, dtype=ftype,compression="gzip", compression_opts=9)
+        _ = f.create_dataset('infostats_isyyspaivaraha', data=self.infostats_isyyspaivaraha, dtype=ftype)
+        _ = f.create_dataset('infostats_aitiyspaivaraha', data=self.infostats_aitiyspaivaraha, dtype=ftype)
+        _ = f.create_dataset('infostats_kotihoidontuki', data=self.infostats_kotihoidontuki, dtype=ftype)
+        _ = f.create_dataset('infostats_sairauspaivaraha', data=self.infostats_sairauspaivaraha, dtype=ftype)
+        _ = f.create_dataset('infostats_toimeentulotuki', data=self.infostats_toimeentulotuki, dtype=ftype)
+        _ = f.create_dataset('infostats_tulot_netto', data=self.infostats_tulot_netto, dtype=ftype)
+        _ = f.create_dataset('poprewstate', data=self.poprewstate, dtype=ftype,compression="gzip", compression_opts=9)
+        _ = f.create_dataset('infostats_pinkslip', data=self.infostats_pinkslip, dtype=int)
+        if self.version<2:
+            _ = f.create_dataset('infostats_pop_pinkslip', data=self.infostats_pop_pinkslip, dtype=int)
+
+        _ = f.create_dataset('infostats_paid_tyel_pension', data=self.infostats_paid_tyel_pension, dtype=ftype,compression="gzip", compression_opts=9)
+        _ = f.create_dataset('infostats_pop_kansanelake', data=self.infostats_pop_kansanelake, dtype=ftype,compression="gzip", compression_opts=9)
+        _ = f.create_dataset('infostats_pop_tyoelake', data=self.infostats_pop_tyoelake, dtype=ftype,compression="gzip", compression_opts=9)
+        _ = f.create_dataset('infostats_tyelpremium', data=self.infostats_tyelpremium, dtype=ftype,compression="gzip", compression_opts=9)
+        _ = f.create_dataset('infostats_npv0', data=self.infostats_npv0, dtype=ftype,compression="gzip", compression_opts=9)
+        _ = f.create_dataset('infostats_irr', data=self.infostats_irr, dtype=ftype,compression="gzip", compression_opts=9)
+        _ = f.create_dataset('infostats_group', data=self.infostats_group, dtype=int,compression="gzip", compression_opts=9)
+        _ = f.create_dataset('infostats_sairausvakuutus', data=self.infostats_sairausvakuutus, dtype=ftype,compression="gzip", compression_opts=9)
+        _ = f.create_dataset('infostats_pvhoitomaksu', data=self.infostats_pvhoitomaksu, dtype=ftype,compression="gzip", compression_opts=9)
+        _ = f.create_dataset('infostats_ylevero', data=self.infostats_ylevero, dtype=ftype)
+        _ = f.create_dataset('infostats_ylevero_distrib', data=self.infostats_ylevero_distrib, dtype=ftype,compression="gzip", compression_opts=9)
+        _ = f.create_dataset('infostats_mother_in_workforce', data=self.infostats_mother_in_workforce, dtype=ftype)
+        #_ = f.create_dataset('infostats_father_in_workforce', data=self.infostats_father_in_workforce, dtype=ftype)
+        _ = f.create_dataset('infostats_children_under3', data=self.infostats_children_under3, dtype=int,compression="gzip", compression_opts=9)
+        _ = f.create_dataset('infostats_children_under7', data=self.infostats_children_under7, dtype=int,compression="gzip", compression_opts=9)
+        _ = f.create_dataset('infostats_children_under18', data=self.infostats_children_under18, dtype=int,compression="gzip", compression_opts=9)
+        _ = f.create_dataset('infostats_unempwagebasis', data=self.infostats_unempwagebasis, dtype=ftype,compression="gzip", compression_opts=9)
+        _ = f.create_dataset('infostats_unempwagebasis_acc', data=self.infostats_unempwagebasis_acc, dtype=ftype,compression="gzip", compression_opts=9)
+        _ = f.create_dataset('infostats_toe', data=self.infostats_toe, dtype=ftype,compression="gzip", compression_opts=9)
+        _ = f.create_dataset('infostats_ove', data=self.infostats_ove, dtype=int)
+        _ = f.create_dataset('infostats_kassanjasen', data=self.infostats_kassanjasen, dtype=int)
+        _ = f.create_dataset('infostats_poptulot_netto', data=self.infostats_poptulot_netto, dtype=ftype,compression="gzip", compression_opts=9)
+        _ = f.create_dataset('infostats_equivalent_income', data=self.infostats_equivalent_income, dtype=ftype)
+        _ = f.create_dataset('infostats_pop_wage', data=self.infostats_pop_wage, dtype=ftype,compression="gzip", compression_opts=9)
+        _ = f.create_dataset('infostats_pop_pension', data=self.infostats_pop_pension, dtype=ftype,compression="gzip", compression_opts=9)
+        _ = f.create_dataset('infostats_alv', data=self.infostats_alv, dtype=ftype,compression="gzip", compression_opts=9)
+        _ = f.create_dataset('params', data=str(self.params))
+        if self.version==101:
+            _ = f.create_dataset('infostats_savings', data=self.infostats_savings, dtype=ftype,compression="gzip", compression_opts=9)
+            _ = f.create_dataset('sav_actions', data=self.sav_actions, dtype=ftype,compression="gzip", compression_opts=9)
+
+        if self.version==4:
+            _ = f.create_dataset('infostats_puoliso', data=self.infostats_puoliso,  dtype=ftype,compression="gzip", compression_opts=9)
+
+        f.close()
+
+    def save_to_hdf(self,filename,nimi,arr,dtype):
+        f = h5py.File(filename, 'w')
+        dset = f.create_dataset(nimi, data=arr, dtype=dtype)
+        f.close()
+
+    def load_hdf(self,filename,nimi):
+        f = h5py.File(filename, 'r')
+        val=f.get(nimi).value
+        f.close()
+        return val
+
+    def load_sim(self,filename,n_pop=None,print_pop=False):
+        f = h5py.File(filename, 'r')
+
+        if 'version' in f.keys():
+            version=int(f['version'][()])
+        else:
+            version=1
+
+        self.empstate=f['empstate'][()]
+        self.gempstate=f['gempstate'][()]
+        self.deceiced=f['deceiced'][()]
+        self.rewstate=f['rewstate'][()]
+        if 'poprewstate' in f.keys():
+            self.poprewstate=f['poprewstate'][()]
+
+        if 'pop_predrew' in f.keys():
+            self.pop_predrew=f['pop_predrew'][()]
+
+        self.salaries_emp=f['salaries_emp'][()]
+        self.actions=f['actions'][()]
+        self.alive=f['alive'][()]
+        self.galive=f['galive'][()]
+        self.siirtyneet=f['siirtyneet'][()]
+        self.pysyneet=f['pysyneet'][()]
+        if 'aveV' in f.keys():
+            self.aveV=f['aveV'][()]
+        self.time_in_state=f['time_in_state'][()]
+        self.stat_tyoura=f['stat_tyoura'][()]
+        self.stat_toe=f['stat_toe'][()]
+        self.stat_pension=f['stat_pension'][()]
+        self.stat_paidpension=f['stat_paidpension'][()]
+        if 'stat_pop_paidpension' in f.keys():
+            self.stat_pop_paidpension=f['stat_pop_paidpension'][()]
+        self.stat_unemp_len=f['stat_unemp_len'][()]
+        self.popempstate=f['popempstate'][()]
+        self.stat_wage_reduction=f['stat_wage_reduction'][()]
+        self.popunemprightleft=f['popunemprightleft'][()]
+        self.popunemprightused=f['popunemprightused'][()]
+
+        if 'infostats_wagetaxes' in f.keys(): # older runs do not have these
+            self.infostats_wagetaxes=f['infostats_wagetaxes'][()]
+
+        if 'infostats_taxes' in f.keys(): # older runs do not have these
+            self.infostats_taxes=f['infostats_taxes'][()]
+            self.infostats_etuustulo=f['infostats_etuustulo'][()]
+            self.infostats_perustulo=f['infostats_perustulo'][()]
+            self.infostats_palkkatulo=f['infostats_palkkatulo'][()]
+            self.infostats_ansiopvraha=f['infostats_ansiopvraha'][()]
+            self.infostats_asumistuki=f['infostats_asumistuki'][()]
+            self.infostats_valtionvero=f['infostats_valtionvero'][()]
+            self.infostats_kunnallisvero=f['infostats_kunnallisvero'][()]
+            self.infostats_ptel=f['infostats_ptel'][()]
+            self.infostats_tyotvakmaksu=f['infostats_tyotvakmaksu'][()]
+            self.infostats_tyoelake=f['infostats_tyoelake'][()]
+            self.infostats_kokoelake=f['infostats_kokoelake'][()]
+            self.infostats_opintotuki=f['infostats_opintotuki'][()]
+            self.infostats_isyyspaivaraha=f['infostats_isyyspaivaraha'][()]
+            self.infostats_aitiyspaivaraha=f['infostats_aitiyspaivaraha'][()]
+            self.infostats_kotihoidontuki=f['infostats_kotihoidontuki'][()]
+            self.infostats_sairauspaivaraha=f['infostats_sairauspaivaraha'][()]
+            self.infostats_toimeentulotuki=f['infostats_toimeentulotuki'][()]
+            self.infostats_tulot_netto=f['infostats_tulot_netto'][()]
+
+        if 'infostats_kansanelake' in f.keys(): # older runs do not have these
+            self.infostats_kansanelake=f['infostats_kansanelake'][()]
+            #self.infostats_takuuelake=f['infostats_takuuelake'][()]
+
+        if 'infostats_lapsilisa' in f.keys(): # older runs do not have these
+            self.infostats_lapsilisa=f['infostats_lapsilisa'][()]
+            self.infostats_elatustuki=f['infostats_elatustuki'][()]
+
+        if 'spouseactions' in f.keys(): # older runs do not have these
+            self.spouseactions=f['spouseactions'][()]
+        if 'infostats_etuustulo_group' in f.keys(): # older runs do not have these
+            self.infostats_etuustulo_group=f['infostats_etuustulo_group'][()]
+
+        if 'infostats_valtionvero_distrib' in f.keys(): # older runs do not have these
+            self.infostats_valtionvero_distrib=f['infostats_valtionvero_distrib'][()]
+            self.infostats_kunnallisvero_distrib=f['infostats_kunnallisvero_distrib'][()]
+
+        if 'infostats_taxes_distrib' in f.keys(): # older runs do not have these
+            self.infostats_taxes_distrib=f['infostats_taxes_distrib'][()]
+            self.infostats_ylevero_distrib=f['infostats_ylevero_distrib'][()]
+
+        if 'infostats_pinkslip' in f.keys(): # older runs do not have these
+            self.infostats_pinkslip=f['infostats_pinkslip'][()]
+
+        if 'infostats_pop_pinkslip' in f.keys():
+            self.infostats_pop_pinkslip=f['infostats_pop_pinkslip'][()]
+
+        if 'infostats_paid_tyel_pension' in f.keys(): # older runs do not have these
+            self.infostats_paid_tyel_pension=f['infostats_paid_tyel_pension'][()]
+            self.infostats_tyelpremium=f['infostats_tyelpremium'][()]
+
+        if 'infostats_pop_tyoelake' in f.keys(): # older runs do not have these
+            self.infostats_pop_tyoelake=f['infostats_pop_tyoelake'][()]
+            self.infostats_pop_kansanelake=f['infostats_pop_kansanelake'][()]
+
+        if 'infostats_npv0' in f.keys(): # older runs do not have these
+            self.infostats_npv0=f['infostats_npv0'][()]
+            self.infostats_irr=f['infostats_irr'][()]
+
+        if 'infostats_chilren7' in f.keys(): # older runs do not have these
+            self.infostats_chilren7=f['infostats_chilren7'][()]
+        if 'infostats_chilren18' in f.keys(): # older runs do not have these
+            self.infostats_chilren18=f['infostats_chilren18'][()]
+
+        if 'infostats_group' in f.keys(): # older runs do not have these
+            self.infostats_group=f['infostats_group'][()]
+
+        if 'infostats_sairausvakuutus' in f.keys():
+            self.infostats_sairausvakuutus=f['infostats_sairausvakuutus'][()]
+            self.infostats_pvhoitomaksu=f['infostats_pvhoitomaksu'][()]
+            self.infostats_ylevero=f['infostats_ylevero'][()]
+
+        if 'infostats_mother_in_workforce' in f.keys():
+            self.infostats_mother_in_workforce=f['infostats_mother_in_workforce'][()]
+        #if 'infostats_father_in_workforce' in f.keys():
+        #    self.infostats_father_in_workforce=f['infostats_father_in_workforce'][()]
+
+        if 'stat_wage_reduction_g' in f.keys():
+            self.stat_wage_reduction_g=f['stat_wage_reduction_g'][()]
+
+        if 'siirtyneet_det' in f.keys():
+            self.siirtyneet_det=f['siirtyneet_det'][()]
+
+        if 'infostats_kassanjasen' in f.keys():
+            self.infostats_kassanjasen=f['infostats_kassanjasen'][()]
+
+        if 'n_pop' in f.keys():
+            self.n_pop=int(f['n_pop'][()])
+        else:
+            self.n_pop=np.sum(self.empstate[0,:])
+
+        if 'infostats_puoliso' in f.keys():
+            self.infostats_puoliso=f['infostats_puoliso'][()]
+
+        if 'infostats_ove' in f.keys():
+            self.infostats_ove=f['infostats_ove'][()]
+
+        if 'infostats_children_under3' in f.keys():
+            self.infostats_children_under3=f['infostats_children_under3'][()]
+            self.infostats_children_under7=f['infostats_children_under7'][()]
+            self.infostats_unempwagebasis=f['infostats_unempwagebasis'][()]
+            self.infostats_unempwagebasis_acc=f['infostats_unempwagebasis_acc'][()]
+            self.infostats_toe=f['infostats_toe'][()]
+
+        if 'infostats_children_under18' in f.keys():
+            self.infostats_children_under18=f['infostats_children_under18'][()]
+            
+        if 'infostats_palkkatulo_eielakkeella' in f.keys():
+            self.infostats_palkkatulo_eielakkeella=f['infostats_palkkatulo_eielakkeella'][()]
+
+        if 'infostats_tulot_netto' in f.keys():
+            self.infostats_tulot_netto=f['infostats_tulot_netto'][()]
+
+        if 'infostats_poptulot_netto' in f.keys():
+            self.infostats_poptulot_netto=f['infostats_poptulot_netto'][()]
+
+        if 'infostats_equivalent_income' in f.keys():
+            self.infostats_equivalent_income=f['infostats_equivalent_income'][()]
+
+        if 'infostats_pop_wage' in f.keys():
+            self.infostats_pop_wage=f['infostats_pop_wage'][()]
+            self.infostats_pop_pension=f['infostats_pop_pension'][()]
+
+        if 'infostats_savings' in f.keys():
+            self.infostats_savings=f['infostats_savings'][()]
+            self.sav_actions=f['sav_actions'][()]
+
+        if 'infostats_alv' in f.keys():
+            self.infostats_alv=f['infostats_alv'][()]
+
+        if n_pop is not None:
+            self.n_pop=n_pop
+
+        if 'params' in f.keys():
+            self.params=f['params'][()]
+        else:
+            self.params=None
+
+        if print_pop:
+            print('n_pop {}'.format(self.n_pop))
+
+        f.close()
+        
     def scale_error(self,x,target=None,averaged=False):
         return (target-self.comp_scaled_consumption(x,averaged=averaged))
 
+
+
+    def plot_stats(self,grayscale=False,figname=None):
+
+        if grayscale:
+            plt.style.use('grayscale')
+            plt.rcParams['figure.facecolor'] = 'white' # Or any suitable colour...
+
+        self.comp_total_reward()
+        self.comp_total_reward(discounted=True)
+        
+        print_html('<h1>Statistics</h1>')
+        
+        self.comp_total_netincome()
+        #self.plot_rewdist()
+
+        #self.plot_emp(figname=figname)
+
+        if self.version in set([1,2,3,4]):
+            q=self.comp_budget(scale=True)
+            if self.version==4:
+                q_stat=self.stat_budget()
+            else:
+                q_stat=self.stat_budget()
+            df1 = pd.DataFrame.from_dict(q,orient='index',columns=['e/v'])
+            df2 = pd.DataFrame.from_dict(q_stat,orient='index',columns=['toteuma'])
+            df=df1.copy()
+            df['toteuma']=df2['toteuma']
+            df['ero']=df1['e/v']-df2['toteuma']
+
+            print('Rahavirrat skaalattuna väestötasolle')
+            print(tabulate(df, headers='keys', tablefmt='psql', floatfmt=",.2f"))
+
+            q=self.comp_participants(scale=True)
+            q_stat=self.stat_participants()
+            q_days=self.stat_days()
+            df1 = pd.DataFrame.from_dict(q,orient='index',columns=['arvio (htv)'])
+            df2 = pd.DataFrame.from_dict(q_stat,orient='index',columns=['toteuma'])
+            df3 = pd.DataFrame.from_dict(q_days,orient='index',columns=['htv_tot'])
+
+            df=df1.copy()
+            df['toteuma (kpl)']=df2['toteuma']
+            df['toteuma (htv)']=df3['htv_tot']
+            df['ero (htv)']=df['arvio (htv)']-df['toteuma (htv)']
+
+            print('Henkilöitä tiloissa skaalattuna väestötasolle')
+            print(tabulate(df, headers='keys', tablefmt='psql', floatfmt=",.0f"))
+        else:
+            q=self.comp_participants(scale=True)
+            q_stat=self.stat_participants()
+            q_days=self.stat_days()
+            df1 = pd.DataFrame.from_dict(q,orient='index',columns=['arvio (htv)'])
+            df2 = pd.DataFrame.from_dict(q_stat,orient='index',columns=['toteuma'])
+            df3 = pd.DataFrame.from_dict(q_days,orient='index',columns=['htv_tot'])
+
+            df=df1.copy()
+            df['toteuma (kpl)']=df2['toteuma']
+            df['toteuma (htv)']=df3['htv_tot']
+            df['ero (htv)']=df['arvio (htv)']-df['toteuma (htv)']
+
+            print('Henkilöitä tiloissa skaalattuna väestötasolle')
+            print(tabulate(df, headers='keys', tablefmt='psql', floatfmt=",.0f"))
+
+        print('Gini coefficient is {} (havainto 27.9)'.format(self.comp_gini()))
+
+        print('Real discounted reward {}'.format(self.comp_realoptimrew()))
+        #print('vrt reward {}'.format(self.comp_scaled_consumption(np.array([0]))))
+        real=self.comp_presentvalue()
+        print('Initial discounted reward {}'.format(np.mean(real[1,:])))
+
+        print_html('<h2>Työssä</h2>')
+        self.plot_emp(figname=figname)
+        if self.version in set([1,2,3,4]):
+            self.plot_group_emp(figname=figname)
+            self.plot_parttime_ratio(figname=figname)
+
+        self.plot_sal()
+
+        if self.version in set([4]):
+            print_html('<h2>Lapset ja puolisot</h2>')
+            self.plot_spouse()
+            self.plot_children()
+            self.plot_family()
+            self.plot_parents_in_work()
+            
+        if self.version==101:
+            print_html('<h2>Säästöt</h2>')
+            self.plot_savings()
+
+        if self.version in set([3,4]):
+            print_html('<h2>Ove</h2>')
+            self.plot_ove()
+            print_html('<h2>Tulot</h2>')
+            self.plot_tulot()
+
+        if self.version in set([1,2,3,4]):
+            print_html('<h2>Verot</h2>')
+            self.plot_taxes()
+            print_html('<h2>Ryhmät</h2>')
+            self.plot_outsider()
+            self.plot_student()
+            self.plot_group_student()
+            self.plot_kassanjasen()
+            self.plot_pinkslip()
+            print_html('<h2>Siirtymät</h2>')
+            self.plot_alive()
+            self.plot_moved()
+            print_html('<h2>Kestot</h2>')
+            self.plot_ave_stay()
+            self.plot_career()
+            print_html('<h2>Hyöty</h2>')
+            self.plot_reward()
+            print_html('<h2>Eläkkeet</h2>')
+            self.plot_group_disab()
+            self.plot_pensions()
+            self.plot_pension_stats(self.stat_pop_paidpension,65,'kokoeläke')
+            self.plot_pension_stats(self.infostats_paid_tyel_pension/self.timestep,65,'työeläkemaksun vastine')
+            self.plot_pension_stats(self.infostats_pop_tyoelake/self.timestep,65,'työeläke')
+            self.plot_pension_stats(self.infostats_pop_kansanelake/self.timestep,65,'kansanelake',max_pen=10_000)
+            self.plot_pension_stats(self.infostats_pop_pension,60,'tulevat eläkkeet')
+            self.plot_pension_time()
+            print_html('<h2>Palkan reduktio</h2>')
+            self.plot_wage_reduction()
+
+        print_html('<h2>Työttömyys</h2>')
+        self.plot_toe()
+        print('Keskikestot käytettyjen ansiosidonnaisten päivärahojen mukaan')
+        keskikesto=self.comp_unemp_durations()
+        df = pd.DataFrame.from_dict(keskikesto,orient='index',columns=['0-6 kk','6-12 kk','12-18 kk','18-24kk','yli 24 kk'])
+        print(tabulate(df, headers='keys', tablefmt='psql', floatfmt=",.2f"))
+
+        print('Keskikestot viimeisimmän työttömyysjakson mukaan')
+        keskikesto=self.comp_unemp_durations_v2()
+        df = pd.DataFrame.from_dict(keskikesto,orient='index',columns=['0-6 kk','6-12 kk','12-18 kk','18-24kk','yli 24 kk'])
+        print(tabulate(df, headers='keys', tablefmt='psql', floatfmt=",.2f"))
+
+        if self.version in set([1,2,3,4]):
+            print('Lisäpäivillä on {:.0f} henkilöä'.format(self.count_putki()))
+
+        self.plot_unemp(unempratio=True,figname=figname)
+        self.plot_unemp(unempratio=False)
+        self.plot_unemp_shares()
+
+        #self.plot_distrib(label='Jakauma ansiosidonnainen+tmtuki+putki, no max age',ansiosid=True,tmtuki=True,putki=True,outsider=False)
+        self.plot_distrib(label='Jakauma ansiosidonnainen+tmtuki+putki, jakso päättynyt ennen 50v ikää',ansiosid=True,tmtuki=True,putki=True,outsider=False,max_age=50,figname=figname)
+
+        if self.version in set([1,2,3,4]):
+            #self.plot_distrib(label='Jakauma ansiosidonnainen+tmtuki+putki, jakso päättynyt ennen 50v ikää, jäljellä oleva aika',plot_bu=True,ansiosid=True,tmtuki=True,putki=True,outsider=False,max_age=50)
+            self.plot_distrib(label='Jakauma ansiosidonnainen+putki, jakso päättynyt ennen 50v ikää, jäljellä oleva aika',plot_bu=False,ansiosid=True,tmtuki=False,putki=True,outsider=False,max_age=50)
+            #self.plot_distrib(label='Jakauma ansiosidonnainen+tmtuki ilman putkea',ansiosid=True,tmtuki=True,putki=False,outsider=False)
+            #self.plot_distrib(label='Jakauma ansiosidonnainen+tmtuki ilman putkea, max Ikä 50v',ansiosid=True,tmtuki=True,putki=False,outsider=False,max_age=50)
+            self.plot_distrib(label='Jakauma tmtuki',ansiosid=False,tmtuki=True,putki=False,outsider=False)
+            #self.plot_distrib(label='Jakauma työvoiman ulkopuoliset',ansiosid=False,tmtuki=False,putki=False,outsider=True)
+            #self.plot_distrib(label='Jakauma laaja (ansiosidonnainen+tmtuki+putki+ulkopuoliset)',laaja=True)
 
     def comp_employed_ratio_by_age(self,emp=None,grouped=False,g=0):
         if emp is None:
@@ -1195,7 +1667,7 @@ class EpisodeStats():
 
         return vaikutus
 
-    def get_vanhempainvapaat(self):
+    def get_vanhempainvapaat(self,skip=4):
         '''
         Laskee vanhempainvapaalla olevien määrän outsider-mallia (Excel) varten, tila 6
         '''
@@ -1208,19 +1680,22 @@ class EpisodeStats():
         nn=np.sum(self.gempstate[:,5,3:6]+self.gempstate[:,7,3:6],axis=1)[:,None]-self.infostats_mother_in_workforce
         ulkopuolella_n=nn/alive
 
-        return ulkopuolella_m[::4],ulkopuolella_n[::4]
+        return ulkopuolella_m[::skip],ulkopuolella_n[::skip]
 
     def get_vanhempainvapaat_md(self):
         '''
         Laskee vanhempainvapaalla olevien määrän outsider-mallia (Excel) varten, tila 7
+        
         '''
 
         alive=np.zeros((self.galive.shape[0],1))
         alive[:,0]=np.sum(self.galive[:,0:3],1)
-        ulkopuolella_m=np.sum(self.gempstate[:,6,0:3],axis=1)[:,None]/alive
+        vapaat=[5,6,7]
+        ulkopuolella_m=np.sum(self.gempstate[:,vapaat,0:3],axis=(1,2))[:,None]/alive
 
         alive[:,0]=np.sum(self.galive[:,3:6],1)
-        nn=self.infostats_mother_in_workforce
+        #nn=
+        nn=(np.sum(self.gempstate[:,vapaat,3:6],axis=(1,2))[:,None]-self.infostats_mother_in_workforce)/alive
         ulkopuolella_n=nn/alive
 
         return ulkopuolella_m[::4],ulkopuolella_n[::4]
@@ -1726,7 +2201,7 @@ class EpisodeStats():
             alive[:,0]=np.sum(self.galive[:,3:6],1)
             mother_in_workforce=self.infostats_mother_in_workforce
 
-        tyollisyysaste,osatyoaste,tyottomyysaste,ka_tyottomyysaste=self.comp_empratios(gempstate,alive,unempratio=unempratio,mother_in_workforce=mother_in_workforce)
+        tyollisyysaste,osatyoaste,tyottomyysaste,ka_tyottomyysaste=self.comp_empratios(gempstate,alive,unempratio=unempratio)#,mother_in_workforce=mother_in_workforce)
 
         return tyollisyysaste,osatyoaste,tyottomyysaste,ka_tyottomyysaste
 
@@ -1805,11 +2280,21 @@ class EpisodeStats():
         #ax.hist(emp_distrib)
         ax.bar(x2[1:-1],scaled[1:],align='center')
         plt.show()
-
+        
+    def plot_alive(self):
+        alive=self.alive/self.n_pop
+        fig,ax=plt.subplots()
+        ax.set_xlabel(self.labels['age'])
+        ax.set_ylabel('Alive [%]')
+        nn_time = int(np.ceil((self.max_age-self.min_age)*self.inv_timestep))+2
+        x=np.linspace(self.min_age,self.max_age,nn_time)
+        ax.plot(x[1:],alive[1:]*100)
+        plt.show()
+        
     def plot_pension_time(self):
         fig,ax=plt.subplots()
         ax.set_ylabel('eläke [e/v]')
-        ax.set_xlabel('ika')
+        ax.set_xlabel(self.labels['age'])
         min_age=60
         nn_time = int(np.ceil((self.max_age-min_age)*self.inv_timestep))+2
         x=np.linspace(min_age,self.max_age,nn_time)
@@ -1818,27 +2303,35 @@ class EpisodeStats():
         #ax.plot(x,self.infostats_takuuelake[self.map_age(60):],label='takuuelake')
         lstyle='--'
         plt.show()
+
+        demog2=self.empstats.get_demog()
+        scalex=demog2/self.n_pop
+        tyoelake_meno=self.infostats_tyoelake*scalex
+        kansanelake_meno=self.infostats_kansanelake*scalex
+        print('työeläkemeno alle 63: {:.2f} vs tilasto {:.2f}'.format(np.sum(tyoelake_meno[:self.map_age(63)]),1_807.1))
+        print('työeläkemeno yli 63: {:.2f} vs tilasto {:.2f}'.format(np.sum(tyoelake_meno[self.map_age(63):]),24_227.2))
+        print('kansaneläkemeno alle 63: {:.2f} vs tilasto {:.2f}'.format(np.sum(kansanelake_meno[:self.map_age(63)]),679.6))
+        print('kansaneläkemeno yli 63: {:.2f} vs tilasto {:.2f}'.format(np.sum(kansanelake_meno[self.map_age(63):]),1_419.9))
         
         fig,ax=plt.subplots()
         ax.set_ylabel('kansaneläke [e/v]')
-        ax.set_xlabel('ika')
+        ax.set_xlabel(self.labels['age'])
         ax.plot(x,self.infostats_kansanelake[self.map_age(60):])
         plt.show()
 
         fig,ax=plt.subplots()
         ax.set_ylabel('kansaneläke/työeläke [%]')
-        ax.set_xlabel('ika')
+        ax.set_xlabel(self.labels['age'])
         ax.plot(x,self.infostats_kansanelake[self.map_age(60):]/self.infostats_tyoelake[self.map_age(60):]*100)
         plt.show()
 
-    def plot_pension_stats(self,pd,age,label):
+    def plot_pension_stats(self,pd,age,label,max_pen=60_000):
         fig,ax=plt.subplots()
         pens_distrib=pd[self.map_age(age),:]
         ax.set_xlabel('eläke [e/v]')
         ax.set_ylabel('freq')
         plt.title(f'{label} at age {age}')
         #ax.set_yscale('log')
-        max_pen=60_000
         x=np.linspace(0,max_pen,51)
         scaled,x2=np.histogram(pens_distrib,x)
         scaled=scaled/np.sum(pens_distrib)
@@ -2264,10 +2757,49 @@ class EpisodeStats():
 
         plt.show()
 
-    def plot_outsider(self,printtaa=True):
+    def plot_family(self,printtaa=True):
         x=np.linspace(self.min_age,self.max_age,self.n_time)
         fig,ax=plt.subplots()
-        ax.plot(x,100*(self.empstate[:,11]+self.empstate[:,5]+self.empstate[:,7])/self.alive[:,0],label='työvoiman ulkopuolella, ei opiskelija, sis. vanh.vapaat')
+        ax.plot(x,100*(self.empstate[:,5]+self.empstate[:,6]+self.empstate[:,7])/self.alive[:,0],label='vanhempainvapailla')
+        #emp_statsratio=100*self.empstats.outsider_stats()
+        #ax.plot(x,emp_statsratio,label='havainto')
+        ax.set_xlabel(self.labels['age'])
+        ax.set_ylabel(self.labels['ratio'])
+        ax.legend()
+        plt.show()
+
+        x=np.linspace(self.min_age,self.max_age,self.n_time)
+        fig,ax=plt.subplots()
+        ax.plot(x,100*np.sum(self.gempstate[:,5,3:6]+self.gempstate[:,6,3:6]+self.gempstate[:,7,3:6],1,keepdims=True)/np.sum(self.galive[:,3:6],1,keepdims=True),label='vanhempainvapailla, naiset')
+        ax.plot(x,100*np.sum(self.gempstate[:,5,0:3]+self.gempstate[:,6,0:3]+self.gempstate[:,7,0:3],1,keepdims=True)/np.sum(self.galive[:,0:3],1,keepdims=True),label='vanhempainvapailla, miehet')
+#        emp_statsratio=100*self.empstats.outsider_stats(g=1)
+#        ax.plot(x,emp_statsratio,label=self.labels['havainto, naiset'])
+#        emp_statsratio=100*self.empstats.outsider_stats(g=2)
+#        ax.plot(x,emp_statsratio,label=self.labels['havainto, miehet'])
+        ax.set_xlabel(self.labels['age'])
+        ax.set_ylabel(self.labels['ratio'])
+        ax.legend()
+        plt.show()
+        if printtaa:
+            nn=np.sum(self.galive[:,3:6],1,keepdims=True)
+            n=np.sum(100*(self.gempstate[:,5,3:6]+self.gempstate[:,6,3:6]+self.gempstate[:,7,3:6]),1,keepdims=True)/nn
+            mn=np.sum(self.galive[:,0:3],1,keepdims=True)
+            m=np.sum(100*(self.gempstate[:,5,0:3]+self.gempstate[:,6,0:3]+self.gempstate[:,7,0:3]),1,keepdims=True)/mn
+            
+        ratio_label=self.labels['osuus']
+        empstate_ratio=100*self.empstate/self.alive
+        self.plot_states(empstate_ratio,ylabel=ratio_label,parent=True,stack=False)
+
+    def plot_outsider(self,printtaa=True):
+        '''
+        plottaa työvoiman ulkopuolella olevat
+        mukana ei isyysvapaat, opiskelijat, armeijassa olevat eikä alle 3 kk kestäneet äitiysvpaat
+        '''
+        x=np.linspace(self.min_age,self.max_age,self.n_time)
+        fig,ax=plt.subplots()
+        ax.plot(x,100*(self.empstate[:,11]+self.empstate[:,5]+self.empstate[:,7]
+            -self.infostats_mother_in_workforce[:,0])/self.alive[:,0],
+            label='työvoiman ulkopuolella, ei opiskelija, sis. vanh.vapaat')
         emp_statsratio=100*self.empstats.outsider_stats()
         ax.plot(x,emp_statsratio,label='havainto')
         ax.set_xlabel(self.labels['age'])
@@ -2277,8 +2809,22 @@ class EpisodeStats():
 
         x=np.linspace(self.min_age,self.max_age,self.n_time)
         fig,ax=plt.subplots()
-        ax.plot(x,100*np.sum(self.gempstate[:,11,3:5]+self.gempstate[:,5,3:5]+self.gempstate[:,7,3:5],1,keepdims=True)/np.sum(self.galive[:,3:5],1,keepdims=True),label='työvoiman ulkopuolella, naiset')
-        ax.plot(x,100*np.sum(self.gempstate[:,11,0:2]+self.gempstate[:,5,0:2]+self.gempstate[:,7,0:2],1,keepdims=True)/np.sum(self.galive[:,3:5],1,keepdims=True),label='työvoiman ulkopuolella, miehet')
+        ax.plot(x,100*(self.empstate[:,11])/self.alive[:,0],
+            label='työvoiman ulkopuolella, ei opiskelija, ei vanh.vapaat')
+        emp_statsratio=100*self.empstats.outsider_stats()
+        ax.plot(x,emp_statsratio,label='havainto')
+        ax.set_xlabel(self.labels['age'])
+        ax.set_ylabel(self.labels['ratio'])
+        ax.legend()
+        plt.show()
+
+        x=np.linspace(self.min_age,self.max_age,self.n_time)
+        fig,ax=plt.subplots()
+        ax.plot(x,100*(np.sum(self.gempstate[:,11,3:6]+self.gempstate[:,5,3:6]+self.gempstate[:,7,3:6],1,keepdims=True)
+            -self.infostats_mother_in_workforce)/np.sum(self.galive[:,3:6],1,keepdims=True),
+            label='työvoiman ulkopuolella, naiset')
+        ax.plot(x,100*np.sum(self.gempstate[:,11,0:3]+self.gempstate[:,7,0:3],1,keepdims=True)/np.sum(self.galive[:,0:3],1,keepdims=True),
+            label='työvoiman ulkopuolella, miehet')
         emp_statsratio=100*self.empstats.outsider_stats(g=1)
         ax.plot(x,emp_statsratio,label=self.labels['havainto, naiset'])
         emp_statsratio=100*self.empstats.outsider_stats(g=2)
@@ -2289,10 +2835,10 @@ class EpisodeStats():
         plt.show()
         if printtaa:
             #print('yht',100*(self.empstate[:,11]+self.empstate[:,5]+self.empstate[:,6]+self.empstate[:,7])/self.alive[:,0])
-            nn=np.sum(self.galive[:,3:5],1,keepdims=True)
-            n=np.sum(100*(self.gempstate[:,5,3:5]+self.gempstate[:,6,3:5]+self.gempstate[:,7,3:5]),1,keepdims=True)/nn
-            mn=np.sum(self.galive[:,0:2],1,keepdims=True)
-            m=np.sum(100*(self.gempstate[:,5,0:2]+self.gempstate[:,6,0:2]+self.gempstate[:,7,0:2]),1,keepdims=True)/mn
+            nn=np.sum(self.galive[:,3:6],1,keepdims=True)
+            n=np.sum(100*(self.gempstate[:,5,3:6]+self.gempstate[:,6,3:6]+self.gempstate[:,7,3:6]),1,keepdims=True)/nn
+            mn=np.sum(self.galive[:,0:3],1,keepdims=True)
+            m=np.sum(100*(self.gempstate[:,5,0:3]+self.gempstate[:,6,0:3]+self.gempstate[:,7,0:3]),1,keepdims=True)/mn
             #print('naiset vv',n[1::4,0])
             #print('miehet vv',m[1::4,0])
             
@@ -2342,9 +2888,9 @@ class EpisodeStats():
         ax.set_ylabel(self.labels['ratio'])
         ax.legend()
         plt.show()
-        mini=np.nanmin(100*self.infostats_kassanjasen/self.alive)
-        maxi=np.nanmax(100*self.infostats_kassanjasen/self.alive)
-        print('Kassanjäseniä min {} % max {} %'.format(mini,maxi))
+        mini=np.nanmin(100*self.infostats_kassanjasen) #/self.alive)
+        maxi=np.nanmax(100*self.infostats_kassanjasen) #/self.alive)
+        print('Kassanjäseniä min {:1f} % max {:1f} %'.format(mini,maxi))
 
     def plot_group_student(self):
         fig,ax=plt.subplots()
@@ -2548,7 +3094,9 @@ class EpisodeStats():
 
     def plot_emp(self,figname=None):
 
-        tyollisyysaste,osatyoaste,tyottomyysaste,ka_tyottomyysaste=self.comp_empratios(self.empstate,self.alive,unempratio=False)
+        tyollisyysaste,osatyoaste,tyottomyysaste,ka_tyottomyysaste=\
+            self.comp_empratios(self.empstate,self.alive,unempratio=False) #,mother_in_workforce=self.infostats_mother_in_workforce)
+        #tyollisyysaste,osatyoaste,tyottomyysaste,ka_tyottomyysaste=self.comp_empratios(self.empstate,self.alive,unempratio=False,mother_in_workforce=self.infostats_mother_in_workforce)
 
         age_label=self.labels['age']
         ratio_label=self.labels['osuus']
@@ -2581,8 +3129,6 @@ class EpisodeStats():
 
         if self.version in set([1,2,3,4]):
             self.plot_states(empstate_ratio,ylabel=ratio_label,ylimit=20,stack=False)
-            self.plot_states(empstate_ratio,ylabel=ratio_label,parent=True,stack=False)
-            self.plot_parents_in_work()
             self.plot_states(empstate_ratio,ylabel=ratio_label,unemp=True,stack=False)
 
         if figname is not None:
@@ -2695,6 +3241,7 @@ class EpisodeStats():
         ml=100*self.infostats_mother_in_workforce/self.alive
         x=np.linspace(self.min_age,self.max_age,self.n_time)
         fig,ax=plt.subplots()
+        plt.title('Työvoimaan kuuluvat vanhempainvapaalla olevat')
         ax.plot(x,ml,label='äitiysvapaa')
         ax.plot(x,empstate_ratio[:,6],label='isyysvapaa')
         ax.legend()
@@ -2898,7 +3445,7 @@ class EpisodeStats():
 
         for gender in range(2):
             if gender==0:
-                leg='Miehet'
+                leg=self.labels['Miehet']
                 gempstate=np.sum(self.gempstate[:,:,0:3],axis=2)
                 alive=np.zeros((self.galive.shape[0],1))
                 alive[:,0]=np.sum(self.galive[:,0:3],1)
@@ -2907,13 +3454,13 @@ class EpisodeStats():
                 gempstate=np.sum(self.gempstate[:,:,3:6],axis=2)
                 alive=np.zeros((self.galive.shape[0],1))
                 alive[:,0]=np.sum(self.galive[:,3:6],1)
-                leg='Naiset'
+                leg=self.labels['Naiset']
                 color='black'
 
             tyollisyysaste,osatyoaste,tyottomyysaste,ka_tyottomyysaste=self.comp_empratios(gempstate,alive)
 
             x=np.linspace(self.min_age,self.max_age,self.n_time)
-            ax.plot(x,tyollisyysaste,color=color,label='työllisyysaste {}'.format(leg))
+            ax.plot(x,tyollisyysaste,color=color,label='{} {}'.format(self.labels['tyollisyysaste %'],leg))
             #ax.plot(x,tyottomyysaste,label='työttömyys {}'.format(leg))
 
         emp_statsratio=100*self.empstats.emp_stats(g=2)
@@ -3029,7 +3576,7 @@ class EpisodeStats():
                     #    labels=('työssä','osatyö','ve+työ','ve+osatyö','työtön','tm-tuki','työttömyysputki','tk-eläke','äitiysvapaa','isyysvapaa','kh-tuki','vanhuuseläke','opiskelija','työvoiman ulkop.','armeijassa'),
                     #    colors=pal)
                     ax.stackplot(x,ura_emp,ura_osatyo,ura_vetyo,ura_veosatyo,ura_unemp,ura_tyomarkkinatuki,ura_pipe,ura_ret,ura_disab,ura_mother,ura_dad,ura_kht,ura_student,ura_outsider,ura_army,
-                        labels=('työssä','osatyö','ve+työ','ve+osatyö','työtön','tm-tuki','työttömyysputki','vanhuuseläke','tk-eläke','äitiysvapaa','isyysvapaa','kh-tuki','opiskelija','työvoiman ulkop.','armeijassa'),
+                        labels=('työssä','osatyö','ve+työ','ve+osatyö','työtön','tm-tuki','työttömyysputki','vanhuuseläke','tk-eläke','äitiysvapaa','isyysvapaa','kh-tuki','opiskelija','työvoiman ulkop.'),
                         colors=pal)
                 else:
                     #ax.stackplot(x,ura_emp,ura_osatyo,ura_unemp,ura_ret,
@@ -3416,155 +3963,6 @@ class EpisodeStats():
         print('Initial discounted reward at age {}: {}'.format(realage,np.mean(real[age,:])))
         return np.mean(real[age,:])
 
-    def plot_stats(self,grayscale=False,figname=None):
-
-        if grayscale:
-            plt.style.use('grayscale')
-            plt.rcParams['figure.facecolor'] = 'white' # Or any suitable colour...
-
-        self.comp_total_reward()
-        self.comp_total_reward(discounted=True)
-        
-        print_html('<h1>Statistics</h1>')
-        
-        self.comp_total_netincome()
-        #self.plot_rewdist()
-
-        #self.plot_emp(figname=figname)
-
-        if self.version in set([1,2,3,4]):
-            q=self.comp_budget(scale=True)
-            if self.version==4:
-                q_stat=self.stat_budget()
-            else:
-                q_stat=self.stat_budget()
-            df1 = pd.DataFrame.from_dict(q,orient='index',columns=['e/v'])
-            df2 = pd.DataFrame.from_dict(q_stat,orient='index',columns=['toteuma'])
-            df=df1.copy()
-            df['toteuma']=df2['toteuma']
-            df['ero']=df1['e/v']-df2['toteuma']
-
-            print('Rahavirrat skaalattuna väestötasolle')
-            print(tabulate(df, headers='keys', tablefmt='psql', floatfmt=",.2f"))
-
-            q=self.comp_participants(scale=True)
-            q_stat=self.stat_participants()
-            q_days=self.stat_days()
-            df1 = pd.DataFrame.from_dict(q,orient='index',columns=['arvio (htv)'])
-            df2 = pd.DataFrame.from_dict(q_stat,orient='index',columns=['toteuma'])
-            df3 = pd.DataFrame.from_dict(q_days,orient='index',columns=['htv_tot'])
-
-            df=df1.copy()
-            df['toteuma (kpl)']=df2['toteuma']
-            df['toteuma (htv)']=df3['htv_tot']
-            df['ero (htv)']=df['arvio (htv)']-df['toteuma (htv)']
-
-            print('Henkilöitä tiloissa skaalattuna väestötasolle')
-            print(tabulate(df, headers='keys', tablefmt='psql', floatfmt=",.0f"))
-        else:
-            q=self.comp_participants(scale=True)
-            q_stat=self.stat_participants()
-            q_days=self.stat_days()
-            df1 = pd.DataFrame.from_dict(q,orient='index',columns=['arvio (htv)'])
-            df2 = pd.DataFrame.from_dict(q_stat,orient='index',columns=['toteuma'])
-            df3 = pd.DataFrame.from_dict(q_days,orient='index',columns=['htv_tot'])
-
-            df=df1.copy()
-            df['toteuma (kpl)']=df2['toteuma']
-            df['toteuma (htv)']=df3['htv_tot']
-            df['ero (htv)']=df['arvio (htv)']-df['toteuma (htv)']
-
-            print('Henkilöitä tiloissa skaalattuna väestötasolle')
-            print(tabulate(df, headers='keys', tablefmt='psql', floatfmt=",.0f"))
-
-        print('Gini coefficient is {} (havainto 27.9)'.format(self.comp_gini()))
-
-        print('Real discounted reward {}'.format(self.comp_realoptimrew()))
-        #print('vrt reward {}'.format(self.comp_scaled_consumption(np.array([0]))))
-        real=self.comp_presentvalue()
-        print('Initial discounted reward {}'.format(np.mean(real[1,:])))
-
-        print_html('<h2>Työssä</h2>')
-        self.plot_emp(figname=figname)
-        if self.version in set([1,2,3,4]):
-            self.plot_group_emp(figname=figname)
-            self.plot_parttime_ratio(figname=figname)
-
-        self.plot_sal()
-
-        if self.version in set([4]):
-            print_html('<h2>Lapset ja puolisot</h2>')
-            self.plot_spouse()
-            self.plot_children()
-
-        if self.version==101:
-            print_html('<h2>Säästöt</h2>')
-            self.plot_savings()
-
-        if self.version in set([3,4]):
-            print_html('<h2>Ove</h2>')
-            self.plot_ove()
-            print_html('<h2>Tulot</h2>')
-            self.plot_tulot()
-
-        if self.version in set([1,2,3,4]):
-            print_html('<h2>Verot</h2>')
-            self.plot_taxes()
-            self.plot_pinkslip()
-            print_html('<h2>Ryhmät</h2>')
-            self.plot_outsider()
-            self.plot_student()
-            self.plot_kassanjasen()
-            #self.plot_army()
-            self.plot_group_student()
-            #self.plot_group_army()
-            self.plot_group_disab()
-            print_html('<h2>Siirtymät</h2>')
-            self.plot_moved()
-            print_html('<h2>Kestot</h2>')
-            self.plot_ave_stay()
-            self.plot_career()
-            self.plot_reward()
-            print_html('<h2>Eläkkeet</h2>')
-            self.plot_pensions()
-            self.plot_pension_stats(self.stat_pop_paidpension,65,'kokoeläke')
-            self.plot_pension_stats(self.infostats_paid_tyel_pension,65,'työeläke')
-            self.plot_pension_stats(self.infostats_pop_pension,60,'tulevat eläkkeet')
-            self.plot_pension_time()
-            print_html('<h2>Palkan pudotus</h2>')
-            self.plot_wage_reduction()
-
-        print_html('<h2>Työttömyys</h2>')
-        self.plot_toe()
-        print('Keskikestot käytettyjen ansiosidonnaisten päivärahojen mukaan')
-        keskikesto=self.comp_unemp_durations()
-        df = pd.DataFrame.from_dict(keskikesto,orient='index',columns=['0-6 kk','6-12 kk','12-18 kk','18-24kk','yli 24 kk'])
-        print(tabulate(df, headers='keys', tablefmt='psql', floatfmt=",.2f"))
-
-        print('Keskikestot viimeisimmän työttömyysjakson mukaan')
-        keskikesto=self.comp_unemp_durations_v2()
-        df = pd.DataFrame.from_dict(keskikesto,orient='index',columns=['0-6 kk','6-12 kk','12-18 kk','18-24kk','yli 24 kk'])
-        print(tabulate(df, headers='keys', tablefmt='psql', floatfmt=",.2f"))
-
-        if self.version in set([1,2,3,4]):
-            print('Lisäpäivillä on {:.0f} henkilöä'.format(self.count_putki()))
-
-        self.plot_unemp(unempratio=True,figname=figname)
-        self.plot_unemp(unempratio=False)
-        self.plot_unemp_shares()
-
-        #self.plot_distrib(label='Jakauma ansiosidonnainen+tmtuki+putki, no max age',ansiosid=True,tmtuki=True,putki=True,outsider=False)
-        self.plot_distrib(label='Jakauma ansiosidonnainen+tmtuki+putki, jakso päättynyt ennen 50v ikää',ansiosid=True,tmtuki=True,putki=True,outsider=False,max_age=50,figname=figname)
-
-        if self.version in set([1,2,3,4]):
-            #self.plot_distrib(label='Jakauma ansiosidonnainen+tmtuki+putki, jakso päättynyt ennen 50v ikää, jäljellä oleva aika',plot_bu=True,ansiosid=True,tmtuki=True,putki=True,outsider=False,max_age=50)
-            self.plot_distrib(label='Jakauma ansiosidonnainen+putki, jakso päättynyt ennen 50v ikää, jäljellä oleva aika',plot_bu=False,ansiosid=True,tmtuki=False,putki=True,outsider=False,max_age=50)
-            #self.plot_distrib(label='Jakauma ansiosidonnainen+tmtuki ilman putkea',ansiosid=True,tmtuki=True,putki=False,outsider=False)
-            #self.plot_distrib(label='Jakauma ansiosidonnainen+tmtuki ilman putkea, max Ikä 50v',ansiosid=True,tmtuki=True,putki=False,outsider=False,max_age=50)
-            self.plot_distrib(label='Jakauma tmtuki',ansiosid=False,tmtuki=True,putki=False,outsider=False)
-            #self.plot_distrib(label='Jakauma työvoiman ulkopuoliset',ansiosid=False,tmtuki=False,putki=False,outsider=True)
-            #self.plot_distrib(label='Jakauma laaja (ansiosidonnainen+tmtuki+putki+ulkopuoliset)',laaja=True)
-
 
     def plot_img(self,img,xlabel="eläke",ylabel="Palkka",title="Employed"):
         fig, ax = plt.subplots()
@@ -3576,295 +3974,6 @@ class EpisodeStats():
         plt.title(title)
         plt.show()
 
-    def save_sim(self,filename):
-        f = h5py.File(filename, 'w')
-        ftype='float64'
-        _ = f.create_dataset('version', data=self.version, dtype=ftype)
-        _ = f.create_dataset('n_pop', data=self.n_pop, dtype=int)
-        _ = f.create_dataset('empstate', data=self.empstate, dtype=int,compression="gzip", compression_opts=9)
-        _ = f.create_dataset('gempstate', data=self.gempstate, dtype=int,compression="gzip", compression_opts=9)
-        _ = f.create_dataset('deceiced', data=self.deceiced, dtype=int,compression="gzip", compression_opts=9)
-        _ = f.create_dataset('rewstate', data=self.rewstate, dtype=ftype,compression="gzip", compression_opts=9)
-        _ = f.create_dataset('salaries_emp', data=self.salaries_emp, dtype=ftype,compression="gzip", compression_opts=9)
-        _ = f.create_dataset('actions', data=self.actions, dtype=int,compression="gzip", compression_opts=9)
-        _ = f.create_dataset('alive', data=self.alive, dtype=int,compression="gzip", compression_opts=9)
-        _ = f.create_dataset('galive', data=self.galive, dtype=int,compression="gzip", compression_opts=9)
-        _ = f.create_dataset('siirtyneet', data=self.siirtyneet, dtype=int,compression="gzip", compression_opts=9)
-        _ = f.create_dataset('siirtyneet_det', data=self.siirtyneet_det, dtype=int,compression="gzip", compression_opts=9)
-        _ = f.create_dataset('pysyneet', data=self.pysyneet, dtype=int,compression="gzip", compression_opts=9)
-        if self.dynprog:
-            _ = f.create_dataset('aveV', data=self.aveV, dtype=ftype,compression="gzip", compression_opts=9)
-            _ = f.create_dataset('pop_predrew', data=self.pop_predrew, dtype=ftype,compression="gzip", compression_opts=9)
-
-        _ = f.create_dataset('time_in_state', data=self.time_in_state, dtype=ftype,compression="gzip", compression_opts=9)
-        _ = f.create_dataset('stat_tyoura', data=self.stat_tyoura, dtype=ftype,compression="gzip", compression_opts=9)
-        _ = f.create_dataset('stat_toe', data=self.stat_toe, dtype=int,compression="gzip", compression_opts=9)
-        _ = f.create_dataset('stat_pension', data=self.stat_pension, dtype=ftype,compression="gzip", compression_opts=9)
-        _ = f.create_dataset('stat_paidpension', data=self.stat_paidpension, dtype=ftype,compression="gzip", compression_opts=9)
-        _ = f.create_dataset('stat_pop_paidpension', data=self.stat_pop_paidpension, dtype=ftype,compression="gzip", compression_opts=9)
-        _ = f.create_dataset('stat_unemp_len', data=self.stat_unemp_len, dtype=ftype,compression="gzip", compression_opts=9)
-        _ = f.create_dataset('popempstate', data=self.popempstate, dtype=int,compression="gzip", compression_opts=9)
-        _ = f.create_dataset('stat_wage_reduction', data=self.stat_wage_reduction, dtype=ftype,compression="gzip", compression_opts=9)
-        _ = f.create_dataset('stat_wage_reduction_g', data=self.stat_wage_reduction_g, dtype=ftype,compression="gzip", compression_opts=9)
-        _ = f.create_dataset('popunemprightleft', data=self.popunemprightleft, dtype=ftype,compression="gzip", compression_opts=9)
-        _ = f.create_dataset('popunemprightused', data=self.popunemprightused, dtype=ftype,compression="gzip", compression_opts=9)
-        _ = f.create_dataset('infostats_taxes', data=self.infostats_taxes, dtype=ftype,compression="gzip", compression_opts=9)
-        _ = f.create_dataset('infostats_wagetaxes', data=self.infostats_wagetaxes, dtype=ftype,compression="gzip", compression_opts=9)
-        _ = f.create_dataset('infostats_taxes_distrib', data=self.infostats_taxes_distrib, dtype=ftype,compression="gzip", compression_opts=9)
-        _ = f.create_dataset('infostats_etuustulo', data=self.infostats_etuustulo, dtype=ftype,compression="gzip", compression_opts=9)
-        _ = f.create_dataset('infostats_etuustulo_group', data=self.infostats_etuustulo_group, dtype=ftype,compression="gzip", compression_opts=9)
-        _ = f.create_dataset('infostats_perustulo', data=self.infostats_perustulo, dtype=ftype,compression="gzip", compression_opts=9)
-        _ = f.create_dataset('infostats_palkkatulo', data=self.infostats_palkkatulo, dtype=ftype,compression="gzip", compression_opts=9)
-        _ = f.create_dataset('infostats_palkkatulo_eielakkeella', data=self.infostats_palkkatulo_eielakkeella, dtype=ftype,compression="gzip", compression_opts=9)
-        _ = f.create_dataset('infostats_ansiopvraha', data=self.infostats_ansiopvraha, dtype=ftype,compression="gzip", compression_opts=9)
-        _ = f.create_dataset('infostats_asumistuki', data=self.infostats_asumistuki, dtype=ftype,compression="gzip", compression_opts=9)
-        _ = f.create_dataset('infostats_valtionvero', data=self.infostats_valtionvero, dtype=ftype,compression="gzip", compression_opts=9)
-        _ = f.create_dataset('infostats_kunnallisvero', data=self.infostats_kunnallisvero, dtype=ftype,compression="gzip", compression_opts=9)
-        _ = f.create_dataset('infostats_valtionvero_distrib', data=self.infostats_valtionvero_distrib, dtype=ftype,compression="gzip", compression_opts=9)
-        _ = f.create_dataset('infostats_kunnallisvero_distrib', data=self.infostats_kunnallisvero_distrib, dtype=ftype)
-        _ = f.create_dataset('infostats_ptel', data=self.infostats_ptel, dtype=ftype,compression="gzip", compression_opts=9)
-        _ = f.create_dataset('infostats_tyotvakmaksu', data=self.infostats_tyotvakmaksu, dtype=ftype,compression="gzip", compression_opts=9)
-        _ = f.create_dataset('infostats_tyoelake', data=self.infostats_tyoelake, dtype=ftype,compression="gzip", compression_opts=9)
-        _ = f.create_dataset('infostats_kansanelake', data=self.infostats_kansanelake, dtype=ftype,compression="gzip", compression_opts=9)
-        _ = f.create_dataset('infostats_kokoelake', data=self.infostats_kokoelake, dtype=ftype,compression="gzip", compression_opts=9)
-        #_ = f.create_dataset('infostats_takuuelake', data=self.infostats_takuuelake, dtype=ftype,compression="gzip", compression_opts=9)
-        _ = f.create_dataset('infostats_elatustuki', data=self.infostats_elatustuki, dtype=ftype,compression="gzip", compression_opts=9)
-        _ = f.create_dataset('infostats_lapsilisa', data=self.infostats_lapsilisa, dtype=ftype,compression="gzip", compression_opts=9)
-        _ = f.create_dataset('infostats_opintotuki', data=self.infostats_opintotuki, dtype=ftype,compression="gzip", compression_opts=9)
-        _ = f.create_dataset('infostats_isyyspaivaraha', data=self.infostats_isyyspaivaraha, dtype=ftype)
-        _ = f.create_dataset('infostats_aitiyspaivaraha', data=self.infostats_aitiyspaivaraha, dtype=ftype)
-        _ = f.create_dataset('infostats_kotihoidontuki', data=self.infostats_kotihoidontuki, dtype=ftype)
-        _ = f.create_dataset('infostats_sairauspaivaraha', data=self.infostats_sairauspaivaraha, dtype=ftype)
-        _ = f.create_dataset('infostats_toimeentulotuki', data=self.infostats_toimeentulotuki, dtype=ftype)
-        _ = f.create_dataset('infostats_tulot_netto', data=self.infostats_tulot_netto, dtype=ftype)
-        _ = f.create_dataset('poprewstate', data=self.poprewstate, dtype=ftype,compression="gzip", compression_opts=9)
-        _ = f.create_dataset('infostats_pinkslip', data=self.infostats_pinkslip, dtype=int)
-        if self.version<2:
-            _ = f.create_dataset('infostats_pop_pinkslip', data=self.infostats_pop_pinkslip, dtype=int)
-
-        _ = f.create_dataset('infostats_paid_tyel_pension', data=self.infostats_paid_tyel_pension, dtype=ftype,compression="gzip", compression_opts=9)
-        _ = f.create_dataset('infostats_tyelpremium', data=self.infostats_tyelpremium, dtype=ftype,compression="gzip", compression_opts=9)
-        _ = f.create_dataset('infostats_npv0', data=self.infostats_npv0, dtype=ftype,compression="gzip", compression_opts=9)
-        _ = f.create_dataset('infostats_irr', data=self.infostats_irr, dtype=ftype,compression="gzip", compression_opts=9)
-        _ = f.create_dataset('infostats_group', data=self.infostats_group, dtype=int,compression="gzip", compression_opts=9)
-        _ = f.create_dataset('infostats_sairausvakuutus', data=self.infostats_sairausvakuutus, dtype=ftype,compression="gzip", compression_opts=9)
-        _ = f.create_dataset('infostats_pvhoitomaksu', data=self.infostats_pvhoitomaksu, dtype=ftype,compression="gzip", compression_opts=9)
-        _ = f.create_dataset('infostats_ylevero', data=self.infostats_ylevero, dtype=ftype)
-        _ = f.create_dataset('infostats_ylevero_distrib', data=self.infostats_ylevero_distrib, dtype=ftype,compression="gzip", compression_opts=9)
-        _ = f.create_dataset('infostats_mother_in_workforce', data=self.infostats_mother_in_workforce, dtype=ftype)
-        _ = f.create_dataset('infostats_children_under3', data=self.infostats_children_under3, dtype=int,compression="gzip", compression_opts=9)
-        _ = f.create_dataset('infostats_children_under7', data=self.infostats_children_under7, dtype=int,compression="gzip", compression_opts=9)
-        _ = f.create_dataset('infostats_children_under18', data=self.infostats_children_under18, dtype=int,compression="gzip", compression_opts=9)
-        _ = f.create_dataset('infostats_unempwagebasis', data=self.infostats_unempwagebasis, dtype=ftype,compression="gzip", compression_opts=9)
-        _ = f.create_dataset('infostats_unempwagebasis_acc', data=self.infostats_unempwagebasis_acc, dtype=ftype,compression="gzip", compression_opts=9)
-        _ = f.create_dataset('infostats_toe', data=self.infostats_toe, dtype=ftype,compression="gzip", compression_opts=9)
-        _ = f.create_dataset('infostats_ove', data=self.infostats_ove, dtype=int)
-        _ = f.create_dataset('infostats_kassanjasen', data=self.infostats_kassanjasen, dtype=int)
-        _ = f.create_dataset('infostats_poptulot_netto', data=self.infostats_poptulot_netto, dtype=ftype,compression="gzip", compression_opts=9)
-        _ = f.create_dataset('infostats_equivalent_income', data=self.infostats_equivalent_income, dtype=ftype)
-        _ = f.create_dataset('infostats_pop_wage', data=self.infostats_pop_wage, dtype=ftype,compression="gzip", compression_opts=9)
-        _ = f.create_dataset('infostats_pop_pension', data=self.infostats_pop_pension, dtype=ftype,compression="gzip", compression_opts=9)
-        _ = f.create_dataset('infostats_alv', data=self.infostats_alv, dtype=ftype,compression="gzip", compression_opts=9)
-        _ = f.create_dataset('params', data=str(self.params))
-        if self.version==101:
-            _ = f.create_dataset('infostats_savings', data=self.infostats_savings, dtype=ftype,compression="gzip", compression_opts=9)
-            _ = f.create_dataset('sav_actions', data=self.sav_actions, dtype=ftype,compression="gzip", compression_opts=9)
-
-        if self.version==4:
-            _ = f.create_dataset('infostats_puoliso', data=self.infostats_puoliso,  dtype=ftype,compression="gzip", compression_opts=9)
-
-        f.close()
-
-    def save_to_hdf(self,filename,nimi,arr,dtype):
-        f = h5py.File(filename, 'w')
-        dset = f.create_dataset(nimi, data=arr, dtype=dtype)
-        f.close()
-
-    def load_hdf(self,filename,nimi):
-        f = h5py.File(filename, 'r')
-        val=f.get(nimi).value
-        f.close()
-        return val
-
-    def load_sim(self,filename,n_pop=None,print_pop=False):
-        f = h5py.File(filename, 'r')
-
-        if 'version' in f.keys():
-            version=int(f['version'][()])
-        else:
-            version=1
-
-        self.empstate=f['empstate'][()]
-        self.gempstate=f['gempstate'][()]
-        self.deceiced=f['deceiced'][()]
-        self.rewstate=f['rewstate'][()]
-        if 'poprewstate' in f.keys():
-            self.poprewstate=f['poprewstate'][()]
-
-        if 'pop_predrew' in f.keys():
-            self.pop_predrew=f['pop_predrew'][()]
-
-        self.salaries_emp=f['salaries_emp'][()]
-        self.actions=f['actions'][()]
-        self.alive=f['alive'][()]
-        self.galive=f['galive'][()]
-        self.siirtyneet=f['siirtyneet'][()]
-        self.pysyneet=f['pysyneet'][()]
-        if 'aveV' in f.keys():
-            self.aveV=f['aveV'][()]
-        self.time_in_state=f['time_in_state'][()]
-        self.stat_tyoura=f['stat_tyoura'][()]
-        self.stat_toe=f['stat_toe'][()]
-        self.stat_pension=f['stat_pension'][()]
-        self.stat_paidpension=f['stat_paidpension'][()]
-        if 'stat_pop_paidpension' in f.keys():
-            self.stat_pop_paidpension=f['stat_pop_paidpension'][()]
-        self.stat_unemp_len=f['stat_unemp_len'][()]
-        self.popempstate=f['popempstate'][()]
-        self.stat_wage_reduction=f['stat_wage_reduction'][()]
-        self.popunemprightleft=f['popunemprightleft'][()]
-        self.popunemprightused=f['popunemprightused'][()]
-
-        if 'infostats_wagetaxes' in f.keys(): # older runs do not have these
-            self.infostats_wagetaxes=f['infostats_wagetaxes'][()]
-
-        if 'infostats_taxes' in f.keys(): # older runs do not have these
-            self.infostats_taxes=f['infostats_taxes'][()]
-            self.infostats_etuustulo=f['infostats_etuustulo'][()]
-            self.infostats_perustulo=f['infostats_perustulo'][()]
-            self.infostats_palkkatulo=f['infostats_palkkatulo'][()]
-            self.infostats_ansiopvraha=f['infostats_ansiopvraha'][()]
-            self.infostats_asumistuki=f['infostats_asumistuki'][()]
-            self.infostats_valtionvero=f['infostats_valtionvero'][()]
-            self.infostats_kunnallisvero=f['infostats_kunnallisvero'][()]
-            self.infostats_ptel=f['infostats_ptel'][()]
-            self.infostats_tyotvakmaksu=f['infostats_tyotvakmaksu'][()]
-            self.infostats_tyoelake=f['infostats_tyoelake'][()]
-            self.infostats_kokoelake=f['infostats_kokoelake'][()]
-            self.infostats_opintotuki=f['infostats_opintotuki'][()]
-            self.infostats_isyyspaivaraha=f['infostats_isyyspaivaraha'][()]
-            self.infostats_aitiyspaivaraha=f['infostats_aitiyspaivaraha'][()]
-            self.infostats_kotihoidontuki=f['infostats_kotihoidontuki'][()]
-            self.infostats_sairauspaivaraha=f['infostats_sairauspaivaraha'][()]
-            self.infostats_toimeentulotuki=f['infostats_toimeentulotuki'][()]
-            self.infostats_tulot_netto=f['infostats_tulot_netto'][()]
-
-        if 'infostats_kansanelake' in f.keys(): # older runs do not have these
-            self.infostats_kansanelake=f['infostats_kansanelake'][()]
-            #self.infostats_takuuelake=f['infostats_takuuelake'][()]
-
-        if 'infostats_lapsilisa' in f.keys(): # older runs do not have these
-            self.infostats_lapsilisa=f['infostats_lapsilisa'][()]
-            self.infostats_elatustuki=f['infostats_elatustuki'][()]
-
-        if 'spouseactions' in f.keys(): # older runs do not have these
-            self.spouseactions=f['spouseactions'][()]
-        if 'infostats_etuustulo_group' in f.keys(): # older runs do not have these
-            self.infostats_etuustulo_group=f['infostats_etuustulo_group'][()]
-
-        if 'infostats_valtionvero_distrib' in f.keys(): # older runs do not have these
-            self.infostats_valtionvero_distrib=f['infostats_valtionvero_distrib'][()]
-            self.infostats_kunnallisvero_distrib=f['infostats_kunnallisvero_distrib'][()]
-
-        if 'infostats_taxes_distrib' in f.keys(): # older runs do not have these
-            self.infostats_taxes_distrib=f['infostats_taxes_distrib'][()]
-            self.infostats_ylevero_distrib=f['infostats_ylevero_distrib'][()]
-
-        if 'infostats_pinkslip' in f.keys(): # older runs do not have these
-            self.infostats_pinkslip=f['infostats_pinkslip'][()]
-
-        if 'infostats_pop_pinkslip' in f.keys():
-            self.infostats_pop_pinkslip=f['infostats_pop_pinkslip'][()]
-
-        if 'infostats_paid_tyel_pension' in f.keys(): # older runs do not have these
-            self.infostats_paid_tyel_pension=f['infostats_paid_tyel_pension'][()]
-            self.infostats_tyelpremium=f['infostats_tyelpremium'][()]
-
-        if 'infostats_npv0' in f.keys(): # older runs do not have these
-            self.infostats_npv0=f['infostats_npv0'][()]
-            self.infostats_irr=f['infostats_irr'][()]
-
-        if 'infostats_chilren7' in f.keys(): # older runs do not have these
-            self.infostats_chilren7=f['infostats_chilren7'][()]
-        if 'infostats_chilren18' in f.keys(): # older runs do not have these
-            self.infostats_chilren18=f['infostats_chilren18'][()]
-
-        if 'infostats_group' in f.keys(): # older runs do not have these
-            self.infostats_group=f['infostats_group'][()]
-
-        if 'infostats_sairausvakuutus' in f.keys():
-            self.infostats_sairausvakuutus=f['infostats_sairausvakuutus'][()]
-            self.infostats_pvhoitomaksu=f['infostats_pvhoitomaksu'][()]
-            self.infostats_ylevero=f['infostats_ylevero'][()]
-
-        if 'infostats_mother_in_workforce' in f.keys():
-            self.infostats_mother_in_workforce=f['infostats_mother_in_workforce'][()]
-
-        if 'stat_wage_reduction_g' in f.keys():
-            self.stat_wage_reduction_g=f['stat_wage_reduction_g'][()]
-
-        if 'siirtyneet_det' in f.keys():
-            self.siirtyneet_det=f['siirtyneet_det'][()]
-
-        if 'infostats_kassanjasen' in f.keys():
-            self.infostats_kassanjasen=f['infostats_kassanjasen'][()]
-
-        if 'n_pop' in f.keys():
-            self.n_pop=int(f['n_pop'][()])
-        else:
-            self.n_pop=np.sum(self.empstate[0,:])
-
-        if 'infostats_puoliso' in f.keys():
-            self.infostats_puoliso=f['infostats_puoliso'][()]
-
-        if 'infostats_ove' in f.keys():
-            self.infostats_ove=f['infostats_ove'][()]
-
-        if 'infostats_children_under3' in f.keys():
-            self.infostats_children_under3=f['infostats_children_under3'][()]
-            self.infostats_children_under7=f['infostats_children_under7'][()]
-            self.infostats_unempwagebasis=f['infostats_unempwagebasis'][()]
-            self.infostats_unempwagebasis_acc=f['infostats_unempwagebasis_acc'][()]
-            self.infostats_toe=f['infostats_toe'][()]
-
-        if 'infostats_children_under18' in f.keys():
-            self.infostats_children_under18=f['infostats_children_under18'][()]
-            
-        if 'infostats_palkkatulo_eielakkeella' in f.keys():
-            self.infostats_palkkatulo_eielakkeella=f['infostats_palkkatulo_eielakkeella'][()]
-
-        if 'infostats_tulot_netto' in f.keys():
-            self.infostats_tulot_netto=f['infostats_tulot_netto'][()]
-
-        if 'infostats_poptulot_netto' in f.keys():
-            self.infostats_poptulot_netto=f['infostats_poptulot_netto'][()]
-
-        if 'infostats_equivalent_income' in f.keys():
-            self.infostats_equivalent_income=f['infostats_equivalent_income'][()]
-
-        if 'infostats_pop_wage' in f.keys():
-            self.infostats_pop_wage=f['infostats_pop_wage'][()]
-            self.infostats_pop_pension=f['infostats_pop_pension'][()]
-
-        if 'infostats_savings' in f.keys():
-            self.infostats_savings=f['infostats_savings'][()]
-            self.sav_actions=f['sav_actions'][()]
-
-        if 'infostats_alv' in f.keys():
-            self.infostats_alv=f['infostats_alv'][()]
-
-        if n_pop is not None:
-            self.n_pop=n_pop
-
-        if 'params' in f.keys():
-            self.params=f['params'][()]
-        else:
-            self.params=None
-
-        if print_pop:
-            print('n_pop {}'.format(self.n_pop))
-
-        f.close()
 
     def scatter_density(self,x,y,label1='',label2=''):
         # Calculate the point density
@@ -4019,7 +4128,7 @@ class EpisodeStats():
             q['toimeentulotuki']=715_950_847
             #q['perustulo']=0
             q['pvhoitomaksu']=271_000_000
-            q['alv']=21_364_000_000
+            q['alv']=18_020_000_000 # 21_364_000_000
             q['ta_maksut']=0.2057*q['tyotulosumma'] # karkea
         elif self.year==2019:
             q={}
@@ -4052,7 +4161,7 @@ class EpisodeStats():
             q['toimeentulotuki']=715_950_847
             #q['perustulo']=0
             q['pvhoitomaksu']=271_000_000
-            q['alv']=21_974_000_000
+            q['alv']=18_786_000_000 #21_974_000_000
             q['ta_maksut']=0.2057*q['tyotulosumma'] # karkea
         elif self.year==2020:
             q={}
@@ -4085,7 +4194,7 @@ class EpisodeStats():
             q['toimeentulotuki']=715_950_847
             #q['perustulo']=0
             q['pvhoitomaksu']=271_000_000
-            q['alv']=21_775_000_000
+            q['alv']=19_354_000_000 #21_775_000_000
             q['ta_maksut']=0.2057*q['tyotulosumma'] # karkea
         elif self.year==2021:
             q={}
@@ -4118,7 +4227,7 @@ class EpisodeStats():
             q['toimeentulotuki']=715_950_847
             #q['perustulo']=0
             q['pvhoitomaksu']=271_000_000
-            q['alv']=21_775_000_000
+            q['alv']=20_217_000_000 #21_775_000_000
             q['ta_maksut']=0.2057*q['tyotulosumma'] # karkea
 
         q['etuusmeno']=q['ansiopvraha']+q['kokoelakemeno']+q['opintotuki']+q['isyyspaivaraha']+\
@@ -4164,7 +4273,7 @@ class EpisodeStats():
         q['kansanelakemeno']=np.sum(self.infostats_kansanelake*scalex)
         q['kokoelakemeno']=np.sum(self.infostats_kokoelake*scalex)
         q['takuuelakemeno']=q['kokoelakemeno']-q['tyoelakemeno']-q['kansanelakemeno']
-        #q['takuuelakemeno']=np.sum(self.infostats_takuuelake*scalex)
+        #q['takuuelakemeno_v2']=np.sum(self.infostats_takuuelake*scalex)
         q['elatustuki']=np.sum(self.infostats_elatustuki*scalex)
         q['lapsilisa']=np.sum(self.infostats_lapsilisa*scalex)
         q['tyoelakemaksu']=np.sum(self.infostats_tyelpremium*scalex)
