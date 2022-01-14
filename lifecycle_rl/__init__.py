@@ -1,4 +1,4 @@
-from .lifecycle import Lifecycle
+from .lifecycle_v2 import Lifecycle
 #from .dyn_prog import DynProgLifecycle
 from .dyn_prog_rev import DynProgLifecycleRev
 from .episodestats import EpisodeStats

@@ -14,7 +14,7 @@ from pathlib import Path
 from os import path
 import numpy as np
 
-from .lifecycle import Lifecycle
+from .lifecycle_v2 import Lifecycle
 
 class OptimizeLifecycle():
     def __init__(self,initargs=None,runargs=None):
@@ -65,7 +65,8 @@ class OptimizeLifecycle():
         print('The best parameters found {}'.format(optimizer.max))
         
 class BalanceLifeCycle():
-    def __init__(self,initargs=None,runargs=None,ref_muut=9.5e9,additional_income_tax=0):
+    def __init__(self,initargs=None,runargs=None,ref_muut=9.5e9,additional_income_tax=0,
+            additional_kunnallisvero=0,additional_tyel_premium=0,additional_vat=0):
         '''
         Alusta muuttujat
         '''
@@ -73,6 +74,10 @@ class BalanceLifeCycle():
         self.initargs=initargs
         self.ref_muut=ref_muut
         self.additional_income_tax=additional_income_tax
+        self.additional_kunnallisvero=additional_kunnallisvero
+        self.additional_tyel_premium=additional_tyel_premium
+        self.additional_vat=additional_vat
+        
         
     def black_box_function(self,**x):
         """
@@ -82,6 +87,9 @@ class BalanceLifeCycle():
         initargs2=self.initargs
         initargs2['extra_ppr']=x['extra_ppr']
         initargs2['additional_income_tax']=self.additional_income_tax
+        initargs2['additional_kunnallisvero']=self.additional_kunnallisvero
+        initargs2['additional_tyel_premium']=self.additional_tyel_premium
+        initargs2['additional_vat']=self.additional_vat
         repeats=1
         err=np.empty(repeats)
         for r in range(repeats):
@@ -113,7 +121,7 @@ class BalanceLifeCycle():
             
         return ave
 
-    def optimize(self,reset=False,min_ppr=-0.3,max_ppr=0.3,debug=False):
+    def optimize(self,reset=False,min_ppr=-0.3,max_ppr=0.3,debug=False,init_points=2,n_iter=10,fsnum=None):
         # Bounded region of parameter space
         pbounds = {'extra_ppr': (min_ppr, max_ppr)} #, 'women_mu_scale': (0.01,0.3), 'women_mu_age': (57,62)}
 
@@ -134,7 +142,10 @@ class BalanceLifeCycle():
         
         LOG_DIR = Path().absolute() / 'bayes_opt_logs'
         LOG_DIR.mkdir(exist_ok=True)
-        num=int(self.additional_income_tax*100)
+        if fsnum is None:
+            num=int(self.additional_income_tax*100)
+        else:
+            num=fsnum
         filename = 'log_'+str(num)+'.json'
 
         # talletus
@@ -145,8 +156,8 @@ class BalanceLifeCycle():
         optimizer.subscribe(Events.OPTIMIZATION_STEP, logger)
 
         optimizer.maximize(
-            init_points=2,
-            n_iter=60,
+            init_points=init_points,
+            n_iter=n_iter,
         )
         
         print('The best parameters found {}'.format(optimizer.max))

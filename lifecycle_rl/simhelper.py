@@ -18,7 +18,7 @@ from tabulate import tabulate
 import pandas as pd
 #import smoothfit
 from tqdm import tqdm_notebook as tqdm
-from . lifecycle import Lifecycle
+from . lifecycle_v2 import Lifecycle
 from . episodestats import Labels,modify_offsettext
 
 class SimHelper():

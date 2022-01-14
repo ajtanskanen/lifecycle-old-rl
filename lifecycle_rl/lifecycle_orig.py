@@ -57,216 +57,35 @@ class CustomPolicy(FeedForwardPolicy):
 
 class Lifecycle():
 
-    def __init__(self,env=None,minimal=False,timestep=0.25,ansiopvraha_kesto300=None,
-                    ansiopvraha_kesto400=None,karenssi_kesto=None,max_age=None,min_age=None,
-                    ansiopvraha_toe=None,perustulo=None,mortality=None,
-                    randomness=None,include_putki=None,preferencenoise=None,
-                    callback_minsteps=None,pinkslip=True,plotdebug=None,
-                    use_sigma_reduction=None,porrasta_putki=None,perustulomalli=None,
-                    porrasta_1askel=None,porrasta_2askel=None,porrasta_3askel=None,
-                    osittainen_perustulo=None,gamma=None,exploration=None,exploration_ratio=None,
-                    irr_vain_tyoelake=None,additional_income_tax=None,additional_tyel_premium=None,
-                    additional_kunnallisvero=None,additional_income_tax_high=None,
-                    extra_ppr=None,perustulo_korvaa_toimeentulotuen=None,
-                    year=2018,scale_tyel_accrual=None,preferencenoise_level=None,
-                    scale_additional_tyel_accrual=None,valtionverotaso=None,perustulo_asetettava=None,
-                    porrasta_toe=None,include_halftoe=None,include_ove=None,min_retirementage=None,
-                    max_retirementage=None,unemp_limit_reemp=None,lang=None,startage=None):
+    def __init__(self,**kwargs):
+#     env=None,minimal=False,timestep=0.25,ansiopvraha_kesto300=None,
+#                     ansiopvraha_kesto400=None,karenssi_kesto=None,max_age=None,min_age=None,
+#                     ansiopvraha_toe=None,perustulo=None,mortality=None,
+#                     randomness=None,include_putki=None,preferencenoise=None,
+#                     callback_minsteps=None,pinkslip=True,plotdebug=None,
+#                     use_sigma_reduction=None,porrasta_putki=None,perustulomalli=None,
+#                     porrasta_1askel=None,porrasta_2askel=None,porrasta_3askel=None,
+#                     osittainen_perustulo=None,gamma=None,exploration=None,exploration_ratio=None,
+#                     additional_income_tax=None,additional_tyel_premium=None,
+#                     additional_kunnallisvero=None,additional_income_tax_high=None,additional_vat=None,
+#                     extra_ppr=None,perustulo_korvaa_toimeentulotuen=None,
+#                     year=2018,scale_tyel_accrual=None,preferencenoise_level=None,
+#                     scale_additional_tyel_accrual=None,valtionverotaso=None,perustulo_asetettava=None,
+#                     porrasta_toe=None,include_halftoe=None,include_ove=None,min_retirementage=None,
+#                     max_retirementage=None,unemp_limit_reemp=None,lang=None,startage=None,silent=None):
         '''
         Alusta muuttujat
         '''
-        self.timestep=timestep # 0.25 = 3kk askel
-        self.inv_timestep=int(np.round(1/self.timestep)) # pitäisi olla kokonaisluku
-        self.min_age = 18
-        self.max_age = 70
-        self.figformat='pdf'
-        
-        self.lang='Finnish'
-        
-        if minimal:
-            self.min_retirementage=63.5
-        else:
-            self.min_retirementage=63
-        
-        if min_age is not None:
-            self.min_age=min_age
-        if max_age is not None:
-            self.max_age=max_age
-        
-        self.max_retirementage=68
-        self.n_pop = 1000
-        self.callback_minsteps = 1_000
-        self.year=year
-        #self.version=version
 
-        # apumuuttujia
+        self.initial_parameters()
+        self.setup_parameters(**kwargs)
+
+        self.inv_timestep=int(np.round(1/self.timestep)) # pitäisi olla kokonaisluku
         self.n_age = self.max_age-self.min_age+1
         self.n_time = int(np.round((self.n_age-1)*self.inv_timestep))+2
-        self.gamma = 0.92
 
-        self.karenssi_kesto=0.25
-
-        self.plotdebug=False
-        self.include_pinkslip=True
-        self.mortality=False
-        self.perustulo=False
-        self.perustulo_korvaa_toimeentulotuen=False
-        self.perustulomalli=None
-        self.ansiopvraha_kesto300=None
-        self.ansiopvraha_kesto400=None
-        self.include_putki=None
-        self.ansiopvraha_toe=None
-        self.environment='unemployment-v0'
-        self.include_preferencenoise=False
-        self.preferencenoise_level=0
-        self.porrasta_putki=True
-        self.porrasta_1askel=True
-        self.porrasta_2askel=True
-        self.porrasta_3askel=True
-        self.osittainen_perustulo=True
-        self.irr_vain_tyoelake=True
-        self.additional_income_tax=0.0
-        self.additional_tyel_premium=0.0
-        self.additional_kunnallisvero=0.0
-        self.additional_income_tax_high=0.0
-        self.scale_tyel_accrual=False
-        self.scale_additional_tyel_accrual=0
-        self.perustulo_asetettava=None
-        self.valtionverotaso=None
-        self.include_halftoe=None
-        self.porrasta_toe=None
-        self.include_ove=False
-        self.unemp_limit_reemp=False
-        self.extra_ppr=0
-        self.startage=self.min_age
-
-        if callback_minsteps is not None:
-            self.callback_minsteps=callback_minsteps
-            
-        if extra_ppr is not None:
-            self.extra_ppr=extra_ppr
-
-        if karenssi_kesto is not None:
-            self.karenssi_kesto=karenssi_kesto
-
-        if irr_vain_tyoelake is not None:
-            self.irr_vain_tyoelake=irr_vain_tyoelake
-
-        if additional_income_tax is not None:
-            self.additional_income_tax=additional_income_tax
-
-        if additional_tyel_premium is not None:
-            self.additional_tyel_premium=additional_tyel_premium
-
-        if additional_kunnallisvero is not None:
-            self.additional_kunnallisvero=additional_kunnallisvero
-
-        if additional_income_tax_high is not None:
-            self.additional_income_tax_high=additional_income_tax_high
-            
-        if perustulo_asetettava is not None:
-            self.perustulo_asetettava=perustulo_asetettava
-
-        if perustulomalli is not None:
-            self.perustulomalli=perustulomalli
-        if valtionverotaso is not None:
-            self.valtionverotaso=valtionverotaso
-
-        if plotdebug is not None:
-            self.plotdebug=plotdebug
-
-        if pinkslip is not None:
-            self.include_pinkslip=pinkslip
-            
-        if mortality is not None:
-            self.mortality=mortality
-
-        self.randomness=randomness
-
-        if ansiopvraha_kesto300 is not None:
-            self.ansiopvraha_kesto300=ansiopvraha_kesto300
-
-        if include_putki is not None:
-            self.include_putki=include_putki
-
-        self.exploration=False
-        self.exploration_ratio=0.10
-
-        if exploration is not None:
-            self.exploration=exploration
-            
-        if exploration_ratio is not None:
-            self.exploration_ratio=exploration_ratio
-
-        if ansiopvraha_kesto400 is not None:
-            self.ansiopvraha_kesto400=ansiopvraha_kesto400
-
-        if ansiopvraha_toe is not None:
-            self.ansiopvraha_toe=ansiopvraha_toe
-            
-        if porrasta_putki is not None:
-            self.porrasta_putki=porrasta_putki
-            
-        if porrasta_1askel is not None:
-            self.porrasta_1askel=porrasta_1askel
-            
-        if max_retirementage is not None:
-            self.max_retirementage=max_retirementage
-            
-        if min_retirementage is not None:
-            self.min_retirementage=min_retirementage
-        
-        if lang is not None:
-            self.lang=lang
-
-        if gamma is not None:
-            self.gamma=gamma
-
-        if porrasta_2askel is not None:
-            self.porrasta_2askel=porrasta_2askel
-
-        if porrasta_3askel is not None:
-            self.porrasta_3askel=porrasta_3askel
-
-        if perustulo is not None:
-            self.perustulo=perustulo
-        if perustulo_korvaa_toimeentulotuen is not None:
-            self.perustulo_korvaa_toimeentulotuen=perustulo_korvaa_toimeentulotuen
-        if preferencenoise is not None:
-            self.include_preferencenoise=preferencenoise
-            
-        if preferencenoise_level is not None:
-            self.preferencenoise_level=preferencenoise_level
-            
-        if osittainen_perustulo is not None:
-            self.osittainen_perustulo=osittainen_perustulo
-            
-        if scale_tyel_accrual is not None:
-            self.scale_tyel_accrual=scale_tyel_accrual
-            
-        if scale_additional_tyel_accrual is not None:
-            self.scale_additional_tyel_accrual=scale_additional_tyel_accrual
-
-        if env is not None:
-            self.environment=env
-            
-        self.use_sigma_reduction=True
-        if use_sigma_reduction is not None:
-            self.use_sigma_reduction=use_sigma_reduction
-
-        if include_halftoe is not None:
-            self.include_halftoe=include_halftoe
-        if porrasta_toe is not None:
-            self.porrasta_toe=porrasta_toe
-        if include_ove is not None:
-            self.include_ove=include_ove
-        if unemp_limit_reemp is not None:
-            self.unemp_limit_reemp = unemp_limit_reemp
-        if startage is not None:
-            self.startage=startage
-            
         # alustetaan gym-environment
-        if minimal:
+        if self.minimal:
             #if EK:
             #    self.environment='unemploymentEK-v0'
             #else:
@@ -283,13 +102,13 @@ class Lifecycle():
                 'max_retirementage':self.max_retirementage,
                 'reset_exploration_go': self.exploration,
                 'reset_exploration_ratio': self.exploration_ratio,
-                'irr_vain_tyoelake': self.irr_vain_tyoelake,
                 'perustulomalli': perustulomalli,
                 'perustulo': perustulo,
                 'osittainen_perustulo': self.osittainen_perustulo, 
                 'perustulo_korvaa_toimeentulotuen': self.perustulo_korvaa_toimeentulotuen,
                 'startage': self.startage,
-                'year': self.year}
+                'year': self.year,
+                'silent': self.silent}
         else:
             #if EK:
             #    self.environment='unemploymentEK-v1'
@@ -324,11 +143,11 @@ class Lifecycle():
                 'osittainen_perustulo':self.osittainen_perustulo,
                 'reset_exploration_go': self.exploration,
                 'reset_exploration_ratio': self.exploration_ratio,
-                'irr_vain_tyoelake': self.irr_vain_tyoelake, 
                 'additional_income_tax': self.additional_income_tax,
                 'additional_tyel_premium': self.additional_tyel_premium, 
                 'additional_income_tax_high': self.additional_income_tax_high,
                 'additional_kunnallisvero': self.additional_kunnallisvero,
+                'additional_vat': self.additional_vat,
                 'scale_tyel_accrual': self.scale_tyel_accrual,
                 'scale_additional_tyel_accrual': self.scale_additional_tyel_accrual,
                 'valtionverotaso': self.valtionverotaso,
@@ -339,7 +158,8 @@ class Lifecycle():
                 'unemp_limit_reemp': self.unemp_limit_reemp,
                 'extra_ppr': self.extra_ppr,
                 'startage': self.startage,
-                'year': self.year}
+                'year': self.year,
+                'silent': self.silent}
                 
         # Create log dir & results dirs
         self.log_dir = "tmp/" # +str(env_id)
@@ -358,7 +178,217 @@ class Lifecycle():
                                    self.env,self.minimal,self.min_age,self.max_age,self.min_retirementage,
                                    version=self.version,params=self.gym_kwargs,year=self.year,gamma=self.gamma,
                                    lang=self.lang)
+                                   
+    def initial_parameters(self):
+        self.min_age = 18
+        self.max_age = 70
+        self.figformat='pdf'
+        self.minimal=False
+        self.timestep=0.25
+        self.year=2018
+        
+        self.lang='Finnish'
+        
+        if self.minimal:
+            self.min_retirementage=63.5
+        else:
+            self.min_retirementage=63
+        
+        self.max_retirementage=68
+        self.n_pop = 1000
+        self.callback_minsteps = 1_000
 
+        # apumuuttujia
+        self.gamma = 0.92
+        self.karenssi_kesto=0.25
+        self.plotdebug=False
+        self.include_pinkslip=True
+        self.mortality=False
+        self.perustulo=False
+        self.perustulo_korvaa_toimeentulotuen=False
+        self.perustulomalli=None
+        self.ansiopvraha_kesto300=None
+        self.ansiopvraha_kesto400=None
+        self.include_putki=None
+        self.ansiopvraha_toe=None
+        self.environment='unemployment-v0'
+        self.include_preferencenoise=False
+        self.preferencenoise_level=0
+        self.porrasta_putki=True
+        self.porrasta_1askel=True
+        self.porrasta_2askel=True
+        self.porrasta_3askel=True
+        self.osittainen_perustulo=True
+        self.additional_income_tax=0.0
+        self.additional_tyel_premium=0.0
+        self.additional_kunnallisvero=0.0
+        self.additional_income_tax_high=0.0
+        self.additional_vat=0.0
+        self.scale_tyel_accrual=False
+        self.scale_additional_tyel_accrual=0
+        self.perustulo_asetettava=None
+        self.valtionverotaso=None
+        self.include_halftoe=None
+        self.porrasta_toe=None
+        self.include_ove=False
+        self.unemp_limit_reemp=False
+        self.extra_ppr=0
+        self.startage=self.min_age
+        self.use_sigma_reduction=True
+        self.silent=False
+        self.exploration=False
+        self.exploration_ratio=0.10
+        self.randomness=True
+        
+    def setup_parameters(self,**kwargs):
+        if 'kwargs' in kwargs:
+            kwarg=kwargs['kwargs']
+        else:
+            kwarg=kwargs
+
+        for key, value in kwarg.items():
+            if key=='callback_minsteps':
+                if value is not None:
+                    self.callback_minsteps=value
+            elif key=='extra_ppr':
+                if value is not None:
+                    self.extra_ppr=value
+            elif key=='karenssi_kesto':
+                if value is not None:
+                    self.karenssi_kesto=value
+            elif key=='additional_income_tax':
+                if value is not None:
+                    self.additional_income_tax=value
+            elif key=='additional_tyel_premium':
+                if value is not None:
+                    self.additional_tyel_premium=value
+            elif key=='additional_kunnallisvero':
+                if value is not None:
+                    self.additional_kunnallisvero=value
+            elif key=='additional_income_tax_high':
+                if value is not None:
+                    self.additional_income_tax_high=value
+            elif key=='additional_tyel_premium':
+                if value is not None:
+                    self.additional_tyel_premium=value
+            elif key=='additional_vat':
+                if value is not None:
+                    self.additional_vat=value
+            elif key=='valtionverotaso':
+                if value is not None:
+                    self.valtionverotaso=value
+            elif key=='perustulo_asetettava':
+                if value is not None:
+                    self.perustulo_asetettava=value
+            elif key=='perustulomalli':
+                if value is not None:
+                    self.perustulomalli=value
+            elif key=='perustulo':
+                if value is not None:
+                    self.perustulo=value
+            elif key=='perustulo_korvaa_toimeentulotuen':
+                if value is not None:
+                    self.perustulo_korvaa_toimeentulotuen=value
+            elif key=='osittainen_perustulo':
+                if value is not None:
+                    self.osittainen_perustulo=value
+            elif key=='plotdebug':
+                if value is not None:
+                    self.plotdebug=value
+            elif key=='pinkslip':
+                if value is not None:
+                    self.pinkslip=value
+            elif key=='mortality':
+                if value is not None:
+                    self.mortality=value
+            elif key=='randomness':
+                if value is not None:
+                    self.randomness=value
+            elif key=='ansiopvraha_kesto300':
+                if value is not None:
+                    self.ansiopvraha_kesto300=value
+            elif key=='ansiopvraha_kesto400':
+                if value is not None:
+                    self.ansiopvraha_kesto400=value
+            elif key=='ansiopvraha_kesto500':
+                if value is not None:
+                    self.ansiopvraha_kesto500=value
+            elif key=='exploration':
+                if value is not None:
+                    self.exploration=value
+            elif key=='exploration_ratio':
+                if value is not None:
+                    self.exploration_ratio=value
+            elif key=='ansiopvraha_toe':
+                if value is not None:
+                    self.ansiopvraha_toe=value
+            elif key=='porrasta_putki':
+                if value is not None:
+                    self.porrasta_putki=value
+            elif key=='porrasta_1askel':
+                if value is not None:
+                    self.porrasta_1askel=value
+            elif key=='porrasta_2askel':
+                if value is not None:
+                    self.porrasta_2askel=value
+            elif key=='porrasta_3askel':
+                if value is not None:
+                    self.porrasta_3askel=value
+            elif key=='preferencenoise':
+                if value is not None:
+                    self.preferencenoise=value
+            elif key=='preferencenoise_level':
+                if value is not None:
+                    self.preferencenoise_level=value
+            elif key=='scale_tyel_accrual':
+                if value is not None:
+                    self.scale_tyel_accrual=value
+            elif key=='scale_additional_tyel_accrual':
+                if value is not None:
+                    self.scale_additional_tyel_accrual=value
+            elif key=='gamma':
+                if value is not None:
+                    self.gamma=value
+            elif key=='lang':
+                if value is not None:
+                    self.lang=value
+            elif key=='min_retirementage':
+                if value is not None:
+                    self.min_retirementage=value
+            elif key=='max_retirementage':
+                if value is not None:
+                    self.max_retirementage=value
+            elif key=='env':
+                if value is not None:
+                    self.environment=value
+            elif key=='use_sigma_reduction':
+                if value is not None:
+                    self.use_sigma_reduction=value
+            elif key=='include_halftoe':
+                if value is not None:
+                    self.include_halftoe=value
+            elif key=='porrasta_toe':
+                if value is not None:
+                    self.porrasta_toe=value
+            elif key=='include_ove':
+                if value is not None:
+                    self.include_ove=value
+            elif key=='unemp_limit_reemp':
+                if value is not None:
+                    self.unemp_limit_reemp=value
+            elif key=='startage':
+                if value is not None:
+                    self.startage=value
+            elif key=='min_age':
+                if value is not None:
+                    self.min_age=value
+            elif key=='max_age':
+                if value is not None:
+                    self.max_age=value
+            elif key=='silent':
+                if value is not None:
+                    self.silent=value
+            
     def explain(self):
         '''
         Tulosta laskennan parametrit
