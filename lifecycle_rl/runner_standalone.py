@@ -76,7 +76,7 @@ class Policy(nn.Module):
         
 class runner_standalone():
     def __init__(self,environment,gamma,timestep,n_time,n_pop,
-                 minimal,min_age,max_age,min_retirementage,year,gym_kwargs):
+                 minimal,min_age,max_age,min_retirementage,year,episodestats,gym_kwargs):
         self.gamma=gamma
         self.timestep=timestep
         self.environment=environment
@@ -96,9 +96,10 @@ class runner_standalone():
 
         self.version = self.env.get_lc_version()
 
-        self.episodestats=SimStats(self.timestep,self.n_time,self.n_employment,self.n_pop,
-                                   self.env,self.minimal,self.min_age,self.max_age,self.min_retirementage,
-                                   version=self.version,params=self.gym_kwargs,year=self.year,gamma=self.gamma)
+        self.episodestats=episodestats 
+        #SimStats(self.timestep,self.n_time,self.n_employment,self.n_pop,
+        #                           self.env,self.minimal,self.min_age,self.max_age,self.min_retirementage,
+        #                           version=self.version,params=self.gym_kwargs,year=self.year,gamma=self.gamma)
                                    
         self.model = Policy()
         #optimizer = optim.AdamW(model.parameters(), lr=3e-3)

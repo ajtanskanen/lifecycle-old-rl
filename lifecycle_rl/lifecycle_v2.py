@@ -142,16 +142,6 @@ class Lifecycle():
         os.makedirs("results/", exist_ok=True)
         os.makedirs("best/", exist_ok=True)
         
-        if self.use_tianshou:
-            self.runner=runner_tianshou(self.environment,self.gamma,self.timestep,self.n_time,self.n_pop,
-                 self.minimal,self.min_age,self.max_age,self.min_retirementage,self.year,self.gym_kwargs)
-        elif self.use_standalone:
-            self.runner=runner_standalone(self.environment,self.gamma,self.timestep,self.n_time,self.n_pop,
-                 self.minimal,self.min_age,self.max_age,self.min_retirementage,self.year)
-        else:
-            self.runner=runner_stablebaselines(self.environment,self.gamma,self.timestep,self.n_time,self.n_pop,
-                 self.minimal,self.min_age,self.max_age,self.min_retirementage,self.year,self.gym_kwargs)
-        
         self.env = gym.make(self.environment,kwargs=self.gym_kwargs)
         self.n_employment,self.n_acts=self.env.get_n_states()
         self.version = self.env.get_lc_version()
@@ -160,6 +150,19 @@ class Lifecycle():
                                    self.env,self.minimal,self.min_age,self.max_age,self.min_retirementage,
                                    version=self.version,params=self.gym_kwargs,year=self.year,gamma=self.gamma,
                                    lang=self.lang)
+        if self.version==4:
+            self.min_retirementage=self.env.get_retirementage()
+        
+        if self.use_tianshou:
+            self.runner=runner_tianshou(self.environment,self.gamma,self.timestep,self.n_time,self.n_pop,
+                 self.minimal,self.min_age,self.max_age,self.min_retirementage,self.year,self.episodestats,self.gym_kwargs)
+        elif self.use_standalone:
+            self.runner=runner_standalone(self.environment,self.gamma,self.timestep,self.n_time,self.n_pop,
+                 self.minimal,self.min_age,self.max_age,self.min_retirementage,self.year,self.episodestats,self.gym_kwargs)
+        else:
+            self.runner=runner_stablebaselines(self.environment,self.gamma,self.timestep,self.n_time,self.n_pop,
+                 self.minimal,self.min_age,self.max_age,self.min_retirementage,self.year,self.episodestats,self.gym_kwargs)
+        
                                    
     def initial_parameters(self):
         self.min_age = 18

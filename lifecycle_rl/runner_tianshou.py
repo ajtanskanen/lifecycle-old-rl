@@ -33,7 +33,7 @@ from tianshou.utils.net.common import MLP
 
 class runner_tianshou():
     def __init__(self,environment,gamma,timestep,n_time,n_pop,
-                 minimal,min_age,max_age,min_retirementage,year,gym_kwargs):
+                 minimal,min_age,max_age,min_retirementage,year,episodestats,gym_kwargs):
         self.gamma=gamma
         self.timestep=timestep
         self.environment=environment
@@ -53,14 +53,15 @@ class runner_tianshou():
         self.rew_norm=True
         self.bound_action_method=""
         
-        self.env = gym.make(self.environment)
+        self.env = gym.make(self.environment,kwargs=self.gym_kwargs)
         self.n_employment,self.n_acts=self.env.get_n_states()
         
         self.version = self.env.get_lc_version()
 
-        self.episodestats=SimStats(self.timestep,self.n_time,self.n_employment,self.n_pop,
-                                   self.env,self.minimal,self.min_age,self.max_age,self.min_retirementage,
-                                   version=self.version,params=self.gym_kwargs,year=self.year,gamma=self.gamma)
+        self.episodestats=episodestats
+        #SimStats(self.timestep,self.n_time,self.n_employment,self.n_pop,
+        #                           self.env,self.minimal,self.min_age,self.max_age,self.min_retirementage,
+        #                           version=self.version,params=self.gym_kwargs,year=self.year,gamma=self.gamma)
         
     def setup_training(self,rlmodel,loadname,env,batch,cont):
         '''
@@ -116,8 +117,8 @@ class runner_tianshou():
         #train_envs = SubprocVectorEnv([lambda: make_env(self.environment, i, gkwargs, use_monitor=False) for i in range(n_cpu)])
         #test_envs = SubprocVectorEnv([lambda: make_env(self.environment, i, gkwargs, use_monitor=False) for i in range(n_cpu)])
 
-        train_envs = ts.env.DummyVectorEnv([lambda: gym.make(self.environment) for _ in range(n_cpu)])
-        test_envs = ts.env.DummyVectorEnv([lambda: gym.make(self.environment) for _ in range(n_cpu)]) 
+        train_envs = ts.env.DummyVectorEnv([lambda: gym.make(self.environment,kwargs=self.gym_kwargs) for _ in range(n_cpu)])
+        test_envs = ts.env.DummyVectorEnv([lambda: gym.make(self.environment,kwargs=self.gym_kwargs) for _ in range(n_cpu)]) 
         
         target_freq=1
         

@@ -1040,6 +1040,65 @@ class EpisodeStats():
         if self.version in set([1,2,3,4]):
             self.plot_states(empstate_ratio,ylabel=ratio_label,ylimit=20,stack=False)
             self.plot_states(empstate_ratio,ylabel=ratio_label,unemp=True,stack=False)
+            
+    def compare_against(self,cc=None,cctext='toteuma'):
+        if self.version in set([1,2,3,4]):
+            q=self.comp_budget(scale=True)
+            if cc is None:
+                q_stat=self.stat_budget()
+            else:
+                q_stat=cc.comp_budget(scale=True)
+                
+            df1 = pd.DataFrame.from_dict(q,orient='index',columns=['e/v'])
+            df2 = pd.DataFrame.from_dict(q_stat,orient='index',columns=[cctext])
+            df=df1.copy()
+            df[cctext]=df2[cctext]
+            df['ero']=df1['e/v']-df2[cctext]
+
+            print('Rahavirrat skaalattuna väestötasolle')
+            print(tabulate(df, headers='keys', tablefmt='psql', floatfmt=",.2f"))
+
+            q=self.comp_participants(scale=True,lkm=False)
+            q_lkm=self.comp_participants(scale=True,lkm=True)
+            if cc is None:
+                q_stat=self.stat_participants()
+                q_days=self.stat_days()
+            else:
+                q_stat=cc.comp_participants(scale=True,lkm=True)
+                q_days=cc.comp_participants(scale=True,lkm=False)
+
+            df1 = pd.DataFrame.from_dict(q,orient='index',columns=['arvio (htv)'])
+            df2 = pd.DataFrame.from_dict(q_days,orient='index',columns=[cctext+' (htv)'])
+            df4 = pd.DataFrame.from_dict(q_lkm,orient='index',columns=['arvio (kpl)'])
+            df5 = pd.DataFrame.from_dict(q_stat,orient='index',columns=[cctext+' (kpl)'])
+
+            df=df1.copy()
+            df[cctext+' (htv)']=df2[cctext+' (htv)']
+            df['ero (htv)']=df['arvio (htv)']-df[cctext+' (htv)']
+
+            print('Henkilöitä tiloissa skaalattuna väestötasolle henkilövuosina')
+            print(tabulate(df, headers='keys', tablefmt='psql', floatfmt=",.0f"))
+
+            df=df4.copy()
+            df[cctext+' (kpl)']=df5[cctext+' (kpl)']
+            df['ero (kpl)']=df['arvio (kpl)']-df[cctext+' (kpl)']
+            print('Henkilöiden lkm tiloissa skaalattuna väestötasolle (keskeneräinen)')
+            print(tabulate(df, headers='keys', tablefmt='psql', floatfmt=",.0f"))
+        else:
+            q=self.comp_participants(scale=True)
+            q_stat=self.stat_participants()
+            q_days=self.stat_days()
+            df1 = pd.DataFrame.from_dict(q,orient='index',columns=['arvio (htv)'])
+            df2 = pd.DataFrame.from_dict(q_stat,orient='index',columns=['toteuma'])
+            df3 = pd.DataFrame.from_dict(q_days,orient='index',columns=['htv_tot'])
+
+            df=df1.copy()
+            df['toteuma (kpl)']=df2['toteuma']
+            df['toteuma (htv)']=df3['htv_tot']
+            df['ero (htv)']=df['arvio (htv)']-df['toteuma (htv)']
+
+            print('Henkilöitä tiloissa skaalattuna väestötasolle')
+            print(tabulate(df, headers='keys', tablefmt='psql', floatfmt=",.0f"))    
 
     def plot_stats(self,grayscale=False,figname=None):
 
@@ -1058,34 +1117,7 @@ class EpisodeStats():
         #self.plot_emp(figname=figname)
 
         if self.version in set([1,2,3,4]):
-            q=self.comp_budget(scale=True)
-            if self.version==4:
-                q_stat=self.stat_budget()
-            else:
-                q_stat=self.stat_budget()
-            df1 = pd.DataFrame.from_dict(q,orient='index',columns=['e/v'])
-            df2 = pd.DataFrame.from_dict(q_stat,orient='index',columns=['toteuma'])
-            df=df1.copy()
-            df['toteuma']=df2['toteuma']
-            df['ero']=df1['e/v']-df2['toteuma']
-
-            print('Rahavirrat skaalattuna väestötasolle')
-            print(tabulate(df, headers='keys', tablefmt='psql', floatfmt=",.2f"))
-
-            q=self.comp_participants(scale=True)
-            q_stat=self.stat_participants()
-            q_days=self.stat_days()
-            df1 = pd.DataFrame.from_dict(q,orient='index',columns=['arvio (htv)'])
-            df2 = pd.DataFrame.from_dict(q_stat,orient='index',columns=['toteuma'])
-            df3 = pd.DataFrame.from_dict(q_days,orient='index',columns=['htv_tot'])
-
-            df=df1.copy()
-            df['toteuma (kpl)']=df2['toteuma']
-            df['toteuma (htv)']=df3['htv_tot']
-            df['ero (htv)']=df['arvio (htv)']-df['toteuma (htv)']
-
-            print('Henkilöitä tiloissa skaalattuna väestötasolle')
-            print(tabulate(df, headers='keys', tablefmt='psql', floatfmt=",.0f"))
+            self.compare_against()
         else:
             q=self.comp_participants(scale=True)
             q_stat=self.stat_participants()
@@ -1191,6 +1223,7 @@ class EpisodeStats():
 
     def plot_all_pensions(self):
         self.plot_group_disab()
+        self.plot_group_disab(xstart=60,xend=67)
         alivemask=(self.popempstate==self.env.get_mortstate()) # pois kuolleet
         kemask=(self.infostats_pop_kansanelake<0.1)
         temask=(self.infostats_pop_kansanelake>0.0) # pois kansaneläkkeen saajat
@@ -1200,8 +1233,8 @@ class EpisodeStats():
         self.plot_pension_stats(self.infostats_paid_tyel_pension/self.timestep,65,'työeläkemaksun vastine')
         self.plot_pension_stats(self.infostats_paid_tyel_pension/self.timestep,65,'työeläkemaksun vastine, vain työeläke',mask=temask)
         self.plot_pension_stats(self.infostats_pop_tyoelake/self.timestep,65,'vain työeläke',mask=temask)
-        self.plot_pension_stats(self.infostats_pop_kansanelake/self.timestep,65,'kansanelake',max_pen=10_000)
-        self.plot_pension_stats(self.infostats_pop_kansanelake/self.timestep,65,'vain kansanelakkeen',max_pen=10_000,mask=kemask)
+        self.plot_pension_stats(self.infostats_pop_kansanelake/self.timestep,65,'kansanelake kaikki',max_pen=10_000)
+        self.plot_pension_stats(self.infostats_pop_kansanelake/self.timestep,65,'vain kansanelake',max_pen=10_000,mask=kemask)
         self.plot_pension_stats(self.infostats_pop_pension,60,'tulevat eläkkeet')
         self.plot_pension_stats(self.infostats_pop_pension,60,'tulevat eläkkeet, vain elossa',mask=alivemask)
         self.plot_pension_time()
@@ -1556,17 +1589,19 @@ class EpisodeStats():
             return self.stats_employed,self.stats_parttime,self.stats_unemployed
 
 
-    def comp_participants(self,scale=True,include_retwork=True,grouped=False,g=0):
+    def comp_participants(self,scale=True,include_retwork=True,grouped=False,g=0,lkm=False):
         '''
-        Laske henkilöiden lkm
+        Laske henkilöiden lkm / htv
 
         scalex olettaa, että naisia & miehiä yhtä paljon. Tämän voisi tarkentaa.
         '''
         demog2=self.empstats.get_demog()
 
         scalex=np.squeeze(demog2/self.n_pop*self.timestep)
-
-        #print('version',self.version)
+        if lkm:
+            scalex_lkm=np.squeeze(demog2/self.n_pop)
+        else:
+            scalex_lkm=np.squeeze(demog2/self.n_pop*self.timestep)
 
         q={}
         if self.version in set([1,2,3,4]):
@@ -1581,11 +1616,12 @@ class EpisodeStats():
                     q['palkansaajia']=np.sum((emp[:,1]+emp[:,10])*scalex)
                     q['palkansaajia htv']=np.sum((emp[:,1]+0.5*emp[:,10])*scalex)
 
-                q['ansiosidonnaisella']=np.sum((emp[:,0]+emp[:,4])*scalex)
-                q['tmtuella']=np.sum(emp[:,13]*scalex)
-                q['isyysvapaalla']=np.sum(emp[:,6]*scalex)
-                q['kotihoidontuella']=np.sum(emp[:,7]*scalex)
-                q['vanhempainvapaalla']=np.sum(emp[:,5]*scalex)
+                q['ansiosidonnaisella']=np.sum((emp[:,0]+emp[:,4])*scalex_lkm)
+                q['tmtuella']=np.sum(emp[:,13]*scalex_lkm)
+                q['isyysvapaalla']=np.sum(emp[:,6]*scalex_lkm)
+                q['kotihoidontuella']=np.sum(emp[:,7]*scalex_lkm)
+                q['vanhempainvapaalla']=np.sum(emp[:,5]*scalex_lkm)
+                q['ovella']=np.sum(np.sum(self.infostats_ove,axis=1)*scalex)
             else:
                 q['yhteensä']=np.sum(np.sum(self.empstate[:,:],axis=1)*scalex)
                 if include_retwork:
@@ -1595,11 +1631,11 @@ class EpisodeStats():
                     q['palkansaajia lkm']=np.sum((self.empstate[:,1]+self.empstate[:,10])*scalex)
                     q['palkansaajia htv']=np.sum((self.empstate[:,1]+0.5*self.empstate[:,10])*scalex)
 
-                q['ansiosidonnaisella']=np.sum((self.empstate[:,0]+self.empstate[:,4])*scalex)
-                q['tmtuella']=np.sum(self.empstate[:,13]*scalex)
-                q['isyysvapaalla']=np.sum(self.empstate[:,6]*scalex)
-                q['kotihoidontuella']=np.sum(self.empstate[:,7]*scalex)
-                q['vanhempainvapaalla']=np.sum(self.empstate[:,5]*scalex)
+                q['ansiosidonnaisella']=np.sum((self.empstate[:,0]+self.empstate[:,4])*scalex_lkm)
+                q['tmtuella']=np.sum(self.empstate[:,13]*scalex_lkm)
+                q['isyysvapaalla']=np.sum(self.empstate[:,6]*scalex_lkm)
+                q['kotihoidontuella']=np.sum(self.empstate[:,7]*scalex_lkm)
+                q['vanhempainvapaalla']=np.sum(self.empstate[:,5]*scalex_lkm)
                 q['ovella']=np.sum(np.sum(self.infostats_ove,axis=1)*scalex)
         else:
             q['yhteensä']=np.sum(np.sum(self.empstate[:,:],1)*scalex)
@@ -1804,23 +1840,32 @@ class EpisodeStats():
         k=0
         max_npv=int(np.ceil(npv))
         cashflow=-premium+pension
-        x=np.zeros(cashflow.shape[0]+max_npv)
+        
+        if np.abs(np.sum(premium))<1e-6 or np.abs(np.sum(pension))<1e-6:
+            if np.abs(np.sum(premium))<1e-6 and np.abs(np.sum(pension))>1e-6:
+                irri=1.0
+            elif np.abs(np.sum(pension))<1e-6 and np.abs(np.sum(premium))>1e-6:
+                irri=-1.0
+            else:
+                irri=np.nan
+        else:
+            x=np.zeros(cashflow.shape[0]+max_npv)
+        
+            eind=np.zeros(max_npv+1)
 
-        eind=np.zeros(max_npv+1)
+            el=1
+            for k in range(max_npv+1):
+                eind[k]=el
+                el=el*self.elakeindeksi
 
-        el=1
-        for k in range(max_npv+1):
-            eind[k]=el
-            el=el*self.elakeindeksi
+            x[:cashflow.shape[0]]=cashflow
+            if npv>0:
+                x[cashflow.shape[0]-1:]=cashflow[-2]*eind[:max_npv+1]
 
-        x[:cashflow.shape[0]]=cashflow
-        if npv>0:
-            x[cashflow.shape[0]-1:]=cashflow[-2]*eind[:max_npv+1]
-
-        y=np.zeros(int(np.ceil(x.shape[0]/4)))
-        for k in range(y.shape[0]):
-            y[k]=np.sum(x[4*k:4*k+4])
-        irri=npf.irr(y)*100
+            y=np.zeros(int(np.ceil(x.shape[0]/4)))
+            for k in range(y.shape[0]):
+                y[k]=np.sum(x[4*k:4*k+4])
+            irri=npf.irr(y)*100
 
         #if np.isnan(irri):
         #    if np.sum(pension)<0.1 and np.sum(empstate[0:self.map_age(63)]==15)>0: # vain maksuja, joista ei saa tuottoja, joten tappio 100%
@@ -1860,7 +1905,8 @@ class EpisodeStats():
         Indeksointi puuttuu npv:n osalta
         Tuloksiin lisättävä inflaatio+palkkojen reaalikasvu = palkkojen nimellinen kasvu
         '''
-        maxnpv=np.max(self.infostats_npv0)
+        maxnpv=np.sum(self.infostats_npv0)/self.alive[-1] # keskimääräinen npv ilman diskonttausta tarkasteluvälin lopussa
+
         agg_premium=np.sum(self.infostats_tyelpremium,axis=1)
         agg_pensions_reduced=np.sum(self.infostats_paid_tyel_pension,axis=1)
         agg_pensions_full=np.sum(self.infostats_pop_tyoelake,axis=1)
@@ -1869,6 +1915,15 @@ class EpisodeStats():
 
         print('aggregate irr tyel reduced {:.4f} % reaalisesti'.format(agg_irr_tyel_reduced))
         print('aggregate irr tyel full {:.4f} % reaalisesti'.format(agg_irr_tyel_full))
+        
+        x=np.linspace(self.min_age,self.max_age,self.n_time)
+        fig,ax=plt.subplots()
+        ax.set_xlabel('age')
+        ax.set_ylabel('pension/premium')
+        ax.plot(x[:-1],agg_pensions_full[:-1],label='työeläkemeno')
+        ax.plot(x[:-1],agg_pensions_reduced[:-1],label='yhteensovitettu työeläkemeno')
+        ax.plot(x[:-1],agg_premium[:-1],label='työeläkemaksu')
+        plt.show()
 
     def comp_unemp_durations(self,popempstate=None,popunemprightused=None,putki=True,\
             tmtuki=False,laaja=False,outsider=False,ansiosid=True,tyott=False,kaikki=False,\
@@ -2749,23 +2804,27 @@ class EpisodeStats():
 
         x=np.linspace(self.min_age,self.max_age,self.n_time)
         fig,ax=plt.subplots()
-        ax.plot(x,100*np.sum(self.gempstate[:,5,3:6]+self.gempstate[:,6,3:6]+self.gempstate[:,7,3:6],1,keepdims=True)/np.sum(self.galive[:,3:6],1,keepdims=True),label='vanhempainvapailla, naiset')
-        ax.plot(x,100*np.sum(self.gempstate[:,5,0:3]+self.gempstate[:,6,0:3]+self.gempstate[:,7,0:3],1,keepdims=True)/np.sum(self.galive[:,0:3],1,keepdims=True),label='vanhempainvapailla, miehet')
+        ax.plot(x,100*np.sum(self.gempstate[:,5,3:6]+self.gempstate[:,6,3:6]+self.gempstate[:,7,3:6],1,
+            keepdims=True)/np.sum(self.galive[:,3:6],1,keepdims=True),label='vanhempainvapailla, naiset')
+        ax.plot(x,100*np.sum(self.gempstate[:,5,0:3]+self.gempstate[:,6,0:3]+self.gempstate[:,7,0:3],1,
+            keepdims=True)/np.sum(self.galive[:,0:3],1,keepdims=True),label='vanhempainvapailla, miehet')
 #        emp_statsratio=100*self.empstats.outsider_stats(g=1)
 #        ax.plot(x,emp_statsratio,label=self.labels['havainto, naiset'])
 #        emp_statsratio=100*self.empstats.outsider_stats(g=2)
 #        ax.plot(x,emp_statsratio,label=self.labels['havainto, miehet'])
+
         ax.set_xlabel(self.labels['age'])
         ax.set_ylabel(self.labels['ratio'])
         ax.legend()
         plt.show()
+        
         if printtaa:
             nn=np.sum(self.galive[:,3:6],1,keepdims=True)
             n=np.sum(100*(self.gempstate[:,5,3:6]+self.gempstate[:,6,3:6]+self.gempstate[:,7,3:6]),1,keepdims=True)/nn
             mn=np.sum(self.galive[:,0:3],1,keepdims=True)
             m=np.sum(100*(self.gempstate[:,5,0:3]+self.gempstate[:,6,0:3]+self.gempstate[:,7,0:3]),1,keepdims=True)/mn
             
-        ratio_label=self.labels['osuus']
+        ratio_label=self.labels['ratio']
         empstate_ratio=100*self.empstate/self.alive
         self.plot_states(empstate_ratio,ylabel=ratio_label,parent=True,stack=False)
 
@@ -2897,7 +2956,7 @@ class EpisodeStats():
         ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
         plt.show()
 
-    def plot_group_disab(self):
+    def plot_group_disab(self,xstart=None,xend=None):
         fig,ax=plt.subplots()
         for gender in range(2):
             if gender==0:
@@ -2921,6 +2980,8 @@ class EpisodeStats():
         ax.set_xlabel(self.labels['age'])
         ax.set_ylabel(self.labels['ratio'])
         ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
+        if xstart is not None:
+            ax.set_xlim([xstart,xend])
         plt.show()
 
     def plot_taxes(self,figname=None):
@@ -3195,8 +3256,8 @@ class EpisodeStats():
     def plot_parents_in_work(self):
         empstate_ratio=100*self.empstate/self.alive
         ml=100*self.infostats_mother_in_workforce/self.alive
-        self.plot_y(ml,label='mothers in workforce',
-            y2=empstate_ratio[:,6],ylabel=self.labels['spouses'],label2='isyysvapaa')
+        self.plot_y(ml,label='mothers in workforce',legend=True,
+            y2=empstate_ratio[:,6],ylabel=self.labels['ratio'],label2='isyysvapaa')
 
     def plot_spouse(self,figname=None,grayscale=False):
         x=np.linspace(self.min_age,self.max_age,self.n_time)
@@ -3977,7 +4038,7 @@ class EpisodeStats():
         #ax.set_yscale('log')
         #max_time=50
         #nn_time = int(np.round((max_time)*self.inv_timestep))+1
-        x=np.linspace(-5,5,100)
+        x=np.linspace(-7,7,100)
         scaled,x2=np.histogram(irr_distrib,x)
         #scaled=scaled/np.nansum(np.abs(irr_distrib))
         ax.bar(x2[1:-1],scaled[1:],align='center')
@@ -3988,22 +4049,22 @@ class EpisodeStats():
         ax.hist(irr_distrib,bins=40)
         plt.show()
 
-        print('Keskimääräinen irr {:.3f} % reaalisesti, jos ei NaN'.format(np.nanmean(irr_distrib)))
-        print('Mediaani irr {:.3f} % reaalisesti, jos ei NaN'.format(np.nanmedian(irr_distrib)))
-        print('Nans {} %'.format(100*np.sum(np.isnan(irr_distrib))/irr_distrib.shape[0]))
+        irr_distrib_wout_nans=irr_distrib.copy()
+        irr_distrib_wout_nans[np.isnan(irr_distrib_wout_nans)]=0 # mostly not defined of type 0/0, hence use 0
         
-        irr_distrib_w_nans=irr_distrib
-        irr_distrib_w_nans[np.isnan(irr_distrib_w_nans)]=-1
-        print('Keskimääräinen irr {:.3f} % reaalisesti'.format(np.mean(irr_distrib_w_nans)))
-        print('Mediaani irr {:.3f} % reaalisesti'.format(np.median(irr_distrib_w_nans)))
+        print('Kaikki havainnot:\n- Keskimääräinen irr {:.3f} % reaalisesti'.format(np.mean(irr_distrib_wout_nans)))
+        print('- Mediaani irr {:.3f} % reaalisesti'.format(np.median(irr_distrib_wout_nans)))
 
-        count = (irr_distrib < 0).sum(axis=0)
-        percent = np.true_divide(count,irr_distrib.shape[0])
-        print('Osuus irr<0% {} %:lla'.format(100*percent))
+        print('Ilman Nan:eja\n- Keskimääräinen irr {:.3f} % reaalisesti'.format(np.nanmean(irr_distrib)))
+        print('- Mediaani irr {:.3f} % reaalisesti'.format(np.nanmedian(irr_distrib)))
+        print('- Nans {} %'.format(100*np.sum(np.isnan(irr_distrib))/irr_distrib.shape[0]))
 
-        count = (irr_distrib <=-50).sum(axis=0)
-        percent = np.true_divide(count,irr_distrib.shape[0])
-        print('Osuus irr<-50% {} %:lla'.format(100*percent))
+        percent_m50 = 100*np.true_divide((irr_distrib <=-50).sum(axis=0),irr_distrib.shape[0])[0]
+        percent_m10 = 100*np.true_divide((irr_distrib <=-10).sum(axis=0),irr_distrib.shape[0])[0]
+        percent_0 =   100*np.true_divide((irr_distrib <=0).sum(axis=0),irr_distrib.shape[0])[0]
+        percent_p10 = 100*np.true_divide((irr_distrib >=10).sum(axis=0),irr_distrib.shape[0])[0]
+        print(f'Osuudet\n- irr < -50% {percent_m50:.2f} %:lla\n- irr < -10% {percent_m10:.2f} %')
+        print(f'- irr < 0% {percent_0:.2f} %:lla\n- irr > 10% {percent_p10:.2f} %\n')
         
         count = (np.sum(self.stat_pop_paidpension,axis=0)<0.1).sum(axis=0)
         percent = np.true_divide(count,irr_distrib.shape[0])
@@ -4552,14 +4613,16 @@ class EpisodeStats():
         self.comp_employment_stats()
         cc2.comp_employment_stats()
 
-        q1=self.comp_budget(scale=True)
-        q2=cc2.comp_budget(scale=True)
+        self.compare_against(cc=cc2,cctext=label2)
 
-        df1 = pd.DataFrame.from_dict(q1,orient='index',columns=[label1])
-        df2 = pd.DataFrame.from_dict(q2,orient='index',columns=['one'])
-        df=df1.copy()
-        df[label2]=df2['one']
-        df['ero']=df1[label1]-df2['one']
+#         q1=self.comp_budget(scale=True)
+#         q2=cc2.comp_budget(scale=True)
+#         
+#         df1 = pd.DataFrame.from_dict(q1,orient='index',columns=[label1])
+#         df2 = pd.DataFrame.from_dict(q2,orient='index',columns=['one'])
+#         df=df1.copy()
+#         df[label2]=df2['one']
+#         df['ero']=df1[label1]-df2['one']
 
         fig,ax=plt.subplots()
         ax.plot(x[1:self.n_time],mean_real1[1:self.n_time]-mean_real2[1:self.n_time],label=label1+'-'+label2)
@@ -4585,9 +4648,9 @@ class EpisodeStats():
         ax.set_ylabel('rew diff')
         plt.show()
 
-        if self.version in set([1,2,3,4]):
-            print('Rahavirrat skaalattuna väestötasolle')
-            print(tabulate(df, headers='keys', tablefmt='psql', floatfmt=",.2f"))
+#         if self.version in set([1,2,3,4]):
+#             print('Rahavirrat skaalattuna väestötasolle')
+#             print(tabulate(df, headers='keys', tablefmt='psql', floatfmt=",.2f"))
 
         if dash:
             ls='--'

@@ -30,7 +30,8 @@ class CustomPolicy(FeedForwardPolicy):
 
 class runner_stablebaselines():
     def __init__(self,environment,gamma,timestep,n_time,n_pop,
-                 minimal,min_age,max_age,min_retirementage,year,gym_kwargs):
+                 minimal,min_age,max_age,min_retirementage,year,episodestats,
+                 gym_kwargs):
         self.gamma=gamma
         self.timestep=timestep
         self.environment=environment
@@ -41,18 +42,20 @@ class runner_stablebaselines():
         self.max_age=max_age
         self.min_retirementage=min_retirementage
         self.year=year
-        self.gym_kwargs=gym_kwargs
+        self.gym_kwargs=gym_kwargs.copy()
+        self.gym_kwargs['silent']=True
         
-        self.env = gym.make(self.environment)
+        self.env = gym.make(self.environment,kwargs=self.gym_kwargs)
         self.n_employment,self.n_acts=self.env.get_n_states()
         self.state_shape = self.env.observation_space.shape or self.env.observation_space.n
         self.action_shape = self.env.action_space.shape or self.env.action_space.n
 
         self.version = self.env.get_lc_version()
 
-        self.episodestats=SimStats(self.timestep,self.n_time,self.n_employment,self.n_pop,
-                                   self.env,self.minimal,self.min_age,self.max_age,self.min_retirementage,
-                                   version=self.version,params=self.gym_kwargs,year=self.year,gamma=self.gamma)
+        self.episodestats=episodestats
+        #SimStats(self.timestep,self.n_time,self.n_employment,self.n_pop,
+        #                       self.env,self.minimal,self.min_age,self.max_age,self.min_retirementage,
+        #                       version=self.version,params=self.gym_kwargs,year=self.year,gamma=self.gamma)
         
     def get_multiprocess_env(self,rlmodel,debug=False,arch=None,predict=False):
 
