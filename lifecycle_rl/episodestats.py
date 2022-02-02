@@ -1120,7 +1120,7 @@ class EpisodeStats():
             self.compare_against()
         else:
             q=self.comp_participants(scale=True)
-            q_stat=self.stat_participants()
+            q_stat=self.stat_participants(lkm=False)
             q_days=self.stat_days()
             df1 = pd.DataFrame.from_dict(q,orient='index',columns=['arvio (htv)'])
             df2 = pd.DataFrame.from_dict(q_stat,orient='index',columns=['toteuma'])
@@ -1226,15 +1226,18 @@ class EpisodeStats():
         self.plot_group_disab(xstart=60,xend=67)
         alivemask=(self.popempstate==self.env.get_mortstate()) # pois kuolleet
         kemask=(self.infostats_pop_kansanelake<0.1)
-        temask=(self.infostats_pop_kansanelake>0.0) # pois kansaneläkkeen saajat
+        temask=(self.infostats_pop_kansanelake>0.1) # pois kansaneläkkeen saajat
+        notemask=(self.infostats_pop_tyoelake>10.0) # pois kansaneläkkeen saajat
         self.plot_pensions()
         self.plot_pension_stats(self.stat_pop_paidpension/self.timestep,65,'kokoeläke ilman kuolleita',mask=alivemask)
         self.plot_pension_stats(self.infostats_pop_tyoelake/self.timestep,65,'työeläke')
         self.plot_pension_stats(self.infostats_paid_tyel_pension/self.timestep,65,'työeläkemaksun vastine')
         self.plot_pension_stats(self.infostats_paid_tyel_pension/self.timestep,65,'työeläkemaksun vastine, vain työeläke',mask=temask)
         self.plot_pension_stats(self.infostats_pop_tyoelake/self.timestep,65,'vain työeläke',mask=temask)
-        self.plot_pension_stats(self.infostats_pop_kansanelake/self.timestep,65,'kansanelake kaikki',max_pen=10_000)
-        self.plot_pension_stats(self.infostats_pop_kansanelake/self.timestep,65,'vain kansanelake',max_pen=10_000,mask=kemask)
+        self.plot_pension_stats(self.infostats_pop_kansanelake/self.timestep,65,'kansanelake kaikki',max_pen=10_000,plot_ke=True)
+        self.plot_pension_stats(self.infostats_pop_kansanelake/self.timestep,65,'kansanelake>0',max_pen=10_000,mask=kemask,plot_ke=True)
+        self.plot_pension_stats(self.infostats_pop_kansanelake/self.timestep,65,'kansaneläke, ei työeläkettä',max_pen=10_000,mask=notemask,plot_ke=True)
+        self.plot_pension_stats(self.infostats_pop_tyoelake/self.timestep,65,'työeläke, jos kansanelake>0',max_pen=10_000,mask=kemask)
         self.plot_pension_stats(self.infostats_pop_pension,60,'tulevat eläkkeet')
         self.plot_pension_stats(self.infostats_pop_pension,60,'tulevat eläkkeet, vain elossa',mask=alivemask)
         self.plot_pension_time()
@@ -1599,9 +1602,11 @@ class EpisodeStats():
 
         scalex=np.squeeze(demog2/self.n_pop*self.timestep)
         if lkm:
-            scalex_lkm=np.squeeze(demog2/self.n_pop)
+            scalex_lkm=np.squeeze(demog2/self.n_pop*self.timestep)
+            osa_aika_kerroin=1.0
         else:
             scalex_lkm=np.squeeze(demog2/self.n_pop*self.timestep)
+            osa_aika_kerroin=0.5
 
         q={}
         if self.version in set([1,2,3,4]):
@@ -1610,12 +1615,12 @@ class EpisodeStats():
                 emp=np.squeeze(self.gempstate[:,:,g])
                 q['yhteensä']=np.sum(np.sum(emp,axis=1)*scalex)
                 if include_retwork:
-                    q['palkansaajia lkm']=np.sum((emp[:,1]+emp[:,10]+emp[:,8]+emp[:,9])*scalex)
-                    q['palkansaajia htv']=np.sum((emp[:,1]+0.5*emp[:,10]+0.5*emp[:,8]+emp[:,9])*scalex)
+                    q['palkansaajia']=np.sum((emp[:,1]+osa_aika_kerroin*emp[:,10]+osa_aika_kerroin*emp[:,8]+emp[:,9])*scalex)
                 else:
-                    q['palkansaajia']=np.sum((emp[:,1]+emp[:,10])*scalex)
-                    q['palkansaajia htv']=np.sum((emp[:,1]+0.5*emp[:,10])*scalex)
+                    q['palkansaajia']=np.sum((emp[:,1]+osa_aika_kerroin*emp[:,10])*scalex)
 
+                q['työssä ja eläkkeellä']=osa_aika_kerroin*np.sum(osa_aika_kerroin*emp[:,8]*scalex_lkm)+np.sum(emp[:,9]*scalex_lkm)
+                q['työssä yli 63v']=np.sum(np.sum(emp[self.map_age(63):,[1,9]],axis=1)*scalex_lkm[self.map_age(63):])+osa_aika_kerroin*np.sum(np.sum(emp[self.map_age(63):,[8,10]],axis=1)*scalex_lkm[self.map_age(63):])
                 q['ansiosidonnaisella']=np.sum((emp[:,0]+emp[:,4])*scalex_lkm)
                 q['tmtuella']=np.sum(emp[:,13]*scalex_lkm)
                 q['isyysvapaalla']=np.sum(emp[:,6]*scalex_lkm)
@@ -1625,12 +1630,12 @@ class EpisodeStats():
             else:
                 q['yhteensä']=np.sum(np.sum(self.empstate[:,:],axis=1)*scalex)
                 if include_retwork:
-                    q['palkansaajia lkm']=np.sum((self.empstate[:,1]+self.empstate[:,10]+self.empstate[:,8]+self.empstate[:,9])*scalex)
-                    q['palkansaajia htv']=np.sum((self.empstate[:,1]+0.5*self.empstate[:,10]+0.5*self.empstate[:,8]+self.empstate[:,9])*scalex)
+                    q['palkansaajia']=np.sum((self.empstate[:,1]+osa_aika_kerroin*self.empstate[:,10]+osa_aika_kerroin*self.empstate[:,8]+self.empstate[:,9])*scalex)
                 else:
-                    q['palkansaajia lkm']=np.sum((self.empstate[:,1]+self.empstate[:,10])*scalex)
-                    q['palkansaajia htv']=np.sum((self.empstate[:,1]+0.5*self.empstate[:,10])*scalex)
+                    q['palkansaajia']=np.sum((self.empstate[:,1]+osa_aika_kerroin*self.empstate[:,10])*scalex)
 
+                q['työssä ja eläkkeellä']=osa_aika_kerroin*np.sum(self.empstate[:,8]*scalex_lkm)+np.sum(self.empstate[:,9]*scalex_lkm)
+                q['työssä yli 63v']=np.sum(np.sum(self.empstate[self.map_age(63):,[1,9]],axis=1)*scalex_lkm[self.map_age(63):])+osa_aika_kerroin*np.sum(np.sum(self.empstate[self.map_age(63):,[8,10]],axis=1)*scalex_lkm[self.map_age(63):])
                 q['ansiosidonnaisella']=np.sum((self.empstate[:,0]+self.empstate[:,4])*scalex_lkm)
                 q['tmtuella']=np.sum(self.empstate[:,13]*scalex_lkm)
                 q['isyysvapaalla']=np.sum(self.empstate[:,6]*scalex_lkm)
@@ -1639,8 +1644,7 @@ class EpisodeStats():
                 q['ovella']=np.sum(np.sum(self.infostats_ove,axis=1)*scalex)
         else:
             q['yhteensä']=np.sum(np.sum(self.empstate[:,:],1)*scalex)
-            q['palkansaajia lkm']=np.sum((self.empstate[:,1])*scalex)
-            q['palkansaajia htv']=np.sum((self.empstate[:,1])*scalex)
+            q['palkansaajia']=np.sum((self.empstate[:,1])*scalex)
             q['ansiosidonnaisella']=np.sum((self.empstate[:,0])*scalex)
             q['tmtuella']=np.sum(self.empstate[:,1]*0)
             q['isyysvapaalla']=np.sum(self.empstate[:,1]*0)
@@ -2354,7 +2358,7 @@ class EpisodeStats():
             ylabel='kansaneläke/työeläke [%]',
             start_from=60,end_at=70,show_legend=True)
 
-    def plot_pension_stats(self,pd,age,label,max_pen=60_000,mask=None):
+    def plot_pension_stats(self,pd,age,label,max_pen=60_000,mask=None,plot_ke=False):
         fig,ax=plt.subplots()
         if mask is None:
             pens_distrib=ma.array(pd[self.map_age(age),:])
@@ -2376,6 +2380,11 @@ class EpisodeStats():
         lstyle='--'
         ka=np.mean(pens_distrib)
         plt.axvline(x=ka,ls=lstyle,color=axvcolor)
+        if plot_ke:
+            arv=self.env.ben.laske_kansanelake(66,0/12,1,disability=True)*12
+            plt.axvline(x=arv,ls=lstyle,color='red')
+            plt.axvline(x=0.5*arv,ls=lstyle,color='pink')
+            
         plt.title(f'{label} at age {age}, mean {ka:.0f}')
         plt.show()
 
@@ -2599,6 +2608,7 @@ class EpisodeStats():
         sal40=np.zeros((n,1))
         sal50=np.zeros((n,1))
         sal60=np.zeros((n,1))
+        sal65=np.zeros((n,1))
         sal=np.zeros((n,self.max_age))
 
         p=np.arange(700,17500,100)*12.5
@@ -2613,6 +2623,7 @@ class EpisodeStats():
         m40=0
         m50=0
         m60=0
+        m65=0
         salx=np.zeros((self.n_time+2,1))
         saln=np.zeros((self.n_time+2,1))
         salx_m=np.zeros((self.n_time+2,1))
@@ -2648,6 +2659,9 @@ class EpisodeStats():
             if self.popempstate[self.map_age(60),k] in set([1,10]):
                 sal60[m60]=self.infostats_pop_wage[self.map_age(60),k]
                 m60=m60+1
+            if self.popempstate[self.map_age(65),k] in set([1,8,9,10]):
+                sal65[m65]=self.infostats_pop_wage[self.map_age(65),k]
+                m65=m65+1
 
 
         salx=salx/np.maximum(1,saln)
@@ -2675,6 +2689,7 @@ class EpisodeStats():
         kuva2(sal40,40,m40)
         kuva(sal50,50,m50,p,palkka50)
         kuva2(sal60,60,m60)
+        kuva2(sal65,65,m65)
 
         data_range=np.arange(self.min_age,self.max_age+1)
         plt.plot(data_range,np.mean(self.infostats_pop_wage[::4],axis=1),label='malli kaikki')
@@ -3256,7 +3271,7 @@ class EpisodeStats():
     def plot_parents_in_work(self):
         empstate_ratio=100*self.empstate/self.alive
         ml=100*self.infostats_mother_in_workforce/self.alive
-        self.plot_y(ml,label='mothers in workforce',legend=True,
+        self.plot_y(ml,label='mothers in workforce',show_legend=True,
             y2=empstate_ratio[:,6],ylabel=self.labels['ratio'],label2='isyysvapaa')
 
     def plot_spouse(self,figname=None,grayscale=False):
@@ -3778,6 +3793,12 @@ class EpisodeStats():
                         yminlim=0,ymaxlim=min(100,1.1*np.nanmax(np.cumsum(pysyneet_ratio,1))))
         siirtyneet_ratio=self.siirtyneet_det[:,:,1]/self.alive*100
         self.plot_states(siirtyneet_ratio,ylabel='Siirtyneet työhön tilasta',stack=True,
+                        yminlim=0,ymaxlim=min(100,1.1*np.nanmax(np.cumsum(siirtyneet_ratio,1))))
+        siirtyneet_ratio=self.siirtyneet_det[:,8,:]/self.alive*100
+        self.plot_states(siirtyneet_ratio,ylabel='Siirtyneet ve+oatyö tilaan',stack=True,
+                        yminlim=0,ymaxlim=min(100,1.1*np.nanmax(np.cumsum(siirtyneet_ratio,1))))
+        siirtyneet_ratio=self.siirtyneet_det[:,9,:]/self.alive*100
+        self.plot_states(siirtyneet_ratio,ylabel='Siirtyneet ve+työ tilaan',stack=True,
                         yminlim=0,ymaxlim=min(100,1.1*np.nanmax(np.cumsum(siirtyneet_ratio,1))))
         siirtyneet_ratio=self.siirtyneet_det[:,:,4]/self.alive*100
         self.plot_states(siirtyneet_ratio,ylabel='Siirtyneet putkeen tilasta',stack=True,
@@ -4450,7 +4471,7 @@ class EpisodeStats():
         return self.salaries_emp[:,1]+self.salaries_emp[:,10]
 
 
-    def stat_participants(self,scale=False):
+    def stat_participants(self,scale=False,lkm=False):
         '''
         Lukumäärätiedot (EI HTV!)
         '''
@@ -4462,10 +4483,10 @@ class EpisodeStats():
         q={}
         if self.year==2018:
             q['yhteensä']=np.sum(demog2)*self.timestep
-            q['työllisiä lkm']=2_540_000 # TK
-            q['työllisiä htv']=None
-            q['palkansaajia lkm']=2_204_000 # TK
-            q['palkansaajia htv']=None
+            q['työllisiä']=2_540_000 # TK
+            q['työssä ja eläkkeellä']=31_000 # ETK 2020
+            q['työssä yli 63v']=86_000 # ETK 2020
+            q['palkansaajia']=2_204_000 # TK
             q['ansiosidonnaisella']=116_972+27_157  # Kelan tilasto 31.12.2018
             q['tmtuella']=189_780  # Kelan tilasto 31.12.2018
             q['isyysvapaalla']=59_640 # Kelan tilasto 2018
@@ -4474,10 +4495,10 @@ class EpisodeStats():
             q['ovella']=39_000
         elif self.year==2019:
             q['yhteensä']=np.sum(demog2)*self.timestep
-            q['työllisiä lkm']=2_566_000 # TK
-            q['työllisiä htv']=None
-            q['palkansaajia lkm']=2_204_000 # TK
-            q['palkansaajia htv']=None
+            q['työllisiä']=2_566_000 # TK
+            q['työssä ja eläkkeellä']=31_000 # ETK 2020
+            q['työssä yli 63v']=86_000 # ETK 2020
+            q['palkansaajia']=2_204_000 # TK
             q['ansiosidonnaisella']=116_972+27_157  # Kelan tilasto 31.12.2018
             q['isyysvapaalla']=59_640 # Kelan tilasto 2018
             q['kotihoidontuella']=42_042 # saajia Kelan tilasto 2018
@@ -4485,10 +4506,10 @@ class EpisodeStats():
             q['ovella']=39_000
         elif self.year==2020:
             q['yhteensä']=np.sum(demog2)*self.timestep
-            q['työllisiä lkm']=2_528_000 # TK
-            q['työllisiä htv']= None
-            q['palkansaajia lkm']=2_204_000 # TK
-            q['palkansaajia htv']= None
+            q['työllisiä']=2_528_000 # TK
+            q['työssä yli 63v']=86_000 # ETK 2020
+            q['työssä ja eläkkeellä']=31_000 # ETK 2020
+            q['palkansaajia']=2_204_000 # TK
             q['ansiosidonnaisella']=116_972+27_157  # Kelan tilasto 31.12.2018
             q['tmtuella']=189_780  # Kelan tilasto 31.12.2018
             q['isyysvapaalla']=59_640 # Kelan tilasto 2018
@@ -4497,10 +4518,10 @@ class EpisodeStats():
             q['ovella']=39_000
         elif self.year==2021:
             q['yhteensä']=np.sum(demog2)*self.timestep
-            q['työllisiä lkm']=2_528_000 # TK
-            q['työllisiä htv']= None
-            q['palkansaajia lkm']=2_204_000 # TK
-            q['palkansaajia htv']= None
+            q['työllisiä']=2_528_000 # TK
+            q['työssä ja eläkkeellä']=31_000 # ETK 2020
+            q['työssä yli 63v']=86_000 # ETK 2020
+            q['palkansaajia']=2_204_000 # TK
             q['ansiosidonnaisella']=116_972+27_157  # Kelan tilasto 31.12.2018
             q['tmtuella']=189_780  # Kelan tilasto 31.12.2018
             q['isyysvapaalla']=59_640 # Kelan tilasto 2018
@@ -4527,10 +4548,10 @@ class EpisodeStats():
         q={}
         if self.year==2018:
             q['yhteensä']=np.sum(np.sum(demog2))*self.timestep
-            q['työllisiä lkm']=None
-            q['työllisiä htv']= 4_132_662_000 * h_to_v # yritykset, statfin
-            q['palkansaajia lkm']=None
-            q['palkansaajia htv']= 3_508_270_000 * h_to_v # yritykset, statfin
+            q['työllisiä']= 4_132_662_000 * h_to_v # yritykset, statfin
+            q['työssä ja eläkkeellä']=31_000 # ETK 2020
+            q['työssä yli 63v']=86_000 # ETK 2020
+            q['palkansaajia']= 3_508_270_000 * h_to_v # yritykset, statfin
             q['ansiosidonnaisella']=(30_676_200+7_553_200)/htv_tt  # Kelan tilasto 31.12.2018
             q['tmtuella']=49_880_300/htv_tt   # Kelan tilasto 31.12.2018
             q['isyysvapaalla']=1_424_000/htv # Kelan tilasto 2018
@@ -4538,10 +4559,10 @@ class EpisodeStats():
             q['vanhempainvapaalla']=12_571_400/htv  # Kelan tilasto 2018, äideille
         elif self.year==2019:
             q['yhteensä']=np.sum(np.sum(demog2))*self.timestep
-            q['työllisiä lkm']=None
-            q['työllisiä htv']= 4_141_593_000 * h_to_v # yritykset, statfin
-            q['palkansaajia lkm']=None
-            q['palkansaajia htv']= 3_512_025_000 * h_to_v  # Kelan tilasto 31.12.2018
+            q['työllisiä']= 4_141_593_000 * h_to_v # yritykset, statfin
+            q['työssä ja eläkkeellä']=31_000 # ETK 2020
+            q['työssä yli 63v']=86_000 # ETK 2020
+            q['palkansaajia']= 3_512_025_000 * h_to_v  # Kelan tilasto 31.12.2018
             q['ansiosidonnaisella']=(30_676_200+7_553_200)/htv_tt  # Kelan tilasto 31.12.2018
             q['tmtuella']=49_880_300/htv_tt   # Kelan tilasto 31.12.2018
             q['isyysvapaalla']=1_424_000/htv # Kelan tilasto 2018
@@ -4549,10 +4570,10 @@ class EpisodeStats():
             q['vanhempainvapaalla']=12_571_400/htv  # Kelan tilasto 2018, äideille
         elif self.year==2020:
             q['yhteensä']=np.sum(np.sum(demog2))*self.timestep
-            q['työllisiä lkm']= None
-            q['työllisiä htv']= 4_062_562_000 * h_to_v # yritykset, statfin
-            q['palkansaajia lkm']=None
-            q['palkansaajia htv']= 3_459_030_000 * h_to_v #
+            q['työllisiä']= 4_062_562_000 * h_to_v # yritykset, statfin
+            q['työssä ja eläkkeellä']=31_000 # ETK 2020
+            q['työssä yli 63v']=86_000 # ETK 2020
+            q['palkansaajia']= 3_459_030_000 * h_to_v #
             q['ansiosidonnaisella']=(30_676_200+7_553_200)/htv_tt  # Kelan tilasto 31.12.2018
             q['tmtuella']=49_880_300/htv_tt   # Kelan tilasto 31.12.2018
             q['isyysvapaalla']=1_424_000/htv # Kelan tilasto 2018
@@ -4560,10 +4581,10 @@ class EpisodeStats():
             q['vanhempainvapaalla']=12_571_400/htv  # Kelan tilasto 2018, äideille
         elif self.year==2021:
             q['yhteensä']=np.sum(np.sum(demog2))*self.timestep
-            q['työllisiä lkm']= None
-            q['työllisiä htv']= 4_062_562_000 * h_to_v # yritykset, statfin
-            q['palkansaajia lkm']=None
-            q['palkansaajia htv']= 3_459_030_000 * h_to_v #
+            q['työllisiä']= 4_062_562_000 * h_to_v # yritykset, statfin
+            q['työssä ja eläkkeellä']=31_000 # ETK 2020
+            q['työssä yli 63v']=86_000 # ETK 2020
+            q['palkansaajia']= 3_459_030_000 * h_to_v #
             q['ansiosidonnaisella']=(30_676_200+7_553_200)/htv_tt  # Kelan tilasto 31.12.2018
             q['tmtuella']=49_880_300/htv_tt   # Kelan tilasto 31.12.2018
             q['isyysvapaalla']=1_424_000/htv # Kelan tilasto 2018

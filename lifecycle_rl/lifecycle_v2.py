@@ -146,12 +146,13 @@ class Lifecycle():
         self.n_employment,self.n_acts=self.env.get_n_states()
         self.version = self.env.get_lc_version()
 
+        if self.version==4:
+            self.min_retirementage=self.env.get_retirementage()
+
         self.episodestats=SimStats(self.timestep,self.n_time,self.n_employment,self.n_pop,
                                    self.env,self.minimal,self.min_age,self.max_age,self.min_retirementage,
                                    version=self.version,params=self.gym_kwargs,year=self.year,gamma=self.gamma,
                                    lang=self.lang)
-        if self.version==4:
-            self.min_retirementage=self.env.get_retirementage()
         
         if self.use_tianshou:
             self.runner=runner_tianshou(self.environment,self.gamma,self.timestep,self.n_time,self.n_pop,
@@ -216,7 +217,7 @@ class Lifecycle():
         self.include_halftoe=None
         self.porrasta_toe=None
         self.include_ove=False
-        self.unemp_limit_reemp=False
+        self.unemp_limit_reemp=True
         self.extra_ppr=0
         self.startage=self.min_age
         self.use_sigma_reduction=True
