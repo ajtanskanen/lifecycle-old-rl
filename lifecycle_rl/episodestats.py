@@ -1237,7 +1237,7 @@ class EpisodeStats():
         self.plot_pension_stats(self.infostats_pop_kansanelake/self.timestep,65,'kansanelake kaikki',max_pen=10_000,plot_ke=True)
         self.plot_pension_stats(self.infostats_pop_kansanelake/self.timestep,65,'kansanelake>0',max_pen=10_000,mask=kemask,plot_ke=True)
         self.plot_pension_stats(self.infostats_pop_kansanelake/self.timestep,65,'kansaneläke, ei työeläkettä',max_pen=10_000,mask=notemask,plot_ke=True)
-        self.plot_pension_stats(self.infostats_pop_tyoelake/self.timestep,65,'työeläke, jos kansanelake>0',max_pen=10_000,mask=kemask)
+        self.plot_pension_stats(self.infostats_pop_tyoelake/self.timestep,65,'työeläke, jos kansanelake>0',max_pen=20_000,mask=kemask)
         self.plot_pension_stats(self.infostats_pop_pension,60,'tulevat eläkkeet')
         self.plot_pension_stats(self.infostats_pop_pension,60,'tulevat eläkkeet, vain elossa',mask=alivemask)
         self.plot_pension_time()
@@ -1710,38 +1710,73 @@ class EpisodeStats():
 
         return vaikutus
 
-    def get_vanhempainvapaat(self,skip=4):
+    def get_vanhempainvapaat(self,skip=4,show=False,all=True):
         '''
-        Laskee vanhempainvapaalla olevien määrän outsider-mallia (Excel) varten, tila 6
+        Laskee vanhempainvapaalla olevien määrän outsider-mallia (Excel) varten, ilman työvoimassa olevia vanhempainvapailla olevia
         '''
 
         alive=np.zeros((self.galive.shape[0],1))
         alive[:,0]=np.sum(self.galive[:,0:3],1)
         ulkopuolella_m=np.sum(self.gempstate[:,7,0:3],axis=1)[:,None]/alive
+        tyovoimassa_m=np.sum(self.gempstate[:,6,0:3],axis=1)[:,None]/alive
 
         alive[:,0]=np.sum(self.galive[:,3:6],1)
-        nn=np.sum(self.gempstate[:,5,3:6]+self.gempstate[:,7,3:6],axis=1)[:,None]-self.infostats_mother_in_workforce
+        nn=np.sum(self.gempstate[:,5,3:6]+self.gempstate[:,7,3:6],axis=1)[:,None]
+        if not all:
+            nn-=self.infostats_mother_in_workforce
         ulkopuolella_n=nn/alive
+        tyovoimassa_n=self.infostats_mother_in_workforce/alive
 
-        return ulkopuolella_m[::skip],ulkopuolella_n[::skip]
+        if show:
+            m,n=ulkopuolella_m[::skip],ulkopuolella_n[::skip]
+            print('ulkopuolella_m=[',end='')
+            for k in range(1,42):
+                print('{},'.format(m[k,0]),end='')
+            print(']')
+            print('ulkopuolella_n=[',end='')
+            for k in range(1,42):
+                print('{},'.format(n[k,0]),end='')
+            print(']')
+            m,n=tyovoimassa_m[::skip],tyovoimassa_n[::skip]
+            print('tyovoimassa_m=[',end='')
+            for k in range(1,42):
+                print('{},'.format(m[k,0]),end='')
+            print(']')
+            print('tyovoimassa_n=[',end='')
+            for k in range(1,42):
+                print('{},'.format(n[k,0]),end='')
+            print(']')
+        else:
+            return ulkopuolella_m[::skip],ulkopuolella_n[::skip],tyovoimassa_m,tyovoimassa_n
 
-    def get_vanhempainvapaat_md(self):
-        '''
-        Laskee vanhempainvapaalla olevien määrän outsider-mallia (Excel) varten, tila 7
-        
-        '''
-
-        alive=np.zeros((self.galive.shape[0],1))
-        alive[:,0]=np.sum(self.galive[:,0:3],1)
-        vapaat=[5,6,7]
-        ulkopuolella_m=np.sum(self.gempstate[:,vapaat,0:3],axis=(1,2))[:,None]/alive
-
-        alive[:,0]=np.sum(self.galive[:,3:6],1)
-        #nn=
-        nn=(np.sum(self.gempstate[:,vapaat,3:6],axis=(1,2))[:,None]-self.infostats_mother_in_workforce)/alive
-        ulkopuolella_n=nn/alive
-
-        return ulkopuolella_m[::4],ulkopuolella_n[::4]
+#     def get_vanhempainvapaat_md(self,skip=4,show=False):
+#         '''
+#         Laskee vanhempainvapaalla olevien määrän outsider-mallia (Excel) varten, tila 7
+#         
+#         '''
+# 
+#         alive=np.zeros((self.galive.shape[0],1))
+#         alive[:,0]=np.sum(self.galive[:,0:3],1)
+#         vapaat=[5,6,7]
+#         ulkopuolella_m=np.sum(self.gempstate[:,vapaat,0:3],axis=(1,2))[:,None]/alive
+# 
+#         alive[:,0]=np.sum(self.galive[:,3:6],1)
+#         #nn=
+#         nn=(np.sum(self.gempstate[:,vapaat,3:6],axis=(1,2))[:,None]-self.infostats_mother_in_workforce)/alive
+#         ulkopuolella_n=nn/alive
+# 
+#         if show:
+#             m,n=ulkopuolella_m[::skip],ulkopuolella_n[::skip]
+#             print('m=[',end='')
+#             for k in range(1,42):
+#                 print('{},'.format(m[k,0]),end='')
+#             print(']')
+#             print('n=[',end='')
+#             for k in range(1,42):
+#                 print('{},'.format(n[k,0]),end='')
+#             print(']')
+#         else:
+#             return ulkopuolella_m[::skip],ulkopuolella_n[::skip]
 
     def comp_L2error(self):
 
@@ -3793,6 +3828,9 @@ class EpisodeStats():
                         yminlim=0,ymaxlim=min(100,1.1*np.nanmax(np.cumsum(pysyneet_ratio,1))))
         siirtyneet_ratio=self.siirtyneet_det[:,:,1]/self.alive*100
         self.plot_states(siirtyneet_ratio,ylabel='Siirtyneet työhön tilasta',stack=True,
+                        yminlim=0,ymaxlim=min(100,1.1*np.nanmax(np.cumsum(siirtyneet_ratio,1))))
+        siirtyneet_ratio=self.siirtyneet_det[:,7,:]/self.alive*100
+        self.plot_states(siirtyneet_ratio,ylabel='Siirtyneet kotihoidontuelle',stack=True,
                         yminlim=0,ymaxlim=min(100,1.1*np.nanmax(np.cumsum(siirtyneet_ratio,1))))
         siirtyneet_ratio=self.siirtyneet_det[:,8,:]/self.alive*100
         self.plot_states(siirtyneet_ratio,ylabel='Siirtyneet ve+oatyö tilaan',stack=True,
